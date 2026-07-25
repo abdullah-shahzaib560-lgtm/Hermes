@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class economic_features:
+class enviromental_features:
 
     def climate_vulnerability_score(self, data) -> float:
         pass
