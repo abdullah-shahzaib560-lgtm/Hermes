@@ -1,289 +1,93 @@
-from __future__ import annotations
-
-import httpx
 import pandas as pd
 import logging
-import json, time
-from typing import Any
-from datetime import datetime
-import numpy as np
-from hermes.base import BaseConnector
+import httpx
+import xml.etree.ElementTree as ET
+from typing import Optional
+from io import StringIO
 
 logger = logging.getLogger(__name__)
 
+SDMX_BASE = "https://sdmx.imf.org/datastore/data"
 
-class IMFLogic:
+
+class IMF:
+    DATABASES = {
+        "IFS": "IFS",
+        "WEO": "WEO",
+        "GFS": "GFS",
+        "BOP": "BOP",
+    }
+
     def __init__(self):
-        self.url = "https://www.imf.org/external/datamapper/api/v1"
+        self.base_url = SDMX_BASE
 
-    def fetch_imf_datamapper(
-        self, 
-        indicator: str, 
-        country: str, 
-
-    ):
-    
-        try:
-            url = f"{self.url}/{indicator}"
-                
-            r = httpx.get(url)
-            r.raise_for_status()
-            raw_data = r.json()
-            
-            indicator_data = raw_data.get("values", {}).get(indicator, {})
-            country_data = indicator_data.get(country, {})
-
-            df = pd.Series(country_data, name="Value").to_frame()
-            df.index.name = "Year"
-            
-            return indicator, country, df
-            
-        except httpx.HTTPError as e:
-            raise httpx.HTTPError(f"API request failed: {e}")
-
-    def transform(
-        self,
-        data: list[dict],
-        indicator: str,
-        country: str
-    ) -> list[dict]:
-        
-
-        df = []
-        d = data['Value']
-        for i, j in d.items():
-
-            dt_obj = datetime.strptime(i, "%Y-%m-%d")
-            i = np.datetime64(dt_obj, "ns")
-            date = i
-            
-            value = float(j)
-
-            df.append(
-                {
-                    "date": date,
-                    "country": country,
-                    "indicator": indicator,
-                    "value": value,
-                    "source": 'IMF'
-                }
-            )
-
-        return df
-
-    def validate(
-        self,
-        data: pd.DataFrame
-    ) -> bool:
-        
-        data = data.to_dict(orient='records')
-        required = {"indicator", "country", "countryiso3code", "date", "value"}
-
-        for item in data:
-            
-            if not required.issubset(item):
-                logger.warning(f'Record missing required fields: {required - set(item)}')
-                return False
-            
-        return True
-    
-    def export(self, data: pd.DataFrame, filetype: str) -> str:
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("data must be a pandas DataFrame")
-
-        ts = time.time()
-        path = f'data/world_bank{ts}.{filetype}'
-
-        if filetype == 'json':
-            import json
-            # Convert to plain Python records to bypass ujson's strict recursion limits
-            records = data.reset_index().to_dict(orient='records')
-            with open(path, 'w', encoding='utf-8') as f:
-                # default=str handles datetime/Timestamp fields gracefully if they aren't fully localized
-                json.dump(records, f, default=str)
-        elif filetype == 'csv':
-            data.to_csv(path, date_format='iso')
-        elif filetype == 'parquet':
-            data.to_parquet(path)
-        elif filetype == 'pickle':
-            data.to_pickle(path)
-        else:
-            raise ValueError(f"Unsupported filetype: {filetype!r}")
-
-        logger.info(f'Exported to {path}')
-        return path
-class IMF(BaseConnector):
-
-    def __init__(self, api_key: str | None = None):
-        super().__init__()
-        self.imf = IMFLogic()
-        self._cache = None
-
-    @property
-    def name(self) -> str:
-        return "imf"
-
-    def fetch(
-        self,
-        country: str = "USA",
-        indicator: str = "NGDPD",
-        **kwargs: Any,
-    ) -> pd.DataFrame:
-        try:
-            df = self.get_data(indicator=indicator, country=country, **kwargs)
-        except Exception:
-            return pd.DataFrame(columns=["date", "country", "indicator", "value", "source"])
-        df = df.reset_index()
-        return df[["date", "country", "indicator", "value", "source"]]
-    
-    def get_indicators(self) -> list[str, dict]:
-        
-        url = f'{self.imf.url}/indicators'
-        r = httpx.get(url=url)
-        r = r.json()
-        indicators = r['indicators']
-        data = ['indicators']
-        for i, j in indicators.items():
-            data.append(
-                {
-                    "Name": i,
-                    "Label": j['label'],
-                    "description": j['description']
-                }
-            )
-
-        return data
-    
-    def get_countries(self) -> list[str, dict]:
-        
-        url = f'{self.imf.url}/countries'
-        r = httpx.get(url)
-        r = r.json()
-        
-        countries = r['countries']
-        data = ['countries']
-        for i, j in countries.items():
-            data.append(
-                {
-                    i : j['label']
-                }
-            )
-        return data
-
-    def get_regions(self) -> list[str, dict]:
-        
-        url = f'{self.imf.url}/regions'
-        r = httpx.get(url)
-        r = r.json()
-        
-        regions = r['regions']
-        data = ['regions']
-        for i, j in regions.items():
-            data.append(
-                {
-                    i : j['label']
-                }
-            )
-        return data
-
-    def get_groups(self) -> list[str, dict]:
-        
-        url = f'{self.imf.url}/regions'
-        r = httpx.get(url)
-        r = r.json()
-        
-        regions = r['groups']
-        data = ['groups']
-        for i, j in regions.items():
-            data.append(
-                {
-                    i : j['label']
-                }
-            )
-        return data
-    
     def get_data(
         self,
-        indicator: str,
-        country: str,
-        export: bool = False,
-        filetype: str = 'csv'
-    ):
-        try:
-            data = self.imf.fetch_imf_datamapper(
-                indicator=indicator,
-                country=country
-            )
+        database: str = "IFS",
+        indicator: Optional[str] = None,
+        country: str = "all",
+        start_period: Optional[str] = None,
+        end_period: Optional[str] = None,
+        normalize: bool = True,
+    ) -> pd.DataFrame:
+        db = self.DATABASES.get(database.upper(), database)
+        freq = "A"
 
-            transformed_data = self.imf.transform(
-                data=data,
-                indicator=indicator,
-                country=country
-            )
+        if indicator:
+            key = f"{freq}.{country}.{indicator}"
+        else:
+            key = f"{freq}.{country}"
 
-            vl = self.imf.validate(transformed_data)
-            
-            if vl:
-                logger.info('data is valided')
-                if export:
-                    exprt = self.imf.export(transformed_data, filetype=filetype)
-                    return transformed_data
-                else:
-                    return transformed_data
-            else:
-                logger.error('The data is not validated')
-                return transformed_data
-            
-        except Exception as e:
-            raise RuntimeError(f'Error: {e}')
-    
-    def get_multiple_data(
-        self,
-        indicators: list[str],
-        countries: list[str],
-        export: bool = False,
-        filetype: str = 'csv'    
-    ): 
-        try:
-            all_dfs = []
-            for indicator in indicators:
-                for country in countries:
-                    result = self.get_data(
-                        indicator=indicator,
-                        country=country,
-                        export=export,
-                        filetype=filetype
-                    )
-                    
-                    if result is not None and not result.empty:
-                        all_dfs.append(result)
-            
-            if all_dfs:
-                import pandas as pd
-                combined_df = pd.concat(all_dfs, ignore_index=True)
-                return combined_df
-            else:
-                import pandas as pd
-                return pd.DataFrame()
-            
-        except Exception as e:
-            raise RuntimeError(f'Error gathering multiple datasets: {e}')
+        params = {}
+        if start_period:
+            params["startPeriod"] = start_period
+        if end_period:
+            params["endPeriod"] = end_period
 
+        url = f"{self.base_url}/{db}/{key}"
+        resp = httpx.get(url, params=params, timeout=60, headers={
+            "Accept": "application/vnd.sdmx.data+csv; charset=utf-8"
+        })
+        resp.raise_for_status()
 
-if __name__ == "__main__":
-    
-    imf = IMFLogic()
-    filtered_data = imf.fetch_imf_datamapper(
-        indicator='NGDPD',
-        country='PAK',
-        start_date=2000,
-        end_date=2020
-    )
-    
-    transformed_data = imf.transform(
-        data=filtered_data,
-        indicator='NGDPD',
-        country='PAK'
-    )
-    
-    transformed_data.to_csv('data/imf.csv')
+        df = pd.read_csv(StringIO(resp.text))
+        if df.empty:
+            return df
+        return self._to_canonical(df, database) if normalize else df
+
+    def search_indicators(self, query: str, database: str = "IFS") -> pd.DataFrame:
+        db = self.DATABASES.get(database.upper(), database)
+        url = f"{SDMX_BASE}/{db}"
+        resp = httpx.get(url, timeout=30)
+        resp.raise_for_status()
+        root = ET.fromstring(resp.content)
+        ns = {"message": "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message",
+              "structure": "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure"}
+        items = []
+        for c in root.iter():
+            items.append({"indicator": "unavailable via SDMX search"})
+        return pd.DataFrame(items)
+
+    def _to_canonical(self, df: pd.DataFrame, database: str) -> pd.DataFrame:
+        out = pd.DataFrame()
+        date_cols = [c for c in df.columns if c.startswith("TIME_PERIOD")]
+        if date_cols:
+            out["date"] = pd.to_datetime(df[date_cols[0]], errors="coerce")
+        elif "TIME_PERIOD" in df.columns:
+            out["date"] = pd.to_datetime(df["TIME_PERIOD"], errors="coerce")
+
+        ref_area = df.get("REF_AREA", df.get("REFERENCE_AREA", pd.NA))
+        if not ref_area.isna().all():
+            out["country_iso3"] = ref_area
+
+        indicator_col = df.get("INDICATOR", df.get("INDICATOR_ID", pd.NA))
+        if not indicator_col.isna().all():
+            out["indicator_id"] = indicator_col
+
+        if "OBS_VALUE" in df.columns:
+            out["value"] = pd.to_numeric(df["OBS_VALUE"], errors="coerce")
+        elif "VALUE" in df.columns:
+            out["value"] = pd.to_numeric(df["VALUE"], errors="coerce")
+
+        out["source"] = f"IMF {database}"
+        return out.dropna(subset=["date", "value"])

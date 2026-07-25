@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 import logging
-
+from ...core.feature_decorator import feature
 logger = logging.getLogger(__name__)
 
 class economic_features:
-
+    @feature(
+        name='gdp_growth_yoy'
+    )
     def gdp_growth_yoy(self, data) -> float:
         pass
 

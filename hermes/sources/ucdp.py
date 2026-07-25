@@ -1,48 +1,174 @@
-from __future__ import annotations
-
 import pandas as pd
 import logging
-from typing import Any
-
-from hermes.base import BaseConnector
+import httpx
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+API_BASE = "https://ucdpapi.uu.se/api/v1"
 
-class UCDP(BaseConnector):
-    """UCDP (Uppsala Conflict Data Program) connector.
 
-    Provides battle-related deaths, organized violence event data,
-    and conflict type classifications for geopolitical risk analysis.
-    """
+class UCDP:
+    def __init__(self):
+        self.base_url = API_BASE
 
-    def __init__(self, api_key: str | None = None):
-        super().__init__()
-        self._api_key = api_key
-
-    @property
-    def name(self) -> str:
-        return "ucdp"
-
-    def fetch(
+    def get_ged_events(
         self,
-        country: str = "",
-        indicator: str = "battle_deaths",
-        **kwargs: Any,
+        country: Optional[str] = None,
+        year_from: Optional[int] = None,
+        year_to: Optional[int] = None,
+        max_records: int = 10000,
+        normalize: bool = True,
     ) -> pd.DataFrame:
-        """Fetch UCDP data for a country.
+        params = {
+            "pagesize": min(max_records, 10000),
+            "page": 1,
+        }
+        if country:
+            params["country"] = country
+        if year_from:
+            params["year_min"] = year_from
+        if year_to:
+            params["year_max"] = year_to
 
-        Parameters
-        ----------
-        country : str
-            ISO3 country code.
-        indicator : str
-            One of 'battle_deaths', 'ged' (Georeferenced Event Dataset), 'conflict_type'.
-        """
-        return pd.DataFrame(columns=["date", "country", "indicator", "value", "source"])
+        all_records = []
+        while True:
+            url = f"{self.base_url}/ged/events"
+            resp = httpx.get(url, params=params, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            results = data.get("Result", data.get("results", []))
+            if not results:
+                break
+            all_records.extend(results)
 
-    def get_available_countries(self) -> list[str]:
-        return ["AFG", "IRQ", "SYR", "UKR", "YEM", "SOM", "SSD", "MMR", "ETH", "COD", "SDN", "COL", "MEX"]
+            total_pages = data.get("TotalPages", data.get("totalPages", 1))
+            if params["page"] >= total_pages:
+                break
+            params["page"] += 1
 
-    def get_date_range(self, country: str) -> tuple[str, str]:
-        return ("1989-01-01", "")
+        df = pd.DataFrame(all_records)
+        if df.empty:
+            return df
+        return self._to_ged_canonical(df) if normalize else df
+
+    def get_battle_related_deaths(
+        self,
+        country: Optional[str] = None,
+        year_from: Optional[int] = None,
+        year_to: Optional[int] = None,
+        normalize: bool = True,
+    ) -> pd.DataFrame:
+        params = {}
+        if country:
+            params["country"] = country
+        if year_from:
+            params["year_min"] = year_from
+        if year_to:
+            params["year_max"] = year_to
+
+        url = f"{self.base_url}/brd/deaths"
+        resp = httpx.get(url, params=params, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        results = data.get("Result", data.get("results", []))
+        df = pd.DataFrame(results)
+        if df.empty:
+            return df
+        return self._to_brd_canonical(df) if normalize else df
+
+    def _to_ged_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        out = pd.DataFrame()
+        id_col = df.get("id", df.get("event_id", df.get("Id", pd.NA)))
+        if not id_col.isna().all():
+            out["event_id"] = id_col.astype(str)
+        else:
+            out["event_id"] = None
+
+        date_col = df.get(
+            "date_start", df.get("date_end", df.get("DateStart", df.get("Date", pd.NA)))
+        )
+        if not date_col.isna().all():
+            out["date"] = pd.to_datetime(date_col, errors="coerce")
+        else:
+            out["date"] = pd.NaT
+
+        country_col = df.get(
+            "country", df.get("Country", df.get("country_iso3", pd.NA))
+        )
+        if not country_col.isna().all():
+            if country_col.dtype == object:
+                out["country_iso3"] = country_col.str.upper().str[:3]
+            else:
+                out["country_iso3"] = country_col.astype(str).str.upper().str[:3]
+        else:
+            out["country_iso3"] = None
+
+        type_col = df.get(
+            "type_of_violence", df.get("event_type", df.get("TypeOfViolence", pd.NA))
+        )
+        if not type_col.isna().all():
+            out["event_type"] = type_col.astype(str)
+        else:
+            out["event_type"] = "armed_conflict"
+
+        severity_col = df.get(
+            "best", df.get("deaths_civilians", df.get("Best", df.get("Deaths", pd.NA)))
+        )
+        if not severity_col.isna().all():
+            out["severity"] = pd.to_numeric(severity_col, errors="coerce")
+        else:
+            out["severity"] = None
+
+        lat_col = df.get("latitude", df.get("Latitude", df.get("lat", pd.NA)))
+        if not lat_col.isna().all():
+            out["lat"] = pd.to_numeric(lat_col, errors="coerce")
+        else:
+            out["lat"] = None
+
+        lon_col = df.get("longitude", df.get("Longitude", df.get("lon", pd.NA)))
+        if not lon_col.isna().all():
+            out["lon"] = pd.to_numeric(lon_col, errors="coerce")
+        else:
+            out["lon"] = None
+
+        out["source"] = "UCDP GED"
+        return out.dropna(subset=["event_id"])
+
+    def _to_brd_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        out = pd.DataFrame()
+        id_col = df.get("id", df.get("Id", pd.NA))
+        if not id_col.isna().all():
+            out["event_id"] = id_col.astype(str)
+        else:
+            out["event_id"] = None
+
+        year_col = df.get("year", df.get("Year", pd.NA))
+        if not year_col.isna().all():
+            out["date"] = pd.to_datetime(
+                year_col.astype(str) + "-01-01", errors="coerce"
+            )
+        else:
+            out["date"] = pd.NaT
+
+        country_col = df.get(
+            "country", df.get("Country", df.get("location", pd.NA))
+        )
+        if not country_col.isna().all():
+            if country_col.dtype == object:
+                out["country_iso3"] = country_col.str.upper().str[:3]
+            else:
+                out["country_iso3"] = country_col.astype(str).str.upper().str[:3]
+
+        out["event_type"] = "battle_related_death"
+
+        deaths_col = df.get(
+            "best_estimate", df.get("BestEstimate", df.get("deaths", df.get("Deaths", pd.NA)))
+        )
+        if not deaths_col.isna().all():
+            out["severity"] = pd.to_numeric(deaths_col, errors="coerce")
+
+        out["lat"] = None
+        out["lon"] = None
+        out["source"] = "UCDP BRD"
+        return out.dropna(subset=["event_id"])
