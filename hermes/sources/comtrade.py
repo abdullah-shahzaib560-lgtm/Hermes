@@ -3,6 +3,8 @@ import logging
 import httpx
 from typing import Optional
 
+from hermes.core.cache import RawCache
+
 logger = logging.getLogger(__name__)
 
 V1_BASE = "https://comtradeapi.un.gov/api/v1"
@@ -10,8 +12,14 @@ V2_BASE = "https://comtradeapi.un.gov/api/v2"
 
 
 class Comtrade:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, cache: RawCache | None = None):
         self.api_key = api_key
+        self._cache = cache
+
+    def _cached(self, params: dict, fetch_fn, force: bool = False):
+        if self._cache is None:
+            return fetch_fn()
+        return self._cache.get_or_fetch("comtrade", params, fetch_fn, force=force)
 
     def get_trade_data_v1(
         self,
@@ -22,28 +30,41 @@ class Comtrade:
         flow: Optional[str] = None,
         period: Optional[str] = None,
         normalize: bool = True,
+        force: bool = False,
     ) -> pd.DataFrame:
-        params = {
-            "type": "C",
+        cache_params = {
+            "action": "get_trade_data_v1",
             "freq": freq,
-            "px": "HS",
-            "ps": period or "now",
-            "r": reporter or "all",
-            "p": partner or "0",
-            "cc": commodity,
-            "fmt": "json",
+            "reporter": reporter or "all",
+            "partner": partner or "0",
+            "commodity": commodity,
+            "flow": flow or "",
+            "period": period or "now",
         }
-        if flow:
-            params["rg"] = flow
-        if self.api_key:
-            params["api_key"] = self.api_key
 
-        url = f"{V1_BASE}/get"
-        resp = httpx.get(url, params=params, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        rows = data.get("dataset", [])
-        df = pd.DataFrame(rows)
+        def _fetch():
+            params = {
+                "type": "C",
+                "freq": freq,
+                "px": "HS",
+                "ps": period or "now",
+                "r": reporter or "all",
+                "p": partner or "0",
+                "cc": commodity,
+                "fmt": "json",
+            }
+            if flow:
+                params["rg"] = flow
+            if self.api_key:
+                params["api_key"] = self.api_key
+
+            url = f"{V1_BASE}/get"
+            resp = httpx.get(url, params=params, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            return pd.DataFrame(data.get("dataset", []))
+
+        df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_canonical(df) if normalize else df
@@ -57,28 +78,41 @@ class Comtrade:
         flow: Optional[str] = None,
         period: Optional[str] = None,
         normalize: bool = True,
+        force: bool = False,
     ) -> pd.DataFrame:
-        params = {
-            "type": "C",
+        cache_params = {
+            "action": "get_trade_data_v2",
             "freq": freq,
-            "px": "HS",
-            "ps": period or "now",
-            "r": reporter or "all",
-            "p": partner or "0",
-            "cc": commodity,
-            "fmt": "json",
+            "reporter": reporter or "all",
+            "partner": partner or "0",
+            "commodity": commodity,
+            "flow": flow or "",
+            "period": period or "now",
         }
-        if flow:
-            params["rg"] = flow
-        if self.api_key:
-            params["apikey"] = self.api_key
 
-        url = f"{V2_BASE}/get"
-        resp = httpx.get(url, params=params, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        rows = data.get("data", data.get("dataset", []))
-        df = pd.DataFrame(rows)
+        def _fetch():
+            params = {
+                "type": "C",
+                "freq": freq,
+                "px": "HS",
+                "ps": period or "now",
+                "r": reporter or "all",
+                "p": partner or "0",
+                "cc": commodity,
+                "fmt": "json",
+            }
+            if flow:
+                params["rg"] = flow
+            if self.api_key:
+                params["apikey"] = self.api_key
+
+            url = f"{V2_BASE}/get"
+            resp = httpx.get(url, params=params, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            return pd.DataFrame(data.get("data", data.get("dataset", [])))
+
+        df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_canonical(df) if normalize else df
