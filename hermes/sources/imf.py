@@ -1,7 +1,9 @@
 import pandas as pd
 import logging
-import httpx
 import xml.etree.ElementTree as ET
+import urllib.request
+import urllib.parse
+import json
 from typing import Optional
 from io import StringIO
 
@@ -9,20 +11,24 @@ from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
 
-SDMX_BASE = "https://sdmx.imf.org/datastore/data"
+SDMX_BASE = "http://dataservices.imf.org/REST/SDMX_XML.svc"
 
 
 class IMF:
-    DATABASES = {
-        "IFS": "IFS",
-        "WEO": "WEO",
-        "GFS": "GFS",
-        "BOP": "BOP",
-    }
+    DATABASES = {"IFS": "IFS", "WEO": "WEO", "GFS": "GFS", "BOP": "BOP"}
 
     def __init__(self, cache: RawCache | None = None):
-        self.base_url = SDMX_BASE
         self._cache = cache
+
+    def _fetch_text(self, url: str) -> str:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return resp.read().decode()
+
+    def _fetch_csv(self, url: str) -> str:
+        req = urllib.request.Request(url, headers={"Accept": "text/csv"})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return resp.read().decode()
 
     def _cached(self, params: dict, fetch_fn, force: bool = False):
         if self._cache is None:
@@ -34,80 +40,61 @@ class IMF:
         database: str = "IFS",
         indicator: Optional[str] = None,
         country: str = "all",
+        freq: str = "A",
         start_period: Optional[str] = None,
         end_period: Optional[str] = None,
         normalize: bool = True,
         force: bool = False,
     ) -> pd.DataFrame:
+        db = self.DATABASES.get(database.upper(), database.upper())
         cache_params = {
-            "action": "get_data",
-            "database": database,
-            "indicator": indicator or "",
-            "country": country,
-            "start_period": start_period or "",
-            "end_period": end_period or "",
+            "q": "get_data", "db": db, "indicator": indicator or "",
+            "country": country, "freq": freq,
+            "start": start_period or "", "end": end_period or "",
         }
 
         def _fetch():
-            db = self.DATABASES.get(database.upper(), database)
-            freq = "A"
-
+            key = f"{freq}.{country}"
             if indicator:
                 key = f"{freq}.{country}.{indicator}"
-            else:
-                key = f"{freq}.{country}"
-
             params = {}
             if start_period:
                 params["startPeriod"] = start_period
             if end_period:
                 params["endPeriod"] = end_period
-
-            url = f"{self.base_url}/{db}/{key}"
-            resp = httpx.get(url, params=params, timeout=60, headers={
-                "Accept": "application/vnd.sdmx.data+csv; charset=utf-8"
-            })
-            resp.raise_for_status()
-            return pd.read_csv(StringIO(resp.text))
+            qs = "&".join(f"{k}={v}" for k, v in params.items()) if params else ""
+            url = f"{SDMX_BASE}/CompactData/{db}/{key}?{qs}" if qs else f"{SDMX_BASE}/CompactData/{db}/{key}"
+            raw = self._fetch_csv(url)
+            return pd.read_csv(StringIO(raw))
 
         df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_canonical(df, database) if normalize else df
 
-    def search_indicators(self, query: str, database: str = "IFS") -> pd.DataFrame:
-        db = self.DATABASES.get(database.upper(), database)
-        url = f"{SDMX_BASE}/{db}"
-        resp = httpx.get(url, timeout=30)
-        resp.raise_for_status()
-        root = ET.fromstring(resp.content)
-        ns = {"message": "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message",
-              "structure": "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure"}
-        items = []
-        for c in root.iter():
-            items.append({"indicator": "unavailable via SDMX search"})
-        return pd.DataFrame(items)
-
     def _to_canonical(self, df: pd.DataFrame, database: str) -> pd.DataFrame:
         out = pd.DataFrame()
-        date_cols = [c for c in df.columns if c.startswith("TIME_PERIOD")]
-        if date_cols:
-            out["date"] = pd.to_datetime(df[date_cols[0]], errors="coerce")
-        elif "TIME_PERIOD" in df.columns:
-            out["date"] = pd.to_datetime(df["TIME_PERIOD"], errors="coerce")
+        time_cols = [c for c in df.columns if c.startswith("TIME_PERIOD") or c in ("TimePeriod", "time", "year")]
+        if time_cols:
+            out["date"] = pd.to_datetime(df[time_cols[0]].astype(str).str[:10], errors="coerce")
 
-        ref_area = df.get("REF_AREA", df.get("REFERENCE_AREA", pd.NA))
-        if not ref_area.isna().all():
-            out["country_iso3"] = ref_area
+        area_cols = [c for c in df.columns if c in ("REF_AREA", "ReferenceArea", "country", "Country")]
+        for c in area_cols:
+            if c in df.columns and not df[c].isna().all():
+                out["country_iso3"] = df[c].astype(str).str.upper().str[:3]
+                break
 
-        indicator_col = df.get("INDICATOR", df.get("INDICATOR_ID", pd.NA))
-        if not indicator_col.isna().all():
-            out["indicator_id"] = indicator_col
+        ind_cols = [c for c in df.columns if c in ("INDICATOR", "Indicator", "indicator")]
+        for c in ind_cols:
+            if c in df.columns and not df[c].isna().all():
+                out["indicator_id"] = df[c].astype(str)
+                break
 
-        if "OBS_VALUE" in df.columns:
-            out["value"] = pd.to_numeric(df["OBS_VALUE"], errors="coerce")
-        elif "VALUE" in df.columns:
-            out["value"] = pd.to_numeric(df["VALUE"], errors="coerce")
+        val_cols = [c for c in df.columns if c in ("OBS_VALUE", "ObsValue", "value", "Value")]
+        for c in val_cols:
+            if c in df.columns:
+                out["value"] = pd.to_numeric(df[c], errors="coerce")
+                break
 
         out["source"] = f"IMF {database}"
         return out.dropna(subset=["date", "value"])

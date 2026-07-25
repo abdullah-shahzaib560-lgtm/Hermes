@@ -6,7 +6,10 @@ logger = logging.getLogger(__name__)
 
 class economic_features:
     @feature(
-        name='gdp_growth_yoy'
+        name='gdp_growth_yoy',
+        group='economic_features',
+        deps=['world_bank:'],
+        compute='GDP growth YoY, merged from WB and IMF'
     )
     def gdp_growth_yoy(self, data) -> float:
         pass
