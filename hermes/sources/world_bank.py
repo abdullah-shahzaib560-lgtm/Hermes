@@ -1,329 +1,81 @@
-from __future__ import annotations
-
-import httpx
 import pandas as pd
-import pycountry
-import re
-import time
 import logging
-from typing import Any
-
-from hermes.base import BaseConnector
+import httpx
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-WB_BASE = 'https://api.worldbank.org/v2'
+BASE_URL = "https://api.worldbank.org/v2"
 
 
-def is_valid_range(date_range):
-    pattern = r"^\d{4}:\d{4}$"
-    return bool(re.match(pattern, date_range))
-
-
-class WBLogic:
-
-    def fetch_worldbank(
-        self,
-        indicator: str,
-        country: str = "all",
-        date_range: str = None,
-        most_recent: int = None,
-        frequency: str = None,
-        per_page: int = 10000,
-    ) -> list[dict]:
-
-        is_date_range_correct = is_valid_range(date_range=date_range)
-
-        if is_date_range_correct is not True:
-            raise ValueError('The Date range should be in XXXX:XXXX format')
-
-        if frequency and frequency not in ("Q", "M", "Y"):
-            raise ValueError("frequency must be one of 'Q' (quarterly), 'M' (monthly), or 'Y' (yearly)")
-
-        base_url = f"{WB_BASE}/country/{country}/indicator/{indicator}"
-
-        params = {
-            "format": "json",
-            "per_page": per_page,
-        }
-
-        if most_recent:
-            params["mrv"] = most_recent
-        elif date_range:
-            params["date"] = date_range
-
-        if frequency:
-            if not most_recent:
-                raise ValueError("frequency requires most_recent (mrv) to be set")
-            params["frequency"] = frequency
-
-        all_records = []
-        page = 1
-
-        while True:
-            params["page"] = page
-            response = httpx.get(base_url, params=params, timeout=30)
-            response.raise_for_status()
-
-            payload = response.json()
-
-            if isinstance(payload, dict) or "message" in payload[0]:
-                message = payload[0].get("message", [{"value": "Unknown World Bank API error"}])
-                raise ValueError(message[0]["value"])
-
-            metadata, records = payload
-
-            if not records:
-                break
-
-            all_records.extend(records)
-
-            if page >= metadata.get("pages", 1):
-                break
-
-            page += 1
-
-        return all_records
-
-    def validate_worldbank(self, data: list[dict]) -> bool:
-        if not isinstance(data, list):
-            logger.error('Data must be a list of records')
-            return False
-
-        required = {"indicator", "country", "countryiso3code", "date", "value"}
-
-        for item in data:
-            if not required.issubset(item):
-                logger.warning(f'Record missing required fields: {required - set(item)}')
-                return False
-            if not isinstance(item["indicator"], dict) or "id" not in item["indicator"]:
-                logger.warning('Record missing indicator.id')
-                return False
-            if not isinstance(item["country"], dict) or "id" not in item["country"]:
-                logger.warning('Record missing country.id')
-                return False
-
-        return True
-
-    def transform(self, data: list[dict]) -> list[dict]:
-        
-        if len(data) == 0:
-            raise RuntimeError('The list is empty no data')
-        
-        
-
-
-    def export(self, data: pd.DataFrame, filetype: str) -> str:
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("data must be a pandas DataFrame")
-
-        ts = time.time()
-        path = f'data/world_bank{ts}.{filetype}'
-
-        if filetype == 'json':
-            import json
-            # Convert to plain Python records to bypass ujson's strict recursion limits
-            records = data.reset_index().to_dict(orient='records')
-            with open(path, 'w', encoding='utf-8') as f:
-                # default=str handles datetime/Timestamp fields gracefully if they aren't fully localized
-                json.dump(records, f, default=str)
-        elif filetype == 'csv':
-            data.to_csv(path, date_format='iso')
-        elif filetype == 'parquet':
-            data.to_parquet(path)
-        elif filetype == 'pickle':
-            data.to_pickle(path)
-        else:
-            raise ValueError(f"Unsupported filetype: {filetype!r}")
-
-        logger.info(f'Exported to {path}')
-        return path
-
-
-    def fetch_metadata(self, indicator_code: str) -> dict:
-        url = f'{WB_BASE}/indicator/{indicator_code}?format=json'
-        resp = httpx.get(url)
-        resp.raise_for_status()
-        data = resp.json()
-        if isinstance(data, list) and len(data) > 1 and data[1]:
-            return data[1][0]
-        raise ValueError(f'No metadata found for indicator {indicator_code}')
-
-    def fetch_topics(self) -> list[dict]:
-        url = f'{WB_BASE}/topic?format=json&per_page=100'
-        resp = httpx.get(url)
-        resp.raise_for_status()
-        data = resp.json()
-        return data[1] if isinstance(data, list) and len(data) > 1 else []
-
-    def fetch_countries_by(self, region: str = None, income_level: str = None) -> list[dict]:
-        if region:
-            url = f'{WB_BASE}/region/{region}/country?format=json&per_page=500'
-        elif income_level:
-            url = f'{WB_BASE}/incomelevel/{income_level}/country?format=json&per_page=500'
-        else:
-            url = f'{WB_BASE}/country?format=json&per_page=300'
-        resp = httpx.get(url)
-        resp.raise_for_status()
-        data = resp.json()
-        return data[1] if isinstance(data, list) and len(data) > 1 else []
-
-
-class World_Bank(BaseConnector):
-
+class World_Bank:
     def __init__(self):
-        super().__init__()
-        self.wb = WBLogic()
-        self._cache = None
-
-    @property
-    def name(self) -> str:
-        return "world_bank"
-
-    def fetch(
-        self,
-        country: str = "USA",
-        indicator: str = "NY.GDP.MKTP.CD",
-        **kwargs: Any,
-    ) -> pd.DataFrame:
-        try:
-            df = self.get_data(indicator=indicator, country=country, **kwargs)
-        except Exception:
-            return pd.DataFrame(columns=["date", "country", "indicator", "value", "source"])
-        return df[["date", "country", "indicator", "value", "source"]]
-    
-    def get_indicators(self):
-        url = f"{WB_BASE}/indicator?format=json&per_page=10000"
-        r = httpx.get(url)
-        r.raise_for_status()
-        r = r.json()
-        dat = r[1]
-        data = []
-
-        for d in dat:
-            data.append({
-                "indicator_code": d['id'],
-                "name": d['name'],
-                "unit": d['unit'],
-                "description": d['sourceNote'],
-                "source": d['source']['value']
-            })
-        
-        return data
-
-    def search_indicators(self, query: str) -> list[dict]:
-        query = query.lower()
-        all_indicators = self.get_indicators()
-        return [
-            ind for ind in all_indicators
-            if query in ind['name'].lower() or query in ind['indicator_code'].lower()
-        ]
-
-    def get_indicator_metadata(self, indicator_code: str) -> dict:
-        return self.wb.fetch_metadata(indicator_code)
-
-    def get_topics(self) -> list[dict]:
-        return self.wb.fetch_topics()
-
-    def get_countries(self):
-        url = f'{WB_BASE}/country?format=json&per_page=300'
-        r = httpx.get(url)
-        r.raise_for_status()
-        return r.json()
-
-    def get_country_info(self, country: str):
-        if pycountry.countries.lookup(country).alpha_3 != country.upper():
-            raise LookupError('The Country should be in iso3')
-        url = f"{WB_BASE}/country/{country}?format=json"
-        r = httpx.get(url)
-        r.raise_for_status()
-        r = r.json()
-        data = r[1]
-        return data
-
-    def get_countries_by_region(self, region_code: str) -> list[dict]:
-        return self.wb.fetch_countries_by(region=region_code)
-
-    def get_countries_by_income(self, income_level: str) -> list[dict]:
-        return self.wb.fetch_countries_by(income_level=income_level)
+        self.base_url = BASE_URL
 
     def get_data(
         self,
         indicator: str,
         country: str = "all",
-        date_range: str = None,
-        most_recent: int = None,
-        frequency: str = None,
-        per_page: int = 10000,
-        export: bool | None = None,
-        filetype: str = 'json'
-    ):
-        try:
-            data = self.wb.fetch_worldbank(
-                indicator=indicator,
-                country=country,
-                date_range=date_range,
-                most_recent=most_recent,
-                frequency=frequency,
-                per_page=per_page
-            )
-            logger.info('==== The Data Is Fetched ====')
-
-            transformed_data = self.wb.fetch_worldbank(data=data)
-            
-            logger.info('==== The Data Is Transformed ====')
-
-            vl = self.wb.validate_worldbank(data=transformed_data)
-            if vl:
-                logger.info('==== The Data Is Valid ====')
-                return transformed_data
-            else:
-                logger.error('==== The Data Is Not Valid ====')
-                return transformed_data
-        
-        except Exception as e:
-            raise RuntimeError(f'Error: {e}')    
-
-    def get_multiple_indicators(
-        self,
-        indicators: list[str],
-        country: str = "all",
-        date_range: str = None,
-        most_recent: int = None,
-        frequency: str = None,
-        per_page: int = 10000,
-        export: bool | None = None,
-        filetype: str = 'json',
+        date: Optional[str] = None,
+        per_page: int = 5000,
+        normalize: bool = True,
     ) -> pd.DataFrame:
-        try:    
-            frames = {}
-            for i, code in enumerate(indicators):
-                raw = self.wb.fetch_worldbank(
-                    indicator=code,
-                    country=country,
-                    date_range=date_range,
-                    most_recent=most_recent,
-                    frequency=frequency,
-                    per_page=per_page,
-                )
-                data = self.wb.transform(data=raw)
-                
-                vl = self.wb.validate_worldbank(data=data)
+        records = []
+        page = 1
+        while True:
+            params = {
+                "format": "json",
+                "per_page": min(per_page, 1000),
+                "page": page,
+            }
+            if date:
+                params["date"] = date
 
-                if vl:
-                    logger.info(f'The Data Is Valid for batch {i}')
-                    frames[code] = data.set_index(['country', 'date']).squeeze() if 'value' in data.columns else pd.Series(dtype=float)
-                else:
-                    logger.error(f'The data is not valied for batch {i}')
-                    frames[code] = data.set_index(['country', 'date']).squeeze() if 'value' in data.columns else pd.Series(dtype=float)
-                    
-            result = pd.concat(frames, axis=1)
-            result.columns.name = 'indicator'
+            url = f"{self.base_url}/country/{country}/indicator/{indicator}"
+            resp = httpx.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
 
-            if export is True:
-                self.wb.export(result.reset_index(), filetype=filetype)
+            if not data or len(data) < 2:
+                break
 
-            return result
-        
-        except Exception as e:
-            raise RuntimeError(f'Error: {e}')
+            records.extend(data[1])
+            total_pages = data[0].get("pages", 1)
+            if page >= total_pages:
+                break
+            page += 1
+
+        df = pd.DataFrame(records)
+        if df.empty:
+            return df
+        return self._to_canonical(df) if normalize else df
+
+    def search_indicators(self, query: str, per_page: int = 100) -> pd.DataFrame:
+        url = f"{self.base_url}/indicator"
+        params = {"format": "json", "search": query, "per_page": per_page}
+        resp = httpx.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if not data or len(data) < 2:
+            return pd.DataFrame()
+        rows = []
+        for item in data[1]:
+            rows.append({
+                "indicator_id": item.get("id"),
+                "name": item.get("name"),
+                "source_note": item.get("sourceNote"),
+            })
+        return pd.DataFrame(rows)
+
+    def _to_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        out = pd.DataFrame()
+        out["date"] = pd.to_datetime(
+            df.get("date", pd.NA), format="%Y", errors="coerce"
+        )
+        out["country_iso3"] = df.get("countryiso3code", pd.NA)
+        out["indicator_id"] = df.get("indicator", {}).apply(
+            lambda x: x.get("id") if isinstance(x, dict) else pd.NA
+        )
+        out["value"] = pd.to_numeric(df.get("value", pd.NA), errors="coerce")
+        out["source"] = "World Bank"
+        return out.dropna(subset=["date", "country_iso3", "indicator_id"])
