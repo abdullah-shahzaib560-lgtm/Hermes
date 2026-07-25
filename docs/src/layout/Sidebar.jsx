@@ -2,18 +2,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 
 const sections = [
-  {
-    label: 'Home',
-    path: '/',
-  },
-  {
-    label: 'Getting Started',
-    path: '/docs/getting-started',
-  },
+  { label: 'Home', path: '/' },
+  { label: 'Getting Started', path: '/docs/getting-started' },
   {
     label: 'Hermes SDK',
     children: [
       { label: 'Hermes Class', path: '/docs/hermes' },
+      { label: 'Base Connector', path: '/docs/base-connector' },
+      { label: 'Data Cache', path: '/docs/cache' },
+      { label: 'Country Data', path: '/docs/countries' },
       {
         label: 'Connectors',
         children: [
@@ -21,29 +18,20 @@ const sections = [
           { label: 'BIS', path: '/docs/bis' },
           { label: 'IMF', path: '/docs/imf' },
           { label: 'World Bank', path: '/docs/world-bank' },
+          { label: 'GDELT', path: '/docs/gdelt' },
+          { label: 'UCDP', path: '/docs/ucdp' },
+          { label: 'NewsAPI', path: '/docs/newsapi' },
+          { label: 'V-Dem', path: '/docs/v-dem' },
+          { label: 'Comtrade', path: '/docs/comtrade' },
         ],
       },
       { label: 'Canonical Schemas', path: '/docs/schemas' },
     ],
   },
   {
-    label: 'Database Module',
+    label: 'Features Pipeline',
     children: [
-      { label: 'DataBase Factory', path: '/docs/database' },
-      { label: 'SyncDatabase', path: '/docs/sync-database' },
-      { label: 'AsyncDatabase', path: '/docs/async-database' },
-      { label: 'MigrationRunner', path: '/docs/migrations' },
-      { label: 'FilterBuilder', path: '/docs/filters' },
-    ],
-  },
-  {
-    label: 'Storage Layer',
-    children: [
-      { label: 'StorageLayer', path: '/docs/storage-layer' },
-      { label: 'RawCache', path: '/docs/raw-cache' },
-      { label: 'FeatureStore', path: '/docs/feature-store' },
-      { label: 'MetadataRegistry', path: '/docs/metadata-registry' },
-      { label: 'LineageGraph', path: '/docs/lineage-graph' },
+      { label: 'Features API', path: '/docs/features' },
     ],
   },
 ];
