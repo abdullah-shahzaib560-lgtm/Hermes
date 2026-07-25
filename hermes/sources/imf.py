@@ -5,7 +5,8 @@ import pandas as pd
 import logging
 import json, time
 from typing import Any
-
+from datetime import datetime
+import numpy as np
 from hermes.base import BaseConnector
 
 logger = logging.getLogger(__name__)
@@ -42,17 +43,22 @@ class IMFLogic:
 
     def transform(
         self,
-        data: json,
+        data: list[dict],
         indicator: str,
         country: str
-    ) -> pd.DataFrame:
+    ) -> list[dict]:
         
 
         df = []
         d = data['Value']
         for i, j in d.items():
-            date = pd.to_datetime(i)
-            value = pd.to_numeric(j)
+
+            dt_obj = datetime.strptime(i, "%Y-%m-%d")
+            i = np.datetime64(dt_obj, "ns")
+            date = i
+            
+            value = float(j)
+
             df.append(
                 {
                     "date": date,
@@ -62,8 +68,7 @@ class IMFLogic:
                     "source": 'IMF'
                 }
             )
-        df = pd.DataFrame(df)
-        df = df.set_index('date')
+
         return df
 
     def validate(

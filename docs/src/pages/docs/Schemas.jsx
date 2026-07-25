@@ -2,76 +2,71 @@ export default function SchemasDoc() {
   return (
     <>
       <h1>Canonical Schemas</h1>
-      <p><strong>File:</strong> <code>hermes/core/schemas.py</code></p>
+      <p><strong>File:</strong> <code>hermes/base.py</code></p>
 
       <h2>What They Do</h2>
       <p>
-        All Hermes connectors normalise raw API responses into canonical pandas DataFrames.
-        This guarantees that any downstream consumer (Aegis, Atlas, or custom scripts)
-        receives predictable column names, types, and formats regardless of the source.
+        All Hermes connectors normalize raw API responses into a single standard
+        pandas DataFrame schema. This guarantees that any downstream consumer
+        receives predictable column names, types, and formats.
       </p>
 
-      <h2>Rules</h2>
-      <ul>
-        <li><code>date</code> is always <code>datetime64[ns]</code></li>
-        <li><code>country_iso3</code> is always ISO 3166-1 alpha-3 uppercase</li>
-        <li>Every DataFrame gets a <code>source</code> column with the connector name</li>
-        <li>Connectors implement <code>_to_canonical()</code> or use <code>normalize=True/False</code></li>
-      </ul>
-
-      <h2>Seven Canonical Schemas</h2>
-
+      <h2>Standard Indicator Schema</h2>
+      <p>Every connector's <code>fetch()</code> output uses these columns:</p>
       <table>
         <thead>
-          <tr><th>Schema</th><th>Columns</th><th>Sources</th></tr>
+          <tr><th>Column</th><th>Type</th><th>Example</th><th>Notes</th></tr>
         </thead>
         <tbody>
           <tr>
+            <td><code>date</code></td>
+            <td><code>datetime64[ns]</code></td>
+            <td><code>2024-01-01</code></td>
+            <td>Always coerced via <code>pd.to_datetime</code></td>
+          </tr>
+          <tr>
+            <td><code>country</code></td>
+            <td><code>str</code></td>
+            <td><code>"USA"</code></td>
+            <td>ISO 3166-1 alpha-3, always uppercase</td>
+          </tr>
+          <tr>
             <td><code>indicator</code></td>
-            <td><code>date, country_iso3, indicator_id, value, source</code></td>
-            <td>FRED, World Bank, IMF, BIS, OECD, Eurostat, FAO, EIA, IEA, USGS</td>
+            <td><code>str</code></td>
+            <td><code>"GDPC1"</code></td>
+            <td>Series or indicator identifier</td>
           </tr>
           <tr>
-            <td><code>event</code></td>
-            <td><code>event_id, date, country_iso3, event_type, severity, lat, lon, source</code></td>
-            <td>GDELT, UCDP, EM-DAT, PRIO</td>
+            <td><code>value</code></td>
+            <td><code>float64</code></td>
+            <td><code>27366.0</code></td>
+            <td>Coerced via <code>pd.to_numeric</code></td>
           </tr>
           <tr>
-            <td><code>cross_section</code></td>
-            <td><code>country_iso3, year, indicator_id, value, source</code></td>
-            <td>V-DEM, Freedom House, Transparency Int., SIPRI</td>
-          </tr>
-          <tr>
-            <td><code>trade</code></td>
-            <td><code>date, origin_iso3, destination_iso3, commodity_code, value, source</code></td>
-            <td>UN Comtrade</td>
-          </tr>
-          <tr>
-            <td><code>media</code></td>
-            <td><code>article_id, date, source_name, title, content, sentiment, url, lang</code></td>
-            <td>NewsAPI, GDELT GKG</td>
-          </tr>
-          <tr>
-            <td><code>geospatial</code></td>
-            <td><code>feature_id, feature_type, country_iso3, geometry, properties, source</code></td>
-            <td>OpenStreetMap, Natural Earth</td>
-          </tr>
-          <tr>
-            <td><code>knowledge</code></td>
-            <td><code>entity_id, entity_type, label, aliases, properties, source</code></td>
-            <td>Wikidata, Wikipedia API</td>
+            <td><code>source</code></td>
+            <td><code>str</code></td>
+            <td><code>"fred"</code></td>
+            <td>Lowercase connector name</td>
           </tr>
         </tbody>
       </table>
 
-      <h2>Example (indicator schema)</h2>
-      <pre><code>{`# Output of hr.fred.get_series("GDP", api_key)
+      <h2>Rules</h2>
+      <ul>
+        <li><code>date</code> is always <code>datetime64[ns]</code></li>
+        <li><code>country</code> is always ISO 3166-1 alpha-3 uppercase</li>
+        <li><code>value</code> is always <code>float64</code> (nulls coerce to NaN)</li>
+        <li>Every DataFrame includes all 5 columns in order</li>
+      </ul>
+
+      <h2>Example Output</h2>
+      <pre><code>{`# From hr.fred.fetch(country="USA", indicator="GDPC1")
 # Columns:
 #   date           datetime64[ns]  e.g. 2024-01-01
-#   country_iso3   str             e.g. "USA"
-#   indicator_id   str             e.g. "GDP"
+#   country        str             e.g. "USA"
+#   indicator      str             e.g. "GDPC1"
 #   value          float64         e.g. 27366.0
-#   source         str             e.g. "FRED"`}</code></pre>
+#   source         str             e.g. "fred"`}</code></pre>
     </>
   );
 }

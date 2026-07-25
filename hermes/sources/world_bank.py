@@ -105,46 +105,13 @@ class WBLogic:
 
         return True
 
-    def _parse_wb_date(self, date_str: str):
-        date_str = str(date_str)
+    def transform(self, data: list[dict]) -> list[dict]:
+        
+        if len(data) == 0:
+            raise RuntimeError('The list is empty no data')
+        
+        
 
-        if "Q" in date_str:
-            return pd.Period(date_str, freq="Q")
-        if "M" in date_str:
-            return pd.Period(date_str, freq="M")
-        return pd.Period(date_str, freq="Y")
-
-    def transform(self, data: list[dict]) -> pd.DataFrame:
-        if not data:
-            return pd.DataFrame(
-                columns=["date", "country", "indicator", "value", "source"]
-            )
-
-        df = pd.json_normalize(data)
-
-        df = df.rename(
-            columns={
-                "countryiso3code": "country",
-                "indicator.id": "indicator",
-            }
-        )
-
-        df = (
-            df
-            .assign(
-                date         = lambda x: pd.to_datetime(x["date"].str[:4]),
-                indicator    = lambda x: x["indicator"].astype(str),
-                value        = lambda x: pd.to_numeric(x["value"], errors="coerce"),
-                source       = "World Bank",
-            )
-            [["date", "country", "indicator", "value", "source"]]
-        )
-
-        df = df.dropna(subset=["value"])
-
-        df = df.sort_values(["country", "date"]).reset_index(drop=True)
-
-        return df
 
     def export(self, data: pd.DataFrame, filetype: str) -> str:
         if not isinstance(data, pd.DataFrame):
@@ -204,7 +171,7 @@ class WBLogic:
 
 class World_Bank(BaseConnector):
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self):
         super().__init__()
         self.wb = WBLogic()
         self._cache = None
@@ -291,27 +258,31 @@ class World_Bank(BaseConnector):
         export: bool | None = None,
         filetype: str = 'json'
     ):
-        data = self.wb.fetch_worldbank(
-            indicator=indicator,
-            country=country,
-            date_range=date_range,
-            most_recent=most_recent,
-            frequency=frequency,
-            per_page=per_page
-        )
+        try:
+            data = self.wb.fetch_worldbank(
+                indicator=indicator,
+                country=country,
+                date_range=date_range,
+                most_recent=most_recent,
+                frequency=frequency,
+                per_page=per_page
+            )
+            logger.info('==== The Data Is Fetched ====')
 
-        vl = self.wb.validate_worldbank(data=data)
+            transformed_data = self.wb.fetch_worldbank(data=data)
+            
+            logger.info('==== The Data Is Transformed ====')
 
-        if vl:
-            transformed_data = self.wb.transform(data=data)
-
-            if export is True:
-                self.wb.export(transformed_data, filetype=filetype)
+            vl = self.wb.validate_worldbank(data=transformed_data)
+            if vl:
+                logger.info('==== The Data Is Valid ====')
                 return transformed_data
-
-            return transformed_data
-
-        raise RuntimeError('The Data is not valid for application')
+            else:
+                logger.error('==== The Data Is Not Valid ====')
+                return transformed_data
+        
+        except Exception as e:
+            raise RuntimeError(f'Error: {e}')    
 
     def get_multiple_indicators(
         self,
@@ -324,26 +295,35 @@ class World_Bank(BaseConnector):
         export: bool | None = None,
         filetype: str = 'json',
     ) -> pd.DataFrame:
-    
-        frames = {}
-        for code in indicators:
-            raw = self.wb.fetch_worldbank(
-                indicator=code,
-                country=country,
-                date_range=date_range,
-                most_recent=most_recent,
-                frequency=frequency,
-                per_page=per_page,
-            )
-            vl = self.wb.validate_worldbank(data=raw)
-            if vl:
-                df = self.wb.transform(data=raw)
-                frames[code] = df.set_index(['country', 'date']).squeeze() if 'value' in df.columns else pd.Series(dtype=float)
+        try:    
+            frames = {}
+            for i, code in enumerate(indicators):
+                raw = self.wb.fetch_worldbank(
+                    indicator=code,
+                    country=country,
+                    date_range=date_range,
+                    most_recent=most_recent,
+                    frequency=frequency,
+                    per_page=per_page,
+                )
+                data = self.wb.transform(data=raw)
+                
+                vl = self.wb.validate_worldbank(data=data)
 
-        result = pd.concat(frames, axis=1)
-        result.columns.name = 'indicator'
+                if vl:
+                    logger.info(f'The Data Is Valid for batch {i}')
+                    frames[code] = data.set_index(['country', 'date']).squeeze() if 'value' in data.columns else pd.Series(dtype=float)
+                else:
+                    logger.error(f'The data is not valied for batch {i}')
+                    frames[code] = data.set_index(['country', 'date']).squeeze() if 'value' in data.columns else pd.Series(dtype=float)
+                    
+            result = pd.concat(frames, axis=1)
+            result.columns.name = 'indicator'
 
-        if export is True:
-            self.wb.export(result.reset_index(), filetype=filetype)
+            if export is True:
+                self.wb.export(result.reset_index(), filetype=filetype)
 
-        return result
+            return result
+        
+        except Exception as e:
+            raise RuntimeError(f'Error: {e}')
