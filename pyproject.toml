@@ -18,17 +18,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "asyncpg>=0.31.0",
     "fastparquet>=2026.5.0",
     "httpx>=0.28.1",
-    "ipykernel>=7.3.0",
     "pandas>=3.0.3",
-    "psycopg>=3.3.4",
     "pyarrow>=25.0.0",
     "pycountry>=26.2.16",
-    "python-dotenv>=1.0.1",
-    "sdmx1>=2.26.0",
-    "sqlalchemy>=2.0.51",
 ]
 
 [tool.hatch.build.targets.wheel]

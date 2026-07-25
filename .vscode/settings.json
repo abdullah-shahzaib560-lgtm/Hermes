@@ -11,5 +11,8 @@
             "username": "postgres"
         }
     ],
-    "r.lsp.promptToInstall": false
+    "r.lsp.promptToInstall": false,
+    "github-actions.workflows.pinned.workflows": [
+        "dynamic/pages/pages-build-deployment"
+    ]
 }
