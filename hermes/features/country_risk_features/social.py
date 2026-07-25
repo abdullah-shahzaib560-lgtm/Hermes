@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class economic_features:
+class social_features:
 
     def social_stability_index(self, data) -> float:
         pass
