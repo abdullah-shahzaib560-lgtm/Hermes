@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 from typing import Optional
 from io import StringIO
 
+from hermes.core.cache import RawCache
+
 logger = logging.getLogger(__name__)
 
 SDMX_BASE = "https://sdmx.imf.org/datastore/data"
@@ -18,8 +20,14 @@ class IMF:
         "BOP": "BOP",
     }
 
-    def __init__(self):
+    def __init__(self, cache: RawCache | None = None):
         self.base_url = SDMX_BASE
+        self._cache = cache
+
+    def _cached(self, params: dict, fetch_fn, force: bool = False):
+        if self._cache is None:
+            return fetch_fn()
+        return self._cache.get_or_fetch("imf", params, fetch_fn, force=force)
 
     def get_data(
         self,
@@ -29,28 +37,40 @@ class IMF:
         start_period: Optional[str] = None,
         end_period: Optional[str] = None,
         normalize: bool = True,
+        force: bool = False,
     ) -> pd.DataFrame:
-        db = self.DATABASES.get(database.upper(), database)
-        freq = "A"
+        cache_params = {
+            "action": "get_data",
+            "database": database,
+            "indicator": indicator or "",
+            "country": country,
+            "start_period": start_period or "",
+            "end_period": end_period or "",
+        }
 
-        if indicator:
-            key = f"{freq}.{country}.{indicator}"
-        else:
-            key = f"{freq}.{country}"
+        def _fetch():
+            db = self.DATABASES.get(database.upper(), database)
+            freq = "A"
 
-        params = {}
-        if start_period:
-            params["startPeriod"] = start_period
-        if end_period:
-            params["endPeriod"] = end_period
+            if indicator:
+                key = f"{freq}.{country}.{indicator}"
+            else:
+                key = f"{freq}.{country}"
 
-        url = f"{self.base_url}/{db}/{key}"
-        resp = httpx.get(url, params=params, timeout=60, headers={
-            "Accept": "application/vnd.sdmx.data+csv; charset=utf-8"
-        })
-        resp.raise_for_status()
+            params = {}
+            if start_period:
+                params["startPeriod"] = start_period
+            if end_period:
+                params["endPeriod"] = end_period
 
-        df = pd.read_csv(StringIO(resp.text))
+            url = f"{self.base_url}/{db}/{key}"
+            resp = httpx.get(url, params=params, timeout=60, headers={
+                "Accept": "application/vnd.sdmx.data+csv; charset=utf-8"
+            })
+            resp.raise_for_status()
+            return pd.read_csv(StringIO(resp.text))
+
+        df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_canonical(df, database) if normalize else df

@@ -3,14 +3,22 @@ import logging
 import httpx
 from typing import Optional
 
+from hermes.core.cache import RawCache
+
 logger = logging.getLogger(__name__)
 
 API_BASE = "https://ucdpapi.uu.se/api/v1"
 
 
 class UCDP:
-    def __init__(self):
+    def __init__(self, cache: RawCache | None = None):
         self.base_url = API_BASE
+        self._cache = cache
+
+    def _cached(self, params: dict, fetch_fn, force: bool = False):
+        if self._cache is None:
+            return fetch_fn()
+        return self._cache.get_or_fetch("ucdp", params, fetch_fn, force=force)
 
     def get_ged_events(
         self,
@@ -19,35 +27,47 @@ class UCDP:
         year_to: Optional[int] = None,
         max_records: int = 10000,
         normalize: bool = True,
+        force: bool = False,
     ) -> pd.DataFrame:
-        params = {
-            "pagesize": min(max_records, 10000),
-            "page": 1,
+        cache_params = {
+            "action": "get_ged_events",
+            "country": country or "",
+            "year_from": year_from or 0,
+            "year_to": year_to or 0,
+            "max_records": max_records,
         }
-        if country:
-            params["country"] = country
-        if year_from:
-            params["year_min"] = year_from
-        if year_to:
-            params["year_max"] = year_to
 
-        all_records = []
-        while True:
-            url = f"{self.base_url}/ged/events"
-            resp = httpx.get(url, params=params, timeout=60)
-            resp.raise_for_status()
-            data = resp.json()
-            results = data.get("Result", data.get("results", []))
-            if not results:
-                break
-            all_records.extend(results)
+        def _fetch():
+            params = {
+                "pagesize": min(max_records, 10000),
+                "page": 1,
+            }
+            if country:
+                params["country"] = country
+            if year_from:
+                params["year_min"] = year_from
+            if year_to:
+                params["year_max"] = year_to
 
-            total_pages = data.get("TotalPages", data.get("totalPages", 1))
-            if params["page"] >= total_pages:
-                break
-            params["page"] += 1
+            all_records = []
+            while True:
+                url = f"{self.base_url}/ged/events"
+                resp = httpx.get(url, params=params, timeout=60)
+                resp.raise_for_status()
+                data = resp.json()
+                results = data.get("Result", data.get("results", []))
+                if not results:
+                    break
+                all_records.extend(results)
 
-        df = pd.DataFrame(all_records)
+                total_pages = data.get("TotalPages", data.get("totalPages", 1))
+                if params["page"] >= total_pages:
+                    break
+                params["page"] += 1
+
+            return pd.DataFrame(all_records)
+
+        df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_ged_canonical(df) if normalize else df
@@ -58,21 +78,31 @@ class UCDP:
         year_from: Optional[int] = None,
         year_to: Optional[int] = None,
         normalize: bool = True,
+        force: bool = False,
     ) -> pd.DataFrame:
-        params = {}
-        if country:
-            params["country"] = country
-        if year_from:
-            params["year_min"] = year_from
-        if year_to:
-            params["year_max"] = year_to
+        cache_params = {
+            "action": "get_battle_related_deaths",
+            "country": country or "",
+            "year_from": year_from or 0,
+            "year_to": year_to or 0,
+        }
 
-        url = f"{self.base_url}/brd/deaths"
-        resp = httpx.get(url, params=params, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        results = data.get("Result", data.get("results", []))
-        df = pd.DataFrame(results)
+        def _fetch():
+            params = {}
+            if country:
+                params["country"] = country
+            if year_from:
+                params["year_min"] = year_from
+            if year_to:
+                params["year_max"] = year_to
+
+            url = f"{self.base_url}/brd/deaths"
+            resp = httpx.get(url, params=params, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            return pd.DataFrame(data.get("Result", data.get("results", [])))
+
+        df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_brd_canonical(df) if normalize else df

@@ -4,6 +4,8 @@ import httpx
 from typing import Optional
 from io import StringIO
 
+from hermes.core.cache import RawCache
+
 logger = logging.getLogger(__name__)
 
 SDMX_BASE = "https://stats.bis.org/api/v2"
@@ -11,15 +13,21 @@ SDMX_BASE = "https://stats.bis.org/api/v2"
 
 class BIS:
     STAT_CATEGORIES = {
-        "ws_bank": "WS_BANK",             # Banking statistics
-        "ws_credit": "WS_CREDIT",         # Credit aggregates
-        "ws_property": "WS_PROPERTY",     # Property prices
-        "ws_debt": "WS_DEBT",             # Debt securities
-        "ws_fx": "WS_FX",                 # FX liquidity
+        "ws_bank": "WS_BANK",
+        "ws_credit": "WS_CREDIT",
+        "ws_property": "WS_PROPERTY",
+        "ws_debt": "WS_DEBT",
+        "ws_fx": "WS_FX",
     }
 
-    def __init__(self):
+    def __init__(self, cache: RawCache | None = None):
         self.base_url = SDMX_BASE
+        self._cache = cache
+
+    def _cached(self, params: dict, fetch_fn, force: bool = False):
+        if self._cache is None:
+            return fetch_fn()
+        return self._cache.get_or_fetch("bis", params, fetch_fn, force=force)
 
     def get_data(
         self,
@@ -29,27 +37,39 @@ class BIS:
         start_period: Optional[str] = None,
         end_period: Optional[str] = None,
         normalize: bool = True,
+        force: bool = False,
     ) -> pd.DataFrame:
-        cat = self.STAT_CATEGORIES.get(category, category)
-        if indicator:
-            key = f"{cat}/{indicator}"
-        else:
-            key = cat
+        cache_params = {
+            "action": "get_data",
+            "category": category,
+            "indicator": indicator or "",
+            "country": country,
+            "start_period": start_period or "",
+            "end_period": end_period or "",
+        }
 
-        params = {}
-        if start_period:
-            params["startPeriod"] = start_period
-        if end_period:
-            params["endPeriod"] = end_period
+        def _fetch():
+            cat = self.STAT_CATEGORIES.get(category, category)
+            if indicator:
+                key = f"{cat}/{indicator}"
+            else:
+                key = cat
 
-        url = f"{self.base_url}/data/{key}"
-        resp = httpx.get(
-            url, params=params, timeout=60,
-            headers={"Accept": "text/csv"},
-        )
-        resp.raise_for_status()
+            params = {}
+            if start_period:
+                params["startPeriod"] = start_period
+            if end_period:
+                params["endPeriod"] = end_period
 
-        df = pd.read_csv(StringIO(resp.text))
+            url = f"{self.base_url}/data/{key}"
+            resp = httpx.get(
+                url, params=params, timeout=60,
+                headers={"Accept": "text/csv"},
+            )
+            resp.raise_for_status()
+            return pd.read_csv(StringIO(resp.text))
+
+        df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
             return df
         return self._to_canonical(df) if normalize else df
