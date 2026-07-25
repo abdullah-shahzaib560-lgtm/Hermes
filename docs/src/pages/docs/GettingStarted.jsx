@@ -15,15 +15,18 @@ uv sync
 pip install -e .`}</code></pre>
 
       <h2>Quick Start</h2>
-      <pre><code>{`from hermes import Hermes, DataBase
+      <pre><code>{`from hermes import Hermes
 
 # Initialize the SDK
-hr = Hermes()
+hr = Hermes(api_keys={"fred": "YOUR_FRED_API_KEY"})
 
 # Fetch economic data from FRED
-fred_api = hr.fred.connect("YOUR_FRED_API_KEY")
-gdp = hr.fred.get_series("GDP", fred_api)
-print(gdp.head())`}</code></pre>
+df = hr.fred.fetch(country="USA", indicator="GDPC1")
+print(df.head())
+
+# Get comprehensive risk features for a country
+risk = hr.get_country_risk_features("USA", "2024-12-31")
+print(risk["gdp_growth_yoy"])`}</code></pre>
 
       <h2>Environment Setup</h2>
       <p>Create a <code>.env</code> file in the project root:</p>
@@ -37,41 +40,29 @@ print(gdp.head())`}</code></pre>
           <tr><th>Layer</th><th>Path</th><th>Purpose</th></tr>
         </thead>
         <tbody>
-          <tr><td><strong>Connectors</strong></td><td><code>hermes/sources/</code></td><td>Fetch data from 30+ free APIs, normalize to canonical DataFrames</td></tr>
-          <tr><td><strong>Database</strong></td><td><code>hermes/database/</code></td><td>One-function DB provisioning, migrations, CRUD with dynamic filters</td></tr>
-          <tr><td><strong>Storage</strong></td><td><code>hermes/storage/</code></td><td>Parquet caching, feature store, metadata registry, lineage tracking</td></tr>
+          <tr><td><strong>Connectors</strong></td><td><code>hermes/sources/</code></td><td>Fetch data from free APIs, normalize to standard DataFrames</td></tr>
+          <tr><td><strong>Features</strong></td><td><code>hermes/features/</code></td><td>Engineer derived risk indicators from raw connector data</td></tr>
+          <tr><td><strong>Cache</strong></td><td><code>hermes/_cache.py</code></td><td>Parquet file cache with TTL expiration</td></tr>
         </tbody>
       </table>
 
       <h2>Quick Example — Full Pipeline</h2>
-      <pre><code>{`from hermes import Hermes, DataBase
-import os
+      <pre><code>{`from hermes import Hermes
 
-hr = Hermes()
+hr = Hermes(api_keys={"fred": os.getenv("FRED_API")})
 
-# 1. Connect to a database
-db = DataBase()
-sync = db.sync_db("sqlite:///hermes.db")
+# Get risk features for a country
+risk = hr.get_country_risk_features("USA", "2024-12-31")
 
-# 2. Connect storage
-hr.storage.connect("sqlite:///hermes.db")
+# Access individual indicators
+print(risk["gdp_growth_yoy"])
+print(risk["inflation_cpi_yoy"])
+print(risk["unemployment_rate"])
+print(risk["regime_classification"])
 
-# 3. Fetch data
-fred_key = hr.fred.connect(os.getenv("FRED_API"))
-gdp = hr.fred.get_series("GDP", fred_key)
-
-# 4. Store as features
-hr.storage.features.store(gdp, "gdp_timeseries", version=1)
-
-# 5. Track metadata
-hr.storage.metadata.register("FRED", "GDP",
-    row_count=len(gdp), quality_score=0.95)
-
-# 6. Trace lineage
-hr.storage.lineage.record("gdp_v1", "FRED",
-    pipeline_name="fred_pipeline", pipeline_version=1)
-
-print(hr.storage.metadata.staleness_report())`}</code></pre>
+# List all available connectors
+for c in hr.list_connectors():
+    print(c["name"], c["type"])`}</code></pre>
     </>
   );
 }

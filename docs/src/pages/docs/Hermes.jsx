@@ -7,48 +7,60 @@ export default function HermesDoc() {
       <h2>What It Does</h2>
       <p>
         The <code>Hermes</code> class is the top-level entry point for the Hermes SDK.
-        It composes all connectors and the storage layer into a single unified interface.
+        It composes all connectors, cache, and feature pipeline into a single unified interface.
       </p>
 
-      <h2>Architecture</h2>
-      <p>The <code>Hermes</code> class lazily initializes two subsystems:</p>
+      <h2>Constructor</h2>
+      <pre><code>{`Hermes(api_keys: dict[str, str] | None = None,
+       cache_dir: str | Path | None = None)`}</code></pre>
       <ul>
-        <li><strong>Connectors</strong> — Created eagerly on <code>__init__</code>. Each connector (Fred, BIS, IMF, World Bank) is exposed as a property.</li>
-        <li><strong>Storage</strong> — Created lazily on first access to <code>.storage</code>. When the storage layer is initialized, the RawCache is automatically wired to all connectors.</li>
+        <li><strong>api_keys</strong> — Optional dict mapping connector names to API keys (e.g. <code>{'{'}&quot;fred&quot;: &quot;abc123&quot;{'}'}</code>)</li>
+        <li><strong>cache_dir</strong> — Optional path for Parquet data cache (defaults to <code>~/.hermes_cache</code>)</li>
       </ul>
 
-      <h2>Usage</h2>
+      <h2>Properties</h2>
+      <ul>
+        <li><code>.fred</code> — FRED economic data connector</li>
+        <li><code>.world_bank</code> — World Bank data connector</li>
+        <li><code>.bis</code> — Bank for International Settlements connector</li>
+        <li><code>.imf</code> — IMF DataMapper connector</li>
+        <li><code>.gdelt</code> — GDELT event data connector</li>
+        <li><code>.ucdp</code> — Uppsala Conflict Data connector</li>
+        <li><code>.newsapi</code> — NewsAPI connector</li>
+        <li><code>.v_dem</code> — V-Dem democracy indices connector</li>
+        <li><code>.comtrade</code> — UN Comtrade trade data connector</li>
+        <li><code>.connectors</code> — Dict mapping name → connector instance</li>
+      </ul>
+
+      <h2>Key Methods</h2>
+      <pre><code>{`# List all available connectors
+hr.list_connectors() -> [{"name": ..., "type": ...}]
+
+# Get comprehensive risk features for a country
+hr.get_country_risk_features(
+    country: str,
+    date: str | None = None,
+    features: list[str] | None = None,
+) -> dict[str, Any]
+
+# Get time series for a specific indicator
+hr.get_timeseries(
+    country: str,
+    indicator: str,
+    start: str = "",
+    end: str = "",
+) -> list[dict]`}</code></pre>
+
+      <h2>Usage Example</h2>
       <pre><code>{`from hermes import Hermes
 
-hr = Hermes()
+hr = Hermes(api_keys={"fred": "..."})
 
-# Access connectors
-hr.fred      # Fred connector
-hr.bis       # BIS connector
-hr.imf       # IMF connector
-hr.world_bank # World Bank connector
-
-# Access storage (lazy init)
-hr.storage          # StorageLayer instance
-hr.storage.cache    # RawCache (file-based Parquet cache)
-hr.storage.features # FeatureStore (requires DB connection)
-hr.storage.metadata # MetadataRegistry (requires DB connection)
-hr.storage.lineage  # LineageGraph (requires DB connection)`}</code></pre>
-
-      <h2>Cache Wiring</h2>
-      <p>
-        When <code>.storage</code> is accessed for the first time, the RawCache
-        is automatically assigned to <code>fred._cache</code>, <code>bis._cache</code>,
-        etc. This enables the <code>cached_get_series()</code> method on connectors
-        to transparently read/write the Parquet cache.
-      </p>
-
-      <h2>Exports</h2>
-      <p>The <code>hermes/__init__.py</code> also exports:</p>
-      <pre><code>{`from hermes import Hermes
-from hermes.base import BaseConnector
-from hermes.countries import list_countries, get_country_metadata
-from hermes._cache import DataCache`}</code></pre>
+# Get all risk features
+risk = hr.get_country_risk_features("UKR", "2024-06-30")
+print(risk["gdp_growth_yoy"])
+print(risk["regime_classification"])
+print(risk["goldstein_score_violence"])`}</code></pre>
     </>
   );
 }
