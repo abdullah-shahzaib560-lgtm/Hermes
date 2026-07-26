@@ -1,9 +1,12 @@
-import pandas as pd
-import logging
 import json
-import urllib.request
+import logging
+from datetime import timedelta
 import urllib.error
+import urllib.parse
+import urllib.request
 from typing import Optional
+
+import pandas as pd
 
 from hermes.core.cache import RawCache
 
@@ -24,7 +27,7 @@ class World_Bank:
     def _cached(self, params: dict, fetch_fn, force: bool = False):
         if self._cache is None:
             return fetch_fn()
-        return self._cache.get_or_fetch("world_bank", params, fetch_fn, force=force)
+        return self._cache.get_or_fetch("world_bank", params, fetch_fn, force=force, ttl=timedelta(hours=24))
 
     def get_data(
         self,
@@ -55,11 +58,11 @@ class World_Bank:
                 if not data or len(data) < 2 or not data[1]:
                     break
                 records.extend(data[1])
-                total = data[0].get("pages", 1)
-                if page >= total:
+                total_pages = data[0].get("pages", 1)
+                if page >= total_pages:
                     break
                 page += 1
-            return pd.DataFrame(records)
+            return pd.DataFrame(records) if records else pd.DataFrame()
 
         df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
@@ -78,24 +81,30 @@ class World_Bank:
         return pd.DataFrame(rows)
 
     def _to_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
         out = pd.DataFrame()
-        dates = df.get("date", pd.NA)
-        if not dates.isna().all():
-            out["date"] = pd.to_datetime(dates, format="%Y", errors="coerce")
+        date_raw = df.get("date")
+        if date_raw is not None:
+            out["date"] = pd.to_datetime(date_raw, format="%Y", errors="coerce")
 
-        iso3 = df.get("countryiso3code", pd.NA)
-        if not iso3.isna().all():
-            out["country_iso3"] = iso3.astype(str).str.upper()
+        iso3 = df.get("countryiso3code")
+        if iso3 is not None:
+            out["country_iso3"] = iso3.astype(str).str.upper().str.strip()
 
-        indicator_raw = df.get("indicator", pd.NA)
-        if not indicator_raw.isna().all():
+        indicator_raw = df.get("indicator")
+        if indicator_raw is not None:
             out["indicator_id"] = indicator_raw.apply(
                 lambda x: x.get("id") if isinstance(x, dict) else None
             )
 
-        values = pd.to_numeric(df.get("value", pd.NA), errors="coerce")
-        if not values.isna().all():
-            out["value"] = values
+        value_raw = df.get("value")
+        if value_raw is not None:
+            out["value"] = pd.to_numeric(value_raw, errors="coerce")
 
         out["source"] = "World Bank"
-        return out.dropna(subset=["date", "country_iso3", "indicator_id"])
+        needed = ["date", "country_iso3", "indicator_id", "value"]
+        for col in needed:
+            if col not in out.columns:
+                out[col] = None
+        return out.dropna(subset=["date", "country_iso3", "indicator_id"]).reset_index(drop=True)

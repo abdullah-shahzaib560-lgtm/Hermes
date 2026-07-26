@@ -1,10 +1,11 @@
-import pandas as pd
 import logging
+from datetime import timedelta
 import os
-import urllib.request
-import urllib.parse
-import json
 from typing import Optional
+
+import pandas as pd
+import urllib.parse
+import urllib.request
 
 from hermes.core.cache import RawCache
 
@@ -29,7 +30,7 @@ class NewsData:
     def _cached(self, params: dict, fetch_fn, force: bool = False):
         if self._cache is None:
             return fetch_fn()
-        return self._cache.get_or_fetch("news_data", params, fetch_fn, force=force)
+        return self._cache.get_or_fetch("news_data", params, fetch_fn, force=force, ttl=timedelta(hours=1))
 
     def get_latest_news(
         self,
@@ -61,7 +62,9 @@ class NewsData:
             return pd.DataFrame(data.get("results", []))
 
         df = self._cached(cache_params, _fetch, force=force)
-        return self._to_canonical(df) if normalize and not df.empty else df
+        if df.empty:
+            return df
+        return self._to_canonical(df) if normalize else df
 
     def get_archive_news(
         self,
@@ -100,9 +103,13 @@ class NewsData:
             return pd.DataFrame(data.get("results", []))
 
         df = self._cached(cache_params, _fetch, force=force)
-        return self._to_canonical(df) if normalize and not df.empty else df
+        if df.empty:
+            return df
+        return self._to_canonical(df) if normalize else df
 
     def _to_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
         col_map = {
             "article_id": "article_id", "link": "url", "pubDate": "date",
             "source_id": "source_name", "title": "title", "description": "content",
@@ -110,13 +117,17 @@ class NewsData:
         }
         rename = {k: v for k, v in col_map.items() if k in df.columns}
         df = df.rename(columns=rename)
+
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
         for col, default in [("source_name", "newsdata"), ("sentiment", None), ("lang", None)]:
             if col not in df.columns:
                 df[col] = default
+
         canonical = ["article_id", "date", "source_name", "title", "content", "sentiment", "url", "lang"]
-        keep = [c for c in canonical if c in df.columns]
-        df = df[keep]
+        for col in canonical:
+            if col not in df.columns:
+                df[col] = None
         df["source"] = "NewsData.io"
-        return df
+        return df[canonical + ["source"]].reset_index(drop=True)

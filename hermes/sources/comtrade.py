@@ -1,9 +1,11 @@
-import pandas as pd
-import logging
-import urllib.request
-import urllib.parse
 import json
+import logging
+from datetime import timedelta
 from typing import Optional
+
+import pandas as pd
+import urllib.parse
+import urllib.request
 
 from hermes.core.cache import RawCache
 
@@ -20,11 +22,12 @@ COUNTRY_TO_COMTRADE = {
     "ESP": "724", "SWE": "752", "NOR": "578", "POL": "616", "DNK": "208",
     "UKR": "804", "ARG": "32", "IRN": "364", "IRQ": "368", "ISR": "376",
     "EGY": "818", "NGA": "566", "PAK": "586", "THA": "764", "VNM": "704",
-    "MYS": "458", "SGP": "702", "PHL": "608",     "HKG": "344", "TWN": "490", "ARE": "784", "COL": "170",
-    "CHL": "152", "PER": "604", "ROU": "642", "CZE": "203",
-    "HUN": "348", "PRT": "620", "GRC": "300", "FIN": "246",
-    "AUT": "40", "BEL": "56", "BLR": "112", "KAZ": "398",
-    "XKX": "688", "SRB": "688",
+    "MYS": "458", "SGP": "702", "PHL": "608", "HKG": "344", "TWN": "490",
+    "ARE": "784", "COL": "170", "CHL": "152", "PER": "604", "ROU": "642",
+    "CZE": "203", "HUN": "348", "PRT": "620", "GRC": "300", "FIN": "246",
+    "AUT": "40", "BEL": "56", "BLR": "112", "KAZ": "398", "XKX": "688",
+    "SRB": "688", "BGR": "100", "HRV": "191", "SVN": "705", "SVK": "703",
+    "LTU": "440", "LVA": "428", "EST": "233", "IRL": "372",
 }
 
 
@@ -45,7 +48,7 @@ class Comtrade:
     def _cached(self, params: dict, fetch_fn, force: bool = False):
         if self._cache is None:
             return fetch_fn()
-        return self._cache.get_or_fetch("comtrade", params, fetch_fn, force=force)
+        return self._cache.get_or_fetch("comtrade", params, fetch_fn, force=force, ttl=timedelta(hours=24))
 
     def get_data(
         self,
@@ -67,11 +70,9 @@ class Comtrade:
 
         def _fetch():
             if self.api_key:
-                # data/v1/get/{type}/{freq}/{clCode}?reporterCode=... requires subscription-key
-                endpoint = f"{DATA_BASE}/get/{'C'}/{freq}/{classification}"
+                endpoint = f"{DATA_BASE}/get/C/{freq}/{classification}"
             else:
-                # public/v1/preview/{type}/{freq}/{clCode}?reporterCode=...
-                endpoint = f"{PUBLIC_BASE}/preview/{'C'}/{freq}/{classification}"
+                endpoint = f"{PUBLIC_BASE}/preview/C/{freq}/{classification}"
 
             params = {
                 "reporterCode": _comtrade_code(reporter),
@@ -89,7 +90,7 @@ class Comtrade:
             url = f"{endpoint}?{qs}"
             data = self._fetch_json(url)
             rows = data.get("data", data.get("dataset", []))
-            return pd.DataFrame(rows)
+            return pd.DataFrame(rows) if rows else pd.DataFrame()
 
         df = self._cached(cache_params, _fetch, force=force)
         if df.empty:
@@ -113,38 +114,32 @@ class Comtrade:
         )
 
     def _to_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
         out = pd.DataFrame()
-        period_cols = [c for c in df.columns if c.lower() in ("period", "yr", "year", "perioddesc")]
-        for c in period_cols:
-            if c in df.columns and not df[c].isna().all():
-                out["date"] = pd.to_datetime(df[c].astype(str).str[:10], errors="coerce")
-                break
-        if "date" not in out.columns:
-            out["date"] = pd.NaT
+        period_col = next((c for c in df.columns if c.lower() in ("period", "yr", "year", "perioddesc")), None)
+        if period_col:
+            out["date"] = pd.to_datetime(df[period_col].astype(str).str[:10], errors="coerce")
 
-        rep_cols = [c for c in df.columns if c.lower() in ("reporteriso", "reportercode", "rtcode")]
-        for c in rep_cols:
-            if c in df.columns and not df[c].isna().all():
-                out["origin_iso3"] = df[c].astype(str).str.upper().str[:3]
-                break
+        rep_col = next((c for c in df.columns if c.lower() in ("reporteriso", "reportercode", "rtcode")), None)
+        if rep_col:
+            out["origin_iso3"] = df[rep_col].astype(str).str.upper().str[:3]
 
-        prt_cols = [c for c in df.columns if c.lower() in ("partneriso", "partnercode", "ptcode")]
-        for c in prt_cols:
-            if c in df.columns and not df[c].isna().all():
-                out["destination_iso3"] = df[c].astype(str).str.upper().str[:3]
-                break
+        prt_col = next((c for c in df.columns if c.lower() in ("partneriso", "partnercode", "ptcode")), None)
+        if prt_col:
+            out["destination_iso3"] = df[prt_col].astype(str).str.upper().str[:3]
 
-        cmd_cols = [c for c in df.columns if c.lower() in ("commoditycode", "cmdcode", "cmdcode_HS")]
-        for c in cmd_cols:
-            if c in df.columns and not df[c].isna().all():
-                out["commodity_code"] = df[c].astype(str)
-                break
+        cmd_col = next((c for c in df.columns if c.lower() in ("commoditycode", "cmdcode", "cmdcode_hs")), None)
+        if cmd_col:
+            out["commodity_code"] = df[cmd_col].astype(str)
 
-        val_cols = [c for c in df.columns if c.lower() in ("tradevalue", "tradevalueinusd", "tv", "value", "primaryvalue")]
-        for c in val_cols:
-            if c in df.columns:
-                out["value"] = pd.to_numeric(df[c], errors="coerce")
-                break
+        val_col = next((c for c in df.columns if c.lower() in ("tradevalue", "tradevalueinusd", "tv", "value", "primaryvalue")), None)
+        if val_col:
+            out["value"] = pd.to_numeric(df[val_col], errors="coerce")
 
         out["source"] = "UN Comtrade"
-        return out.dropna(subset=["value"])
+        cols = ["date", "origin_iso3", "destination_iso3", "commodity_code", "value", "source"]
+        for col in cols:
+            if col not in out.columns:
+                out[col] = None
+        return out.dropna(subset=["value"]).reset_index(drop=True)

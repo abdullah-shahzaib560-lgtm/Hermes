@@ -5,3 +5,11 @@ from hermes.sources.gdelt import GDELT
 from hermes.sources.ucdp import UCDP
 from hermes.sources.comtrade import Comtrade
 from hermes.sources.news_data import NewsData
+from hermes.sources.v_dem import V_DEM
+from hermes.sources.undp import UNDP
+from hermes.sources.nd_gain import ND_GAIN
+from hermes.sources.fao import FAO
+from hermes.sources.fsi import FSI
+from hermes.sources.sipri import SIPRI
+from hermes.sources.cow import COW
+from hermes.sources.un_peacekeeping import UN_Peacekeeping
