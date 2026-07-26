@@ -1,8 +1,10 @@
-import pandas as pd
-import logging
-import urllib.request
 import json
+import logging
+from datetime import timedelta
 from typing import Optional
+
+import pandas as pd
+import urllib.request
 
 from hermes.core.cache import RawCache
 
@@ -10,20 +12,58 @@ logger = logging.getLogger(__name__)
 
 API_BASE = "https://ucdpapi.uu.se/api/v1"
 
+COUNTRY_MAP = {
+    "Ukraine": "UKR", "Ukraine ": "UKR", "ukraine": "UKR",
+    "Russia": "RUS", "Russian Federation": "RUS",
+    "United States": "USA", "United States of America": "USA",
+    "China": "CHN", "India": "IND", "Brazil": "BRA",
+    "United Kingdom": "GBR", "France": "FRA", "Germany": "DEU",
+    "Japan": "JPN", "Canada": "CAN", "Australia": "AUS",
+    "Italy": "ITA", "Spain": "ESP", "Mexico": "MEX",
+    "Indonesia": "IDN", "Turkey": "TUR", "Türkiye": "TUR",
+    "Korea": "KOR", "South Korea": "KOR",
+    "Saudi Arabia": "SAU", "Iran": "IRN", "Iraq": "IRQ",
+    "Israel": "ISR", "Pakistan": "PAK", "Egypt": "EGY",
+    "Nigeria": "NGA", "South Africa": "ZAF", "Argentina": "ARG",
+    "Colombia": "COL", "Chile": "CHL", "Peru": "PER",
+    "Venezuela": "VEN", "Thailand": "THA", "Viet Nam": "VNM",
+    "Vietnam": "VNM", "Malaysia": "MYS", "Philippines": "PHL",
+    "Poland": "POL", "Netherlands": "NLD", "Sweden": "SWE",
+    "Norway": "NOR", "Denmark": "DNK", "Finland": "FIN",
+    "Belgium": "BEL", "Austria": "AUT", "Switzerland": "CHE",
+    "Greece": "GRC", "Portugal": "PRT", "Czech Republic": "CZE",
+    "Hungary": "HUN", "Romania": "ROU", "Ukraine": "UKR",
+    "Belarus": "BLR", "Kazakhstan": "KAZ",
+    "Syria": "SYR", "Yemen": "YEM", "Libya": "LBY",
+    "Sudan": "SDN", "South Sudan": "SSD",
+    "Dem. Rep. of the Congo": "COD", "DR Congo": "COD",
+    "Ethiopia": "ETH", "Somalia": "SOM", "Afghanistan": "AFG",
+    "Myanmar": "MMR", "Mali": "MLI", "Central African Republic": "CAF",
+}
+
+
+def _map_country(name: str) -> str:
+    cleaned = name.strip() if name else ""
+    if not cleaned:
+        return cleaned
+    return COUNTRY_MAP.get(cleaned, cleaned.upper()[:3])
+
 
 class UCDP:
     def __init__(self, cache: RawCache | None = None):
         self._cache = cache
 
     def _fetch_json(self, url: str) -> dict:
-        req = urllib.request.Request(url, headers={"User-Agent": "Hermes/0.1", "Accept": "application/json"})
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Hermes/0.1", "Accept": "application/json",
+        })
         with urllib.request.urlopen(req, timeout=60) as resp:
             return json.loads(resp.read().decode())
 
     def _cached(self, params: dict, fetch_fn, force: bool = False):
         if self._cache is None:
             return fetch_fn()
-        return self._cache.get_or_fetch("ucdp", params, fetch_fn, force=force)
+        return self._cache.get_or_fetch("ucdp", params, fetch_fn, force=force, ttl=timedelta(hours=24))
 
     def get_ged_events(
         self,
@@ -36,8 +76,7 @@ class UCDP:
     ) -> pd.DataFrame:
         cache_params = {
             "q": "get_ged_events", "country": country or "",
-            "year_from": year_from or 0, "year_to": year_to or 0,
-            "max": max_records,
+            "year_from": year_from or 0, "year_to": year_to or 0, "max": max_records,
         }
 
         def _fetch():
@@ -101,96 +140,75 @@ class UCDP:
         return self._to_brd_canonical(df) if normalize else df
 
     def _to_ged_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
         out = pd.DataFrame()
-        id_map = {"id": "event_id", "Id": "event_id", "event_id": "event_id", "EventId": "event_id"}
-        for src, dst in id_map.items():
-            if src in df.columns:
-                out[dst] = df[src].astype(str)
-                break
-        if "event_id" not in out.columns:
-            out["event_id"] = None
 
-        date_map = {"date_start": "date", "DateStart": "date", "date_end": "date", "Date": "date"}
-        for src in date_map:
-            if src in df.columns:
-                out["date"] = pd.to_datetime(df[src], errors="coerce")
-                break
-        if "date" not in out.columns:
-            out["date"] = pd.NaT
+        id_col = next((c for c in ["id", "Id", "event_id", "EventId"] if c in df.columns), None)
+        if id_col:
+            out["event_id"] = df[id_col].astype(str)
 
-        country_map = {"country": "country_iso3", "Country": "country_iso3", "location": "country_iso3"}
-        for src in country_map:
-            if src in df.columns and not df[src].isna().all():
-                out["country_iso3"] = df[src].astype(str).str.upper().str[:3]
-                break
+        date_col = next((c for c in ["date_start", "DateStart", "date_end", "Date"] if c in df.columns), None)
+        if date_col:
+            out["date"] = pd.to_datetime(df[date_col], errors="coerce")
 
-        type_map = {"type_of_violence": "event_type", "TypeOfViolence": "event_type", "event_type": "event_type"}
-        for src in type_map:
-            if src in df.columns:
-                out["event_type"] = df[src].astype(str)
-                break
-        if "event_type" not in out.columns:
+        country_col = next((c for c in ["country", "Country", "location"] if c in df.columns), None)
+        if country_col:
+            out["country_iso3"] = df[country_col].astype(str).apply(_map_country)
+
+        type_col = next((c for c in ["type_of_violence", "TypeOfViolence", "event_type"] if c in df.columns), None)
+        if type_col:
+            out["event_type"] = df[type_col].astype(str)
+        else:
             out["event_type"] = "armed_conflict"
 
-        sev_map = {"best": "severity", "Best": "severity", "deaths_civilians": "severity", "high": "severity", "low": "severity"}
-        for src in sev_map:
-            if src in df.columns:
-                out["severity"] = pd.to_numeric(df[src], errors="coerce")
-                break
+        sev_col = next((c for c in ["best", "Best", "deaths_civilians", "high", "low", "severity"] if c in df.columns), None)
+        if sev_col:
+            out["severity"] = pd.to_numeric(df[sev_col], errors="coerce")
 
-        lat_map = {"latitude": "lat", "Latitude": "lat"}
-        for src in lat_map:
-            if src in df.columns:
-                out["lat"] = pd.to_numeric(df[src], errors="coerce")
-                break
+        lat_col = next((c for c in ["latitude", "Latitude"] if c in df.columns), None)
+        if lat_col:
+            out["lat"] = pd.to_numeric(df[lat_col], errors="coerce")
 
-        lon_map = {"longitude": "lon", "Longitude": "lon"}
-        for src in lon_map:
-            if src in df.columns:
-                out["lon"] = pd.to_numeric(df[src], errors="coerce")
-                break
-
-        for col in ["severity", "lat", "lon"]:
-            if col not in out.columns:
-                out[col] = None
+        lon_col = next((c for c in ["longitude", "Longitude"] if c in df.columns), None)
+        if lon_col:
+            out["lon"] = pd.to_numeric(df[lon_col], errors="coerce")
 
         out["source"] = "UCDP GED"
-        return out.dropna(subset=["event_id"])
+        cols = ["event_id", "date", "country_iso3", "event_type", "severity", "lat", "lon", "source"]
+        for col in cols:
+            if col not in out.columns:
+                out[col] = None
+        return out.dropna(subset=["event_id"]).reset_index(drop=True)
 
     def _to_brd_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
         out = pd.DataFrame()
-        id_map = {"id": "event_id", "Id": "event_id", "conflict_id": "event_id"}
-        for src in id_map:
-            if src in df.columns:
-                out["event_id"] = df[src].astype(str)
-                break
-        if "event_id" not in out.columns:
-            out["event_id"] = None
 
-        year_map = {"year": "date", "Year": "date"}
-        for src in year_map:
-            if src in df.columns:
-                out["date"] = pd.to_datetime(df[src].astype(str) + "-01-01", errors="coerce")
-                break
-        if "date" not in out.columns:
-            out["date"] = pd.NaT
+        id_col = next((c for c in ["id", "Id", "conflict_id"] if c in df.columns), None)
+        if id_col:
+            out["event_id"] = df[id_col].astype(str)
 
-        country_map = {"country": "country_iso3", "Country": "country_iso3", "location": "country_iso3"}
-        for src in country_map:
-            if src in df.columns and not df[src].isna().all():
-                out["country_iso3"] = df[src].astype(str).str.upper().str[:3]
-                break
+        year_col = next((c for c in ["year", "Year"] if c in df.columns), None)
+        if year_col:
+            out["date"] = pd.to_datetime(df[year_col].astype(str) + "-01-01", errors="coerce")
+
+        country_col = next((c for c in ["country", "Country", "location"] if c in df.columns), None)
+        if country_col:
+            out["country_iso3"] = df[country_col].astype(str).apply(_map_country)
 
         out["event_type"] = "battle_related_death"
 
-        sev_map = {"best_estimate": "severity", "BestEstimate": "severity", "best": "severity",
-                    "deaths": "severity", "Deaths": "severity", "low": "severity", "high": "severity"}
-        for src in sev_map:
-            if src in df.columns:
-                out["severity"] = pd.to_numeric(df[src], errors="coerce")
-                break
+        sev_col = next((c for c in ["best_estimate", "BestEstimate", "best", "deaths", "Deaths", "low", "high", "severity"] if c in df.columns), None)
+        if sev_col:
+            out["severity"] = pd.to_numeric(df[sev_col], errors="coerce")
 
         out["lat"] = None
         out["lon"] = None
         out["source"] = "UCDP BRD"
-        return out.dropna(subset=["event_id"])
+        cols = ["event_id", "date", "country_iso3", "event_type", "severity", "lat", "lon", "source"]
+        for col in cols:
+            if col not in out.columns:
+                out[col] = None
+        return out.dropna(subset=["event_id"]).reset_index(drop=True)

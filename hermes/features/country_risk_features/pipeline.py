@@ -1,10 +1,12 @@
-from economic import economic_features
-from environmental import enviromental_features
-from geopolitical import geopolitical_features
-from security import security_features
-from social import social_features
+from datetime import datetime
 
-class features:
+from hermes.features.country_risk_features.economic import economic_features
+from hermes.features.country_risk_features.environmental import enviromental_features
+from hermes.features.country_risk_features.geopolitical import geopolitical_features
+from hermes.features.country_risk_features.security import security_features
+from hermes.features.country_risk_features.social import social_features
+
+class pipeline:
 
     def __init__(self):
         self.eco = economic_features()
@@ -13,12 +15,11 @@ class features:
         self.sec = security_features()
         self.soc = social_features()
 
-    def get_country_risk_features(self, country, date):
+    def get_country_risk_features(self, country):
  
 
         return {
             "country": f"{country}",
-            "date": f"{date}",
             "economic": {
                 "gdp_growth_yoy": self.eco.gdp_growth_yoy(),                                        # float, percent
                 "gdp_growth_qoq": self.eco.gdp_growath_qoq(),                                       # float, percent
@@ -88,10 +89,7 @@ class features:
                 "water_stress_index": self.env.water_stress_index(),                                # float, 0-1
             },
             "metadata": {
-                "last_updated": "2026-07-14T12:00:00Z",
-                "sources_used": ["fred", "world_bank", "gdelt", "ucdp", "v_dem"],
-                "stale_indicators": [],
-                "confidence_score": 0.85,               # float, 0-1 based on data freshness
+                "last_updated": f'{datetime.utcnow()}',               
                 "features_version": "1.0.0",
             }
         }   
