@@ -1,110 +1,121 @@
-import json
-import logging
-from datetime import timedelta
-import urllib.error
-import urllib.parse
-import urllib.request
-from typing import Optional
-
 import pandas as pd
+import logging, httpx, time
+from datetime import timedelta
 
 from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://api.worldbank.org/v2"
+class World_bank:
 
-
-class World_Bank:
     def __init__(self, cache: RawCache | None = None):
-        self._cache = cache
+        self.url = 'https://api.worldbank.org/v2'
+        self._cache = cache or RawCache()
 
-    def _fetch_json(self, url: str) -> list | dict:
-        req = urllib.request.Request(url, headers={"User-Agent": "Hermes/0.1"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode())
-
-    def _cached(self, params: dict, fetch_fn, force: bool = False):
-        if self._cache is None:
-            return fetch_fn()
-        return self._cache.get_or_fetch("world_bank", params, fetch_fn, force=force, ttl=timedelta(hours=24))
-
-    def get_data(
+    def _fetch(
         self,
-        indicator: str,
-        country: str = "all",
-        date: Optional[str] = None,
+        country_code: str,
+        indicator_code: str,
+        frequency: str | None = None,
+        most_recent: int | None = None,
         per_page: int = 1000,
-        normalize: bool = True,
-        force: bool = False,
+        page: int = 1,
+        timeout: float = 30.0,
+        retries: int = 3,
     ) -> pd.DataFrame:
+
+        url = f'{self.url}/country/{country_code}/indicator/{indicator_code}'
+        params = {
+            'per_page': per_page,
+            'page': page,
+            'format': 'json',
+        }
+        if frequency and most_recent:
+            params['frequency'] = frequency
+            params['mrv'] = most_recent
+
+        r = None
+        for attempt in range(retries):
+            try:
+                resp = httpx.get(url=url, params=params, timeout=timeout)
+                resp.raise_for_status()
+                r = resp.json()
+                break
+            except httpx.ReadTimeout:
+                if attempt == retries - 1:
+                    raise
+                time.sleep(2 ** attempt)
+            except httpx.HTTPStatusError as e:
+                logger.error(f'HTTP error: {e.response.status_code}')
+                raise
+
+        metadata, records = r[0], r[1]
+        data = []
+
+        for record in records:
+            data.append({
+                "date": record["date"],
+                "indicator_id" : record["indicator"]["id"],
+                "indicator_name": record['indicator']['value'],
+                "country" : record['countryiso3code'],
+                "value" : record['value'],
+                "source" : "World_Bank"
+            })
+
+        data = pd.DataFrame(data)
+
+        data.set_index('date', inplace=True)
+        data.sort_index(ascending=False ,inplace=True)
+
+        req = ['date','indicator_id','indicator_name','country','value','source']
+        issues = 0
+        for d in data:
+            for r in req:
+                if r not in d:
+                    issues += 1
+
+        logger.info(f'There is are total {issues} in the data')
+
+        data = data.reset_index()
+        return data
+        
+
+    def fetch(
+        self,
+        country_code: str,
+        indicator_code: str,
+        frequency: str | None = None,
+        most_recent: int | None = None,
+        per_page: int = 1000,
+        page: int = 1,
+        timeout: float = 30.0,
+        retries: int = 3,
+        force: bool = False
+    ) -> pd.DataFrame:
+
         cache_params = {
-            "q": "get_data",
-            "indicator": indicator,
-            "country": country,
-            "date": date or "",
+            "country": country_code,
+            "indicator": indicator_code,
+            "frequency": frequency or "",
+            "most_recent": most_recent or 0,
+            "per_page": per_page,
         }
 
-        def _fetch():
-            records = []
-            page = 1
-            while True:
-                params = {"format": "json", "per_page": min(per_page, 1000), "page": page}
-                if date:
-                    params["date"] = date
-                qs = "&".join(f"{k}={v}" for k, v in params.items())
-                url = f"{BASE_URL}/country/{country}/indicator/{indicator}?{qs}"
-                data = self._fetch_json(url)
-                if not data or len(data) < 2 or not data[1]:
-                    break
-                records.extend(data[1])
-                total_pages = data[0].get("pages", 1)
-                if page >= total_pages:
-                    break
-                page += 1
-            return pd.DataFrame(records) if records else pd.DataFrame()
+        return self._cache.get_or_fetch(
+            source="world_bank",
+            params=cache_params,
+            fetch_fn=lambda: self._fetch(
+                country_code, indicator_code, frequency,
+                most_recent, per_page, page, timeout, retries
+            ),
+            force=force,
+            ttl=timedelta(days=7),  # WB data updates weekly
+        )    
 
-        df = self._cached(cache_params, _fetch, force=force)
-        if df.empty:
-            return df
-        return self._to_canonical(df) if normalize else df
-
-    def search_indicators(self, query: str, per_page: int = 100) -> pd.DataFrame:
-        qs = f"format=json&search={urllib.parse.quote(query)}&per_page={per_page}"
-        url = f"{BASE_URL}/indicator?{qs}"
-        data = self._fetch_json(url)
-        if not data or len(data) < 2:
-            return pd.DataFrame()
-        rows = []
-        for item in data[1]:
-            rows.append({"indicator_id": item.get("id"), "name": item.get("name")})
-        return pd.DataFrame(rows)
-
-    def _to_canonical(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty:
-            return df
-        out = pd.DataFrame()
-        date_raw = df.get("date")
-        if date_raw is not None:
-            out["date"] = pd.to_datetime(date_raw, format="%Y", errors="coerce")
-
-        iso3 = df.get("countryiso3code")
-        if iso3 is not None:
-            out["country_iso3"] = iso3.astype(str).str.upper().str.strip()
-
-        indicator_raw = df.get("indicator")
-        if indicator_raw is not None:
-            out["indicator_id"] = indicator_raw.apply(
-                lambda x: x.get("id") if isinstance(x, dict) else None
-            )
-
-        value_raw = df.get("value")
-        if value_raw is not None:
-            out["value"] = pd.to_numeric(value_raw, errors="coerce")
-
-        out["source"] = "World Bank"
-        needed = ["date", "country_iso3", "indicator_id", "value"]
-        for col in needed:
-            if col not in out.columns:
-                out[col] = None
-        return out.dropna(subset=["date", "country_iso3", "indicator_id"]).reset_index(drop=True)
+if __name__ == '__main__':
+    wb = World_bank()
+    df = wb.fetch(
+        country_code='USA',
+        indicator_code='NY.GDP.MKTP.KD.ZG',
+    )
+    print(df)
