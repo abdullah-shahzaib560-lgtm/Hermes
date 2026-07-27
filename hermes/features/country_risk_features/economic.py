@@ -77,51 +77,170 @@ class economic_features:
         data = self.wb.fetch(country_code=country_code, indicator_code='NV.IND.MANF.KD.ZG')
         return data
 
+    @feature(
+            name='inflation_cpi_yoy',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def inflation_cpi_yoy(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
+        return data
 
-    def inflation_cpi_yoy(self, data) -> float:
-        pass
+    @feature(
+            name='inflation_volatility_12m',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def inflation_volatility_12m(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
+        return data
 
-    def inflation_volatility_12m(self, data) -> float:
-        pass
-    
-    def ppi_yoy(self, data) -> float:
-        pass
+    @feature(
+            name='ppi_yoy',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def ppi_yoy(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        ...
+        return data
 
-    def unemployment_rate(self, data) -> float:
-        pass
+    @feature(
+            name='unemployment_rate',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def unemployment_rate(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
+        return data
 
-    def youth_unemployment(self, data) -> float:
-        pass
+    @feature(
+            name='youth_unemployment',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def youth_unemployment(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.1524.ZS')
+        return data
 
-    def labor_force_participation(self, data) -> float:
-        pass
+    @feature(
+            name='labor_force_participation',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def labor_force_participation(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='SL.TLF.CACT.ZS')
+        return data
 
-    def current_account_gdp_ratio(self, data) -> float:
-        pass
+    @feature(
+            name='current_account_gdp_ratio',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def current_account_gdp_ratio(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='BN.CAB.XOKA.GD.ZS')
+        return data
 
-    def fx_reserves_months_import(self ,data) -> float:
-        pass
+    @feature(
+            name='fx_reserves_months_import',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def fx_reserves_months_import(self ,country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='FI.RES.TOTL.MO')
+        return data
 
-    def external_debt_gdp_ratio(self, data) -> float:
-        pass
+    @feature(
+            name='external_debt_gdp_ratio',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def external_debt_gdp_ratio(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='DT.DOD.DECT.GN.ZS')
+        return data
 
-    def fiscal_deficit_gdp(self, data) -> float:
-        pass
+    @feature(
+            name='fiscal_deficit_gdp',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def fiscal_deficit_gdp(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        ...
+        return data
 
-    def government_debt_gdp(self, data) -> float:
-        pass
+    @feature(
+            name='government_debt_gdp',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def government_debt_gdp(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        ...
+        return data
 
-    def credit_spread_bps(self, data) -> int:
-        pass
+    @feature(
+            name='credit_spread_bps',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def credit_spread_bps(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        ...
+        return data
 
-    def yield_curve_10y_2y(self, data) -> float :
-        pass
+    @feature(
+            name='yield_curve_10y_2y',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def yield_curve_10y_2y(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        ...
+        return data
 
-    def banking_sector_health(self, data) -> float:
-        pass
+    @feature(
+            name='banking_sector_health',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def banking_sector_health(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='FB.AST.NPLN.ZS')
+        return data
 
-    def gdp_per_capita_ppp(self, data) -> int:
-        pass
+    @feature(
+            name='gdp_per_capita_ppp',
+            group='economic_features',
+            deps=['world_bank:NV.IND.MANF.KD.ZG'],
+            compute='industrial_production_yoy from the World Bank data'
+    )    
+    def gdp_per_capita_ppp(self, country_code: str) -> float:
+        check_iso3(code=country_code)
+        data = self.wb.fetch(country_code=country_code, indicator_code='NY.GDP.PCAP.PP.CD')
+        return data
 
 
 if __name__ == '__main__':
