@@ -1,9 +1,11 @@
 import pandas as pd
 import httpx, time
 import logging
-from typing import Literal
 import pycountry
+
 from hermes.core.cache import RawCache
+
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,49 @@ class IMF:
                     "source": 'IMF',
                 })
 
-        return pd.DataFrame(rows)
+        data = pd.DataFrame(rows)
+
+        data.set_index('date', inplace=True)
+        data.sort_index(ascending=False, inplace=True)
+
+        req = ['date','indicator_id','indicator_name','country','value','source']
+        issues = 0
+        for d in data:
+            for r in req:
+                if r not in d:
+                    issues += 1
+
+        logger.info(f'There is are total {issues} in the data')
+
+        data = data.reset_index()
+        return data
 
 
+    def fetch(
+        self,
+        country: str,
+        agency: str,
+        dataflow_id: str,
+        key: str,
+        timeout: float = 30.0,
+        retries: int = 3,
+        force: bool = False
+    ) -> pd.DataFrame:
 
+        cache_params = {
+            "country": country,
+            "key": key,
+            "agency": agency,
+            "dataflow_id": dataflow_id,
+        }
+
+        return self._cache.get_or_fetch(
+            source="world_bank",
+            params=cache_params,
+            fetch_fn=lambda: self._fetch(
+                country, agency, dataflow_id,
+                key, timeout, retries
+            ),
+            force=force,
+            ttl=timedelta(days=7),  # WB data updates weekly
+        )    
