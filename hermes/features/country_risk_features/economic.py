@@ -29,7 +29,7 @@ class economic_features:
         deps=['world_bank:NY.GDP.MKTP.KD.ZG'],
         compute='GDP growth YoY, merged from WB and IMF'
     )
-    def gdp_growth_yoy(self, country_code: str, mode: Literal['ML', 'Frontend']):
+    def gdp_growth_yoy(self, country_code: str, mode:str = Literal['ML', 'Frontend']):
 
         check_iso3(code=country_code)
 
@@ -47,7 +47,7 @@ class economic_features:
         deps=['world_bank:NY.GDP.MKTP.KD'],
         compute='GDP growth QoQ, interpolated from the the annual frequency data from the World_Bank'
     )
-    def gdp_growth_qoq(self, country_code: str, mode: Literal['ML', 'Frontend']):
+    def gdp_growth_qoq(self, country_code: str, mode: str = Literal['ML', 'Frontend']):
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NY.GDP.MKTP.KD')
         data["date"] = pd.to_datetime(data["date"].astype(str) + "-12-31")
@@ -72,10 +72,14 @@ class economic_features:
             deps=['world_bank:NV.IND.MANF.KD.ZG'],
             compute='industrial_production_yoy from the World Bank data'
     )    
-    def industrial_production_yoy(self, country_code: str) -> float:
+    def industrial_production_yoy(self, country_code: str, mode: str = Literal['ML', 'Frontend']) -> float:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NV.IND.MANF.KD.ZG')
-        return data
+        if mode == 'ML':
+            return data['value']
+        if mode == 'Frontend':
+            return data['value'].iloc[0]
+
 
     @feature(
             name='inflation_cpi_yoy',
@@ -83,10 +87,13 @@ class economic_features:
             deps=['world_bank:NV.IND.MANF.KD.ZG'],
             compute='industrial_production_yoy from the World Bank data'
     )    
-    def inflation_cpi_yoy(self, country_code: str) -> float:
+    def inflation_cpi_yoy(self, country_code: str,  mode: str = Literal['ML', 'Frontend']) -> float:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
-        return data
+        if mode == 'ML':
+            return data['value']
+        if mode == 'Frontend':
+            return data['value'].iloc[0]
 
     @feature(
             name='inflation_volatility_12m',
@@ -94,11 +101,13 @@ class economic_features:
             deps=['world_bank:NV.IND.MANF.KD.ZG'],
             compute='industrial_production_yoy from the World Bank data'
     )    
-    def inflation_volatility_12m(self, country_code: str) -> float:
+    def inflation_volatility_12m(self, country_code: str,  mode: str = Literal['ML', 'Frontend']) -> float:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
-        return data
-
+        if mode == 'ML':
+            return data['value']
+        if mode == 'Frontend':
+            return data['value'].iloc[0]
     @feature(
             name='ppi_yoy',
             group='economic_features',
@@ -204,7 +213,7 @@ class economic_features:
             deps=['world_bank:NV.IND.MANF.KD.ZG'],
             compute='industrial_production_yoy from the World Bank data'
     )    
-    def credit_spread_bps(self, country_code: str) -> float:
+    def current_account_gdp(self, country_code: str) -> float:
         check_iso3(code=country_code)
         ...
         return data
@@ -215,7 +224,7 @@ class economic_features:
             deps=['world_bank:NV.IND.MANF.KD.ZG'],
             compute='industrial_production_yoy from the World Bank data'
     )    
-    def yield_curve_10y_2y(self, country_code: str) -> float:
+    def inflation_yoy(self, country_code: str) -> float:
         check_iso3(code=country_code)
         ...
         return data
