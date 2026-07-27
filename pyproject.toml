@@ -20,6 +20,7 @@ classifiers = [
 dependencies = [
     "fastparquet>=2026.5.0",
     "httpx>=0.28.1",
+    "ipykernel>=7.3.0",
     "pandas>=3.0.3",
     "pyarrow>=25.0.0",
     "pycountry>=26.2.16",
