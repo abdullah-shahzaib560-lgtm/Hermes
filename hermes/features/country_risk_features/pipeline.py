@@ -21,24 +21,24 @@ class pipeline:
         return {
             "country": f"{country}",
             "economic": {
-                "gdp_growth_yoy": self.eco.gdp_growth_yoy(),                                        # float, percent
-                "gdp_growth_qoq": self.eco.gdp_growath_qoq(),                                       # float, percent
-                "industrial_production_yoy": self.eco.industrial_production_yoy(),                  # float, percent
-                "inflation_cpi_yoy": self.eco.inflation_cpi_yoy(),                                  # float, percent
-                "inflation_volatility_12m": self.eco.inflation_volatility_12m(),                    # float, rolling std
-                "ppi_yoy": self.eco.ppi_yoy(),                                                      # float, percent
-                "unemployment_rate": self.eco.unemployment_rate(),                                  # float, percent
-                "youth_unemployment": self.eco.youth_unemployment(),                                # float, percent
-                "labor_force_participation": self.eco.labor_force_participation(),                  # float, percent
-                "current_account_gdp_ratio": self.eco.current_account_gdp_ratio(),                  # float, percent of GDP
-                "fx_reserves_months_import": self.eco.fx_reserves_months_import(),                  # float, months
-                "external_debt_gdp_ratio": self.eco.external_debt_gdp_ratio(),                      # float, percent
-                "fiscal_deficit_gdp": self.eco.fiscal_deficit_gdp(),                                # float, percent
-                "government_debt_gdp": self.eco.government_debt_gdp(),                              # float, percent
-                "credit_spread_bps": self.eco.credit_spread_bps(),                                  # int, basis points
-                "yield_curve_10y_2y": self.eco.yield_curve_10y_2y(),                                # float, percentage points
-                "banking_sector_health": self.eco.banking_sector_health(),                          # float, 0-1 score
-                "gdp_per_capita_ppp": self.eco.gdp_per_capita_ppp(),                                # int, USD
+                "gdp_growth_yoy": self.eco.gdp_growth_yoy(country_code=country, mode='F'),                                        # float, percent
+                "gdp_growth_qoq": self.eco.gdp_growth_qoq(country_code=country, mode='F'),                                       # float, percent
+                "industrial_production_yoy": self.eco.industrial_production_yoy(country_code=country, mode='F'),                  # float, percent
+                "inflation_cpi_yoy": self.eco.inflation_cpi_yoy(country_code=country, mode='F'),                                  # float, percent
+                "inflation_volatility_12m": self.eco.inflation_volatility_12m(country_code=country, mode='F'),                    # float, rolling std
+                "ppi_yoy": self.eco.ppi_yoy(country_code=country, mode='F'),                                                      # float, percent
+                "unemployment_rate": self.eco.unemployment_rate(country_code=country, mode='F'),                                  # float, percent
+                "youth_unemployment": self.eco.youth_unemployment(country_code=country, mode='F'),                                # float, percent
+                "labor_force_participation": self.eco.labor_force_participation(country_code=country, mode='F'),                  # float, percent
+                "current_account_gdp_ratio": self.eco.current_account_gdp_ratio(country_code=country, mode='F'),                  # float, percent of GDP
+                "fx_reserves_months_import": self.eco.fx_reserves_months_import(country_code=country, mode='F'),                  # float, months
+                "external_debt_gdp_ratio": self.eco.external_debt_gdp_ratio(country_code=country, mode='F'),                      # float, percent
+                "fiscal_deficit_gdp": self.eco.fiscal_deficit_gdp(country_code=country, mode='F'),                                # float, percent
+                "government_debt_gdp": self.eco.government_debt_gdp(country_code=country, mode='F'),                              # float, percent
+                "reer_misalignment": self.eco.reer_misalignment(country_code=country, mode='F'),                                  # int, basis points
+                "inflation_yoy": self.eco.inflation_yoy(country_code=country, mode='F'),                                     # float, percentage points
+                "banking_sector_health": self.eco.banking_sector_health(country_code=country, mode='F'),                          # float, 0-1 score
+                "gdp_per_capita_ppp": self.eco.gdp_per_capita_ppp(country_code=country, mode='F'),                                # int, USD
             },
             "geopolitical": {
                 "conflict_event_count_30d": self.geo.conflict_event_count_30d(),                    # int
@@ -93,3 +93,32 @@ class pipeline:
                 "features_version": "1.0.0",
             }
         }   
+
+if __name__  == '__main__':
+    def eco_risk(country):
+        eco = economic_features()
+        return {
+            "country": f"{country}",
+            "economic": {
+                "gdp_growth_yoy": eco.gdp_growth_yoy(country_code=country, mode='F'),                                        # float, percent
+                "gdp_growth_qoq": eco.gdp_growth_qoq(country_code=country, mode='F'),                                       # float, percent
+                "industrial_production_yoy": eco.industrial_production_yoy(country_code=country, mode='F'),                  # float, percent
+                "inflation_cpi_yoy": eco.inflation_cpi_yoy(country_code=country, mode='F'),                                  # float, percent
+                "inflation_volatility_12m": eco.inflation_volatility_12m(country_code=country, mode='F'),                    # float, rolling std
+                "ppi_yoy": eco.ppi_yoy(country_code=country, mode='F'),                                                      # float, percent
+                "unemployment_rate": eco.unemployment_rate(country_code=country, mode='F'),                                  # float, percent
+                "youth_unemployment": eco.youth_unemployment(country_code=country, mode='F'),                                # float, percent
+                "labor_force_participation": eco.labor_force_participation(country_code=country, mode='F'),                  # float, percent
+                "current_account_gdp_ratio": eco.current_account_gdp_ratio(country_code=country, mode='F'),                  # float, percent of GDP
+                "fx_reserves_months_import": eco.fx_reserves_months_import(country_code=country, mode='F'),                  # float, months
+                "external_debt_gdp_ratio": eco.external_debt_gdp_ratio(country_code=country, mode='F'),                      # float, percent
+                "fiscal_deficit_gdp": eco.fiscal_deficit_gdp(country_code=country, mode='F'),                                # float, percent
+                "government_debt_gdp": eco.government_debt_gdp(country_code=country, mode='F'),                              # float, percent
+                "reer_misalignment": eco.reer_misalignment(country_code=country, mode='F'),                                  # int, basis points
+                "inflation_yoy": eco.inflation_yoy(country_code=country, mode='F'),                                     # float, percentage points
+                "banking_sector_health": eco.banking_sector_health(country_code=country, mode='F'),                          # float, 0-1 score
+                "gdp_per_capita_ppp": eco.gdp_per_capita_ppp(country_code=country, mode='F'),                                # int, USD
+            }
+        }
+
+    print(eco_risk(country='USA'))
