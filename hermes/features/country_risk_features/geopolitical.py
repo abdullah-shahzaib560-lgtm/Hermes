@@ -2,11 +2,15 @@ import numpy as np
 import pandas as pd
 import logging
 from typing import Literal
+from hermes.sources.gdelt import GDELT
+
 logger = logging.getLogger(__name__)
 
 class geopolitical_features:
+    def __init__(self):
+        self._gdelt = GDELT()
 
-    def conflict_event_count_30d(self, data) -> int:
+    def conflict_event_count_30d(self) -> int:
         pass
 
     def conflict_event_count_90d(self, data) -> int:
