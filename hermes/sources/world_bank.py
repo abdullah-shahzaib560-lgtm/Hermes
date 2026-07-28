@@ -48,6 +48,9 @@ class World_bank:
             except httpx.HTTPStatusError as e:
                 logger.error(f'HTTP error: {e.response.status_code}')
                 raise
+        if len(r) < 2 or not r[1]:
+            logger.warning(f"No data: country={country_code}, indicator={indicator_code}")
+            return pd.DataFrame(columns=[...])  # match whatever columns _fetch normally returns
 
         metadata, records = r[0], r[1]
         data = []

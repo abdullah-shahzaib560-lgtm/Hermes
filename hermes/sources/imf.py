@@ -9,17 +9,19 @@ from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
+
 def iso3_to_iso2(iso3_code):
     try:
         return pycountry.countries.get(alpha_3=iso3_code.upper()).alpha_2
     except AttributeError:
         return "Not Found"
 
+
 class IMF:
 
     def __init__(self, cache: RawCache | None = None):
-        self._cache = cache or RawCache
-        # FIX: The active production endpoint for modern SDMX data queries
+        self._cache = cache or RawCache()
+        # Active production endpoint for modern SDMX 3.0 data queries
         self.url: str = 'https://api.imf.org/external/sdmx/3.0/data/dataflow/'
 
     def _fetch(
@@ -36,6 +38,8 @@ class IMF:
         url = f'{self.url}{agency}/{dataflow_id}/{version}/{country}.{key}'
         headers = {"Accept": "application/json"}
 
+        empty = pd.DataFrame(columns=["date", "indicator_id", "country", "value", "source"])
+
         r = None
         for attempt in range(retries):
             try:
@@ -48,6 +52,11 @@ class IMF:
                     raise
                 time.sleep(2 ** attempt)
             except httpx.HTTPStatusError as e:
+                # 404 = dataflow/key combo doesn't exist or no data for this country.
+                # Treat as "no data" rather than a hard crash, same as an empty 200.
+                if e.response.status_code == 404:
+                    logger.warning(f"404: country={country}, dataflow={dataflow_id}, key={key}")
+                    return empty
                 logger.error(f'HTTP error: {e.response.status_code}')
                 raise
 
@@ -58,39 +67,63 @@ class IMF:
         obs_dim = structure["dimensions"]["observation"][0]
         time_values = [v["value"] for v in obs_dim["values"]]
 
+        dataset = data["dataSets"][0]
+        if "series" not in dataset:
+            logger.warning(f"No data: country={country}, dataflow={dataflow_id}, key={key}")
+            return empty
+
+        # Dimension naming for "which indicator this is" varies per dataflow
+        # (WEO uses INDICATOR, CPI uses INDEX_TYPE, others may differ again).
+        # Rather than hardcoding one name, try known candidates in order,
+        # and fall back to the raw key if none match.
+        INDICATOR_DIM_CANDIDATES = ["INDICATOR", "INDEX_TYPE"]
+
         rows = []
-        for series_key, series_obj in data["dataSets"][0]["series"].items():
+        for series_key, series_obj in dataset["series"].items():
             indices = [int(i) for i in series_key.split(":")]
             dim_values = {
                 dim["id"]: dim["values"][idx]["id"]
                 for dim, idx in zip(series_dims, indices)
             }
+
+            indicator_id = next(
+                (dim_values[c] for c in INDICATOR_DIM_CANDIDATES if c in dim_values),
+                key,
+            )
+            country_val = dim_values.get("COUNTRY", country)
+
             for obs_idx, obs_val in series_obj["observations"].items():
-                rows.append({
+                raw_val = obs_val[0]
+                if raw_val is None:
+                    # Some periods report null (data gap / not yet published) —
+                    # skip rather than crash; the period is simply absent downstream.
+                    continue
+                row = {
                     "date": time_values[int(obs_idx)],
-                    "indicator_id": dim_values["INDICATOR"],
-                    "country": dim_values["COUNTRY"],
-                    "value": float(obs_val[0]),
-                    "source": 'IMF',
-                })
+                    "indicator_id": indicator_id,
+                    "country": country_val,
+                    "value": float(raw_val),
+                    "source": "IMF",
+                }
+                # Keep every raw dimension too, so feature code can reach
+                # dataflow-specific dimensions (e.g. COICOP_1999, FREQUENCY)
+                # without needing changes here.
+                for dim_id, dim_val in dim_values.items():
+                    row.setdefault(dim_id, dim_val)
+                rows.append(row)
 
-        data = pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
 
-        data.set_index('date', inplace=True)
-        data.sort_index(ascending=False, inplace=True)
+        df.set_index('date', inplace=True)
+        df.sort_index(ascending=False, inplace=True)
 
-        req = ['date','indicator_id','indicator_name','country','value','source']
-        issues = 0
-        for d in data:
-            for r in req:
-                if r not in d:
-                    issues += 1
+        req = ['indicator_id', 'country', 'value', 'source']
+        missing = [c for c in req if c not in df.columns]
+        if missing:
+            logger.warning(f"Missing expected columns {missing} for {dataflow_id}/{key}")
 
-        logger.info(f'There is are total {issues} in the data')
-
-        data = data.reset_index()
-        return data
-
+        df = df.reset_index()
+        return df
 
     def fetch(
         self,
@@ -111,12 +144,16 @@ class IMF:
         }
 
         return self._cache.get_or_fetch(
-            source="world_bank",
+            source="imf",
             params=cache_params,
             fetch_fn=lambda: self._fetch(
-                country, agency, dataflow_id,
-                key, timeout, retries
+                country=country,
+                agency=agency,
+                dataflow_id=dataflow_id,
+                key=key,
+                timeout=timeout,
+                retries=retries,
             ),
             force=force,
-            ttl=timedelta(days=7),  # WB data updates weekly
-        )    
+            ttl=timedelta(days=7),
+        )
