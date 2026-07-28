@@ -41,27 +41,27 @@ class pipeline:
                 "gdp_per_capita_ppp": self.eco.gdp_per_capita_ppp(country_code=country, mode='F'),                                # int, USD
             },
             "geopolitical": {
-                "conflict_event_count_30d": self.geo.conflict_event_count_30d(),                    # int
-                "conflict_event_count_90d": self.geo.conflict_event_count_90d(),                    # int
-                "conflict_trend": self.geo.conflict_trend(),                                        # string: escalating/stable/de-escalating
-                "goldstein_scale_avg_30d": self.geo.goldstein_scale_avg_30d(),                      # float, -10 to +10
-                "goldstein_scale_trend": self.geo.goldstein_scale_trend(),                          # float, change vs prev period
-                "battle_deaths_30d": self.geo.battle_deaths_30d(),                                  # int
-                "battle_deaths_90d": self.geo.battle_deaths_90d(),                                  # int
-                "protest_event_count_30d": self.geo.protest_event_count_30d(),                      # int
-                "protest_violence_level": self.geo.protest_violence_level(),                        # float, 0-1
-                "diplomatic_event_count_30d": self.geo.diplomatic_event_count_30d(),                # int
-                "diplomatic_intensity_avg": self.geo.diplomatic_intensity_avg(),                    # float, 0-10 scale
-                "sanctions_count_active": self.geo.sanctions_count_active(),                        # int
-                "sanctions_new_30d": self.geo.sanctions_new_30d(),                                  # int
-                "sanctions_sector_coverage": self.geo.sanctions_sector_coverage(),                  # float, 0-1
-                "governance_wgi_composite": self.geo.governance_wgi_composite(),                    # float, -2.5 to +2.5
-                "corruption_perception_index": self.geo.corruption_perception_index(),              # int, 0-100
-                "rule_of_law_score": self.geo.rule_of_law_score(),                                  # float, -2.5 to +2.5
-                "regulatory_quality": self.geo.regulatory_quality(),                                # float, -2.5 to +2.5
-                "democracy_index": self.geo.democracy_index(),                                      # float, 0-1
-                "regime_type": self.geo.regime_type(),                                              # string: democracy/hybrid/autocracy
-                "press_freedom_score": self.geo.press_freedom_score(),                              # int, 0-100
+                "conflict_event_count_30d": self.geo.conflict_event_count_30d(country_code=country),                    # int
+                "conflict_event_count_90d": self.geo.conflict_event_count_90d(country_code=country),                    # int
+                "conflict_trend": self.geo.conflict_trend(country_code=country),                                        # string: escalating/stable/de-escalating
+                "goldstein_scale_avg_30d": self.geo.goldstein_scale_avg_30d(country_code=country),                      # float, -10 to +10
+                "goldstein_scale_trend": self.geo.goldstein_scale_trend(country_code=country),                          # float, change vs prev period
+                "battle_deaths_30d": self.geo.battle_deaths_30d(country_code=country),                                  # int
+                "battle_deaths_90d": self.geo.battle_deaths_90d(country_code=country),                                  # int
+                "protest_event_count_30d": self.geo.protest_event_count_30d(country_code=country),                      # int
+                "protest_violence_level": self.geo.protest_violence_level(country_code=country),                        # float, 0-1
+                "diplomatic_event_count_30d": self.geo.diplomatic_event_count_30d(country_code=country),                # int
+                "diplomatic_intensity_avg": self.geo.diplomatic_intensity_avg(country_code=country),                    # float, 0-10 scale
+                "sanctions_count_active": self.geo.sanctions_count_active(country_code=country),                        # int
+                "sanctions_new_30d": self.geo.sanctions_new_30d(country_code=country),                                  # int
+                "sanctions_sector_coverage": self.geo.sanctions_sector_coverage(country_code=country),                  # float, 0-1
+                "governance_wgi_composite": self.geo.governance_wgi_composite(country_code=country),                    # float, -2.5 to +2.5
+                "corruption_perception_index": self.geo.corruption_perception_index(country_code=country),              # int, 0-100
+                "rule_of_law_score": self.geo.rule_of_law_score(country_code=country),                                  # float, -2.5 to +2.5
+                "regulatory_quality": self.geo.regulatory_quality(country_code=country),                                # float, -2.5 to +2.5
+                "democracy_index": self.geo.democracy_index(country_code=country),                                      # float, 0-1
+                "regime_type": self.geo.regime_type(country_code=country),                                              # string: democracy/hybrid/autocracy
+                "press_freedom_score": self.geo.press_freedom_score(country_code=country),                              # int, 0-100
             },
             "security": {
                 "military_spending_gdp": self.sec.military_spending_gdp(),                          # float, percent
@@ -93,32 +93,3 @@ class pipeline:
                 "features_version": "1.0.0",
             }
         }   
-
-if __name__  == '__main__':
-    def eco_risk(country):
-        eco = economic_features()
-        return {
-            "country": f"{country}",
-            "economic": {
-                "gdp_growth_yoy": eco.gdp_growth_yoy(country_code=country, mode='F'),                                        # float, percent
-                "gdp_growth_qoq": eco.gdp_growth_qoq(country_code=country, mode='F'),                                       # float, percent
-                "industrial_production_yoy": eco.industrial_production_yoy(country_code=country, mode='F'),                  # float, percent
-                "inflation_cpi_yoy": eco.inflation_cpi_yoy(country_code=country, mode='F'),                                  # float, percent
-                "inflation_volatility_12m": eco.inflation_volatility_12m(country_code=country, mode='F'),                    # float, rolling std
-                "ppi_yoy": eco.ppi_yoy(country_code=country, mode='F'),                                                      # float, percent
-                "unemployment_rate": eco.unemployment_rate(country_code=country, mode='F'),                                  # float, percent
-                "youth_unemployment": eco.youth_unemployment(country_code=country, mode='F'),                                # float, percent
-                "labor_force_participation": eco.labor_force_participation(country_code=country, mode='F'),                  # float, percent
-                "current_account_gdp_ratio": eco.current_account_gdp_ratio(country_code=country, mode='F'),                  # float, percent of GDP
-                "fx_reserves_months_import": eco.fx_reserves_months_import(country_code=country, mode='F'),                  # float, months
-                "external_debt_gdp_ratio": eco.external_debt_gdp_ratio(country_code=country, mode='F'),                      # float, percent
-                "fiscal_deficit_gdp": eco.fiscal_deficit_gdp(country_code=country, mode='F'),                                # float, percent
-                "government_debt_gdp": eco.government_debt_gdp(country_code=country, mode='F'),                              # float, percent
-                "reer_misalignment": eco.reer_misalignment(country_code=country, mode='F'),                                  # int, basis points
-                "inflation_yoy": eco.inflation_yoy(country_code=country, mode='F'),                                     # float, percentage points
-                "banking_sector_health": eco.banking_sector_health(country_code=country, mode='F'),                          # float, 0-1 score
-                "gdp_per_capita_ppp": eco.gdp_per_capita_ppp(country_code=country, mode='F'),                                # int, USD
-            }
-        }
-
-    print(eco_risk(country='USA'))
