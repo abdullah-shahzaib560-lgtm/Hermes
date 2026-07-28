@@ -386,27 +386,8 @@ class GDELT:
         normalize: bool = True,
         force: bool = False,
     ) -> pd.DataFrame:
-        """Query GDELT for events/articles matching country, theme, and date range.
 
-        Uses the GDELT Doc API (article-level) as primary data source.
 
-        Parameters
-        ----------
-        countries : list[str], optional
-            ISO 3166-1 alpha-3 codes (e.g. ``["UKR", "RUS"]``).
-        themes : list[str], optional
-            Theme groups: ``"PROTEST"``, ``"CONFLICT"``, ``"DIPLOMACY"``,
-            ``"SANCTIONS"``, ``"ASSAULT"``, ``"FIGHT"``, ``"MASS_VIOLENCE"``.
-        start_date, end_date : datetime, optional
-        normalize : bool
-            *True* -> canonical *event* schema; *False* -> raw API response.
-        force : bool
-            Bypass cache.
-
-        Returns
-        -------
-        pd.DataFrame
-        """
         if themes:
             gkg_themes: set[str] = set()
             for t in themes:
