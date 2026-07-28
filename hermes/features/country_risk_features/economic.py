@@ -15,12 +15,19 @@ from hermes.sources.imf import IMF
 def check_iso3(code):
     country = pycountry.countries.get(alpha_3=code.upper())
     if not country:
-        logger.error('The Country Code should be in iso3')
-        raise
+        raise RuntimeError(f'The {code} is not iso3')
 
+def do(mode, data, country):
+    if data.empty:
+        logger.warning(f"No Data for {country}")
+        return empty_result(mode)
+    
+    if mode == 'ML':
+        return data['value']
+    if mode == 'F':
+            return data['value'].iloc[0]
 
 def empty_result(mode: str):
-    """Consistent no-data return: nan for 'F', empty Series for 'ML'."""
     return np.nan if mode == 'F' else pd.Series(dtype=float)
 
 
@@ -40,14 +47,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NY.GDP.MKTP.KD.ZG')
 
-        if data.empty:
-            logger.warning(f"No GDP growth YoY data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data["value"].iloc[0]
-        return data["value"]
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='gdp_growth_qoq',
         group='economic_features',
@@ -88,15 +90,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NV.IND.MANF.KD.ZG')
 
-        if data.empty:
-            logger.warning(f"No industrial production data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'ML':
-            return data['value']
-        if mode == 'F':
-            return data['value'].iloc[0]
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+        
     @feature(
         name='inflation_cpi_yoy',
         group='economic_features',
@@ -107,15 +103,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FP.CPI.TOTL.ZG')
 
-        if data.empty:
-            logger.warning(f"No CPI YoY data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'ML':
-            return data['value']
-        if mode == 'F':
-            return data['value'].iloc[0]
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='inflation_volatility_12m',
         group='economic_features',
@@ -153,15 +143,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.STA', dataflow_id='PPI', key='PPI.IX.A')
 
-        if data.empty:
-            logger.warning(f"No PPI data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+            
     @feature(
         name='inflation_yoy',
         group='economic_features',
@@ -172,15 +156,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.STA', dataflow_id='CPI', key='CPI._T.IX.M')
 
-        if data.empty:
-            logger.warning(f"No inflation YoY data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'ML':
-            return data['value']
-        if mode == 'F':
-            return data['value'].iloc[0]
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='unemployment_rate',
         group='economic_features',
@@ -191,15 +169,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
 
-        if data.empty:
-            logger.warning(f"No unemployment data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'ML':
-            return data['value']
-        if mode == 'F':
-            return data['value'].iloc[0]
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+            
     @feature(
         name='youth_unemployment',
         group='economic_features',
@@ -210,15 +182,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.1524.ZS')
 
-        if data.empty:
-            logger.warning(f"No youth unemployment data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'ML':
-            return data['value']
-        if mode == 'F':
-            return data['value'].iloc[0]
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='labor_force_participation',
         group='economic_features',
@@ -229,15 +195,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.TLF.CACT.ZS')
 
-        if data.empty:
-            logger.warning(f"No labor force participation data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+            
     @feature(
         name='current_account_gdp_ratio',
         group='economic_features',
@@ -248,15 +208,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='BN.CAB.XOKA.GD.ZS')
 
-        if data.empty:
-            logger.warning(f"No current account data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='fx_reserves_months_import',
         group='economic_features',
@@ -267,15 +221,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FI.RES.TOTL.MO')
 
-        if data.empty:
-            logger.warning(f"No FX reserves data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+            
     @feature(
         name='external_debt_gdp_ratio',
         group='economic_features',
@@ -286,15 +234,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='DT.DOD.DECT.GN.ZS')
 
-        if data.empty:
-            logger.warning(f"No external debt data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='fiscal_deficit_gdp',
         group='economic_features',
@@ -305,15 +247,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.RES', dataflow_id='WEO', key='GGXCNL_NGDP')
 
-        if data.empty:
-            logger.warning(f"No fiscal deficit data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='government_debt_gdp',
         group='economic_features',
@@ -324,15 +260,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.RES', dataflow_id='WEO', key='GGXWDG_NGDP')
 
-        if data.empty:
-            logger.warning(f"No government debt data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='reer_misalignment',
         group='economic_features',
@@ -343,15 +273,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.STA', dataflow_id='ER', key='EREER_IX.M')
 
-        if data.empty:
-            logger.warning(f"No REER data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='banking_sector_health',
         group='economic_features',
@@ -362,15 +286,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FB.AST.NPLN.ZS')
 
-        if data.empty:
-            logger.warning(f"No banking sector data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
     @feature(
         name='gdp_per_capita_ppp',
         group='economic_features',
@@ -381,15 +299,9 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NY.GDP.PCAP.PP.CD')
 
-        if data.empty:
-            logger.warning(f"No GDP per capita PPP data for {country_code}")
-            return empty_result(mode)
-
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-
+        d = do(data=data, mode=mode, country=country_code)
+        return d
+    
 
 if __name__ == '__main__':
     eco = economic_features()
