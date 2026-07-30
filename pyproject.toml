@@ -39,4 +39,52 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "aiosqlite>=0.22.1",
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "respx>=0.23.1",
+    "ruff>=0.16.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["hermes"]
+omit = ["tests/*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "S"]
+ignore = ["S101", "N801", "N805", "N806", "N818", "E701", "E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "E501", "N802", "N806", "F841", "F401"]
+"hermes/features/country_risk_features/*" = ["E501", "N801", "N805", "N806", "E731"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+show_error_codes = true
+warn_unused_configs = false
+warn_redundant_casts = false
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hermes.features.country_risk_features.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "hermes.sources.*"
+ignore_errors = true

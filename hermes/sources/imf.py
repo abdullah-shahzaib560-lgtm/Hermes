@@ -1,11 +1,12 @@
-import pandas as pd
-import httpx, time
 import logging
+import time
+from datetime import timedelta
+
+import httpx
+import pandas as pd
 import pycountry
 
 from hermes.core.cache import RawCache
-
-from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,9 @@ def iso3_to_iso2(iso3_code):
 
 
 class IMF:
-
     def __init__(self, cache: RawCache | None = None):
         self._cache = cache or RawCache()
-        self.url: str = 'https://api.imf.org/external/sdmx/3.0/data/dataflow/'
+        self.url: str = "https://api.imf.org/external/sdmx/3.0/data/dataflow/"
 
     def _fetch(
         self,
@@ -29,12 +29,12 @@ class IMF:
         agency: str,
         dataflow_id: str,
         key: str,
-        version: str = '~',
+        version: str = "~",
         timeout: float = 30.0,
-        retries: int = 3
+        retries: int = 3,
     ) -> pd.DataFrame:
 
-        url = f'{self.url}{agency}/{dataflow_id}/{version}/{country}.{key}'
+        url = f"{self.url}{agency}/{dataflow_id}/{version}/{country}.{key}"
         headers = {"Accept": "application/json"}
 
         empty = pd.DataFrame(columns=["date", "indicator_id", "country", "value", "source"])
@@ -49,13 +49,12 @@ class IMF:
             except httpx.ReadTimeout:
                 if attempt == retries - 1:
                     raise
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             except httpx.HTTPStatusError as e:
-
                 if e.response.status_code == 404:
                     logger.warning(f"404: country={country}, dataflow={dataflow_id}, key={key}")
                     return empty
-                logger.error(f'HTTP error: {e.response.status_code}')
+                logger.error(f"HTTP error: {e.response.status_code}")
                 raise
 
         data = r["data"]
@@ -75,10 +74,7 @@ class IMF:
         rows = []
         for series_key, series_obj in dataset["series"].items():
             indices = [int(i) for i in series_key.split(":")]
-            dim_values = {
-                dim["id"]: dim["values"][idx]["id"]
-                for dim, idx in zip(series_dims, indices)
-            }
+            dim_values = {dim["id"]: dim["values"][idx]["id"] for dim, idx in zip(series_dims, indices)}
 
             indicator_id = next(
                 (dim_values[c] for c in INDICATOR_DIM_CANDIDATES if c in dim_values),
@@ -104,10 +100,10 @@ class IMF:
 
         df = pd.DataFrame(rows)
 
-        df.set_index('date', inplace=True)
+        df.set_index("date", inplace=True)
         df.sort_index(ascending=False, inplace=True)
 
-        req = ['indicator_id', 'country', 'value', 'source']
+        req = ["indicator_id", "country", "value", "source"]
         missing = [c for c in req if c not in df.columns]
         if missing:
             logger.warning(f"Missing expected columns {missing} for {dataflow_id}/{key}")
@@ -123,7 +119,7 @@ class IMF:
         key: str,
         timeout: float = 30.0,
         retries: int = 3,
-        force: bool = False
+        force: bool = False,
     ) -> pd.DataFrame:
 
         cache_params = {
