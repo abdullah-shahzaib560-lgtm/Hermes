@@ -8,6 +8,9 @@ import pandas as pd
 from hermes.sources.gdelt import GDELT
 from hermes.sources.world_bank import World_bank
 from hermes.sources.opensanctions import OpenSanction
+from hermes.sources.hdx_cpi import HDXCPI
+
+from hermes.core.feature_decorator import feature
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +19,11 @@ GDELT_HISTORY_START = datetime(2000, 1, 1)
 
 
 class geopolitical_features:
-    def __init__(self, opensanction_api):
+    def __init__(self):
         self._gdelt = GDELT()
         self._wb = World_bank()
-        self._os = OpenSanction(api_key=opensanction_api)
+        # self._os = OpenSanction(api_key=opensanction_api)
+        self._hdxcpi = HDXCPI()
 
     def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
         now = datetime.utcnow()
@@ -56,6 +60,12 @@ class geopolitical_features:
             rolled = daily.rolling(window, min_periods=1).sum()
         return rolled.resample("ME").last()
 
+    @feature(
+        name="conflict_event_count_30d",
+        group="geopolitical_features",
+        deps=["GDELT:CONFLICT"],
+        compute="conflict_event_count_30d from the GDELT",
+    )
     def conflict_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
@@ -67,6 +77,12 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["CONFLICT"], 30))
 
+    @feature(
+        name="conflict_event_count_90d",
+        group="geopolitical_features",
+        deps=["GDELT:CONFLICT"],
+        compute="conflict_event_count_90d from the GDELT",
+    )
     def conflict_event_count_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
@@ -78,6 +94,12 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["CONFLICT"], 90))
 
+    @feature(
+        name="conflict_trend",
+        group="geopolitical_features",
+        deps=["GDELT:CONFLICT"],
+        compute="conflict_trend from the GDELT",
+    )
     def conflict_trend(
         self, country_code: str, mode: str = Literal["F", "ML"]
     ) -> Literal["escalating", "stable", "de-escalating"] | pd.Series:
@@ -118,6 +140,12 @@ class geopolitical_features:
             return "de-escalating"
         return "stable"
 
+    @feature(
+        name="goldstein_scale_avg_30d",
+        group="geopolitical_features",
+        deps=["GDELT:CONFLICT"],
+        compute="goldstein_scale_avg_30d from the GDELT",
+    )
     def goldstein_scale_avg_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
@@ -130,6 +158,12 @@ class geopolitical_features:
         df = self._query(country_code, ["CONFLICT"], 30)
         return float(df["severity"].mean()) if not df.empty else 0.0
 
+    @feature(
+        name="goldstein_scale_trend",
+        group="geopolitical_features",
+        deps=["GDELT:CONFLICT"],
+        compute="goldstein_scale_trend from the GDELT",
+    )
     def goldstein_scale_trend(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
@@ -155,6 +189,12 @@ class geopolitical_features:
         prv = float(prior["severity"].mean()) if not prior.empty else 0.0
         return cur - prv
 
+    @feature(
+        name="battle_deaths_30d",
+        group="geopolitical_features",
+        deps=["GDELT:ASSAULT:FIGHT"],
+        compute="battle_deaths_30d from the GDELT",
+    )
     def battle_deaths_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
@@ -177,6 +217,12 @@ class geopolitical_features:
             return 0
         return int(pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").sum())
 
+    @feature(
+        name="battle_deaths_90d",
+        group="geopolitical_features",
+        deps=["GDELT:ASSAULT:FIGHT"],
+        compute="battle_deaths_90d from the GDELT",
+    )
     def battle_deaths_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
@@ -199,6 +245,12 @@ class geopolitical_features:
             return 0
         return int(pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").sum())
 
+    @feature(
+        name="protest_event_count_30d",
+        group="geopolitical_features",
+        deps=["GDELT:PROTEST"],
+        compute="protest_event_count_30d from the GDELT",
+    )
     def protest_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["PROTEST"])
@@ -210,6 +262,12 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["PROTEST"], 30))
 
+    @feature(
+        name="protest_violence_level",
+        group="geopolitical_features",
+        deps=["GDELT:PROTEST"],
+        compute="protest_violence_level from the GDELT",
+    )
     def protest_violence_level(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["PROTEST"])
@@ -227,6 +285,12 @@ class geopolitical_features:
         s = float(df["severity"].mean())
         return float(max(0.0, min(1.0, -s / 10.0)))
 
+    @feature(
+        name="diplomatic_event_count_30d",
+        group="geopolitical_features",
+        deps=["GDLET:DIPLOMACY"],
+        compute="diplomatic_event_count_30d from the GDELT",
+    )
     def diplomatic_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
@@ -238,6 +302,12 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["DIPLOMACY"], 30))
 
+    @feature(
+        name="diplomatic_intensity_avg",
+        group="geopolitical_features",
+        deps=["GDLET:DIPLOMACY"],
+        compute="diplomatic_intensity_avg from the GDELT",
+    )
     def diplomatic_intensity_avg(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
@@ -257,6 +327,12 @@ class geopolitical_features:
         s.name = name
         return s
 
+    @feature(
+        name="rule_of_law_score",
+        group="geopolitical_features",
+        deps=["world_bank:RL.EST"],
+        compute="rule_of_law_score from the World Bank data",
+    )
     def rule_of_law_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         data = self._wb.fetch(country_code=country_code, indicator_code="RL.EST")
         if data.empty:
@@ -265,6 +341,13 @@ class geopolitical_features:
             return self._wb_annual_to_monthly(data, "rule_of_law_score")
         return float(data["value"].iloc[0])
 
+
+    @feature(
+        name="regulatory_quality",
+        group="geopolitical_features",
+        deps=["world_bank:RQ.EST"],
+        compute="regulatory_quality from the World Bank data",
+    )
     def regulatory_quality(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         data = self._wb.fetch(country_code=country_code, indicator_code="RQ.EST")
         if data.empty:
@@ -273,6 +356,12 @@ class geopolitical_features:
             return self._wb_annual_to_monthly(data, "regulatory_quality")
         return float(data["value"].iloc[0])
 
+    @feature(
+        name="governance_wgi_composite",
+        group="geopolitical_features",
+        deps=[f"world_bank:{WGI_INDICATORS}"],
+        compute="governance_wgi_composite from the World Bank data",
+    )
     def governance_wgi_composite(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "F":
             values = []
@@ -293,6 +382,12 @@ class geopolitical_features:
         composite.name = "governance_wgi_composite"
         return composite
 
+    @feature(
+        name="sanctions_count_active",
+        group="geopolitical_features",
+        deps=["opensanction:us_ofac_sdn"],
+        compute="sanctions_count_active from the OpenSanction",
+    )
     def sanctions_count_active(self, country_code: str) -> int:
         data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         active_count = 0
@@ -303,7 +398,12 @@ class geopolitical_features:
 
         return active_count
 
-
+    @feature(
+        name="sanctions_new_30d",
+        group="geopolitical_features",
+        deps=["opensanction:us_ofac_sdn"],
+        compute="sanctions_new_30d from the OpenSanction",
+    )
     def sanctions_new_30d(self, country_code: str) -> int:
         from datetime import datetime, timedelta
         thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -315,7 +415,13 @@ class geopolitical_features:
                 new_count += 1
         return new_count
 
-    def sanctions_sector_coverage(self, country_code: str) -> float:
+    @feature(
+        name="sanctions_sector_coverage",
+        group="geopolitical_features",
+        deps=["opensanction:us_ofac_sdn"],
+        compute="sanctions_sector_coverage from the OpenSanction",
+    )
+    def sanctions_sector_coverage(self, country_code: str) -> float | pd.Series:
         data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         sectors = set()
         for result in data.get("results", []):
@@ -324,14 +430,62 @@ class geopolitical_features:
 
         return len(sectors) / 10 * 100
 
+    @feature(
+        name="corruption_perception_index",
+        group="geopolitical_features",
+        deps=["world_bank:SL.TLF.CACT.ZS"],
+        compute="corruption_perception_index from the orld HDX CPI downloaded dataset",
+    )
     def corruption_perception_index(self, country_code: str, mode: str = "F") -> int:
-        return 0
+        data = self._hdxcpi.fetch(country=country_code)
+        
+        if data.empty:
+            return 0 if mode == 'F' else pd.Series(dtype='float64')
+        data = data.set_index('year')
+        data['score'] = pd.to_numeric(data['score'], errors='coerce')
+        data.sort_index(ascending=False ,inplace=True)
+        
+        if mode == 'F':
+            return float(data['score'].iloc[0])
+            
+        if mode == 'ML':
+            score_series = data['score'].resample('MS').interpolate()   
+            score_series.index.name = None         
+            return score_series.reset_index(drop=True)
 
+    @feature(
+        name="labor_force_participation",
+        group="geopolitical_features",
+        deps=["world_bank:SL.TLF.CACT.ZS"],
+        compute="labor_force_participation from the World Bank data",
+    )
     def democracy_index(self, country_code: str, mode: str = "F") -> float:
         return 0.0
 
+    @feature(
+        name="labor_force_participation",
+        group="geopolitical_features",
+        deps=["world_bank:SL.TLF.CACT.ZS"],
+        compute="labor_force_participation from the World Bank data",
+    )
     def regime_type(self, country_code: str, mode: str = "F") -> Literal["democracy", "hybrid", "autocracy"]:
         return "hybrid"
 
+    @feature(
+        name="labor_force_participation",
+        group="geopolitical_features",
+        deps=["world_bank:SL.TLF.CACT.ZS"],
+        compute="labor_force_participation from the World Bank data",
+    )
     def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
         return 0
+
+if __name__ == '__main__':
+    geo = geopolitical_features()
+    print('='*60)
+    data = geo.corruption_perception_index('USA', 'F')
+    print(data)
+    print('='*60)
+    dataa = geo.corruption_perception_index('USA', 'ML')
+    print(f'The data type {type(dataa)}')
+    print(dataa)
