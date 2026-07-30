@@ -17,15 +17,13 @@ def check_iso3(code):
     if not country:
         raise RuntimeError(f'The {code} is not iso3')
 
-def do(mode, data, country):
+def check_empty(mode, data, country):
     if data.empty:
         logger.warning(f"No Data for {country}")
         return empty_result(mode)
-    
-    if mode == 'ML':
-        return data['value']
-    if mode == 'F':
-            return data['value'].iloc[0]
+
+    return data
+
 
 def empty_result(mode: str):
     return np.nan if mode == 'F' else pd.Series(dtype=float)
@@ -47,7 +45,7 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NY.GDP.MKTP.KD.ZG')
 
-        d = do(data=data, mode=mode, country=country_code)
+        d = check_empty(data=data, mode=mode, country=country_code)
         return d
     
     @feature(
@@ -70,15 +68,17 @@ class economic_features:
         data = data.set_index("date")
         df = data[["value"]].resample("QE").interpolate(method="linear")
         df["gdp_growth_qoq"] = df["value"].pct_change() * 100
-
+        
         for col in ["indicator_id", "indicator_name", "country", "source"]:
             df[col] = meta[col]
 
         df = df.drop(columns=["value"]).reset_index().sort_values("date", ascending=False)
 
         if mode == 'F':
-            return df["gdp_growth_qoq"].iloc[0]
-        return df['gdp_growth_qoq']
+            return df['gdp_growth_qoq'].iloc[0]
+        if mode == 'ML':
+            df['value'] = df['gdp_growth_qoq'].resample('MS').interpolate()
+            return df['value']
 
     @feature(
         name='industrial_production_yoy',
@@ -87,11 +87,21 @@ class economic_features:
         compute='industrial_production_yoy from the World Bank data'
     )
     def industrial_production_yoy(self, country_code: str, mode: str = Literal['ML', 'F']) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NV.IND.MANF.KD.ZG')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
+        data = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return float(data['value'].iloc[0])
+            
+        if mode == 'ML':
+            data = data.set_index('date')
+
+            data.index = pd.to_datetime(data.index)
+            
+            data = data.sort_index()        
+            data = data.resample('MS').ffill()
+            return data['value']
+
         
     @feature(
         name='inflation_cpi_yoy',
@@ -100,12 +110,23 @@ class economic_features:
         compute='inflation_cpi_yoy from the World Bank data'
     )
     def inflation_cpi_yoy(self, country_code: str, mode: str = Literal['ML', 'F']) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FP.CPI.TOTL.ZG')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        data = check_empty(data=data, mode=mode, country=country_code)
+        
+        if mode == 'F':
+            return float(data['value'].iloc[0])
+            
+        if mode == 'ML':
+            data = data.set_index('date')
+            
+            data.index = pd.to_datetime(data.index)
+            
+            data = data.sort_index()        
+            data = data.resample('MS').interpolate()
+            return data['value']
+
+        
     @feature(
         name='inflation_volatility_12m',
         group='economic_features',
@@ -116,10 +137,7 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FP.CPI.TOTL')
 
-        if data.empty:
-            logger.warning(f"No CPI data for {country_code}")
-            return empty_result(mode)
-
+        data = check_empty(mode=mode, country=country_code, data=data)
         data["date"] = pd.to_datetime(data["date"].astype(str) + "-12-31")
         data = data.sort_values("date").set_index("date")
 
@@ -130,8 +148,9 @@ class economic_features:
         result = monthly["inflation_volatility_12m"].dropna().sort_index(ascending=False)
 
         if mode == 'F':
-            return result.iloc[0] if not result.empty else np.nan
-        return result
+            return result.iloc[0]
+        if mode == 'ML':
+            return result
 
     @feature(
         name='ppi_yoy',
@@ -143,8 +162,17 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.STA', dataflow_id='PPI', key='PPI.IX.A')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
+        data = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']
+
+
             
     @feature(
         name='inflation_yoy',
@@ -156,8 +184,15 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.STA', dataflow_id='CPI', key='CPI._T.IX.M')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']
     
     @feature(
         name='unemployment_rate',
@@ -169,8 +204,15 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.TOTL.ZS')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']
             
     @feature(
         name='youth_unemployment',
@@ -182,9 +224,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.UEM.1524.ZS')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']
+            
     @feature(
         name='labor_force_participation',
         group='economic_features',
@@ -195,9 +244,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='SL.TLF.CACT.ZS')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-            
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']            
+
     @feature(
         name='current_account_gdp_ratio',
         group='economic_features',
@@ -208,9 +264,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='BN.CAB.XOKA.GD.ZS')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
+
     @feature(
         name='fx_reserves_months_import',
         group='economic_features',
@@ -221,22 +284,36 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FI.RES.TOTL.MO')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-            
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']            
+
     @feature(
         name='external_debt_gdp_ratio',
         group='economic_features',
-        deps=['world_bank:DT.DOD.DECT.GN.ZS'],
+        deps=['world_bank:DT.check_emptyD.DECT.GN.ZS'],
         compute='external_debt_gdp_ratio from the World Bank data'
     )
     def external_debt_gdp_ratio(self, country_code: str, mode: str = Literal['ML', 'F']) -> float | pd.Series:
         check_iso3(code=country_code)
-        data = self.wb.fetch(country_code=country_code, indicator_code='DT.DOD.DECT.GN.ZS')
+        data = self.wb.fetch(country_code=country_code, indicator_code='DT.check_emptyD.DECT.GN.ZS')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
+
     @feature(
         name='fiscal_deficit_gdp',
         group='economic_features',
@@ -247,9 +324,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.RES', dataflow_id='WEO', key='GGXCNL_NGDP')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
+
     @feature(
         name='government_debt_gdp',
         group='economic_features',
@@ -260,9 +344,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.RES', dataflow_id='WEO', key='GGXWDG_NGDP')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        data = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
+
     @feature(
         name='reer_misalignment',
         group='economic_features',
@@ -273,9 +364,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency='IMF.STA', dataflow_id='ER', key='EREER_IX.M')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
+
     @feature(
         name='banking_sector_health',
         group='economic_features',
@@ -286,9 +384,16 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='FB.AST.NPLN.ZS')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
+        
     @feature(
         name='gdp_per_capita_ppp',
         group='economic_features',
@@ -299,12 +404,19 @@ class economic_features:
         check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code='NY.GDP.PCAP.PP.CD')
 
-        d = do(data=data, mode=mode, country=country_code)
-        return d
-    
+        d = check_empty(data=data, mode=mode, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index('date')
+            data.index = pd.to_datetime('date')
+            data.sort_index(inplace=True)
+            data = data.resample('MS').interpolate()
+            return data['value']    
 
 if __name__ == '__main__':
     eco = economic_features()
     wb = World_bank()
-    data = wb.fetch(country_code='PAK', indicator_code='FP.CPI.TOTL')
+    data = eco.inflation_volatility_12m('USA', 'ML')
+    data.to_csv('data/data.csv')
     print(data)
