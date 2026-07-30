@@ -1,15 +1,30 @@
 from hermes.core.cache import RawCache
 from hermes.features import pipeline as features_pipeline
+from hermes.sources.gdelt import GDELT
+from hermes.sources.imf import IMF
+from hermes.sources.opensanctions import OpenSanction
+from hermes.sources.world_bank import World_bank
 
 
 class Hermes:
     def __init__(
         self,
+        opensanction_api: str,
+        new_data_api: str,
         cache_dir: str | None = None,
         use_cache: bool = True,
+        
     ):
+        if not opensanction_api or new_data_api:
+            raise KeyError('Add Opensanction API, NewsDataAPI for full usage')
+        
         self._cache = RawCache(cache_dir=cache_dir) if use_cache else None
         self.features = features_pipeline()
+        self.gdelt = GDELT()
+        self.imf = IMF()
+        self.opensanction = OpenSanction(api_key=opensanction_api)
+        self.world_bank = World_bank()
+
 
     def clear_cache(self, older_than: str | None = None):
         if self._cache:

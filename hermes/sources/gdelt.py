@@ -13,13 +13,11 @@ from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
 
-# ── Canonical event schema ──
 CANONICAL_COLUMNS = [
     "event_id", "date", "country_iso3", "event_type",
     "severity", "lat", "lon", "source",
 ]
 
-# ── GKG theme -> event_type label ──
 GKG_EVENT_TYPES: dict[str, str] = {
     "PROTEST": "protest",
     "TAX_FNCACT_Protest": "protest",
@@ -54,7 +52,6 @@ EVENT_THEMES: dict[str, list[str]] = {
     "MASS_VIOLENCE": ["TAX_FNCACT_Assault", "TAX_FNCACT_Fight"],
 }
 
-# ── Country code mapping ──
 COUNTRIES_ISO3 = [
     "AFG","ALB","DZA","AND","AGO","ATG","ARG","ARM","AUS","AUT",
     "AZE","BHS","BHR","BGD","BRB","BLR","BEL","BLZ","BEN","BTN",
@@ -102,7 +99,6 @@ FIPS = [
 FIPS_TO_ISO3 = dict(zip(FIPS, COUNTRIES_ISO3))
 ISO3_TO_FIPS = {v: k for k, v in FIPS_TO_ISO3.items()}
 
-# GDELT 2.0 raw CSV columns (61 cols, fixed order)
 GDELT_EVENT_COLUMNS = [
     "GlobalEventID","SQLDATE","MonthYear","Year","FractionDate",
     "Actor1Code","Actor1Name","Actor1CountryCode","Actor1KnownGroupCode",
@@ -136,28 +132,21 @@ class GDELT:
         self._cache = cache or RawCache()
         self._master_df: pd.DataFrame | None = None
 
-    # ──────────────────────────────────────────────
-    #  Canonical-schema normaliser
-    # ──────────────────────────────────────────────
-
     @staticmethod
     def _to_canonical(df: pd.DataFrame) -> pd.DataFrame:
-        """Convert raw GDELT data to the canonical *event* schema.
 
-        Columns: event_id, date, country_iso3, event_type, severity, lat, lon, source.
-        """
         if df.empty:
             return pd.DataFrame(columns=CANONICAL_COLUMNS)
 
         out = pd.DataFrame()
 
-        # event_id
         for c in ("url", "GlobalEventID", "articleid"):
             if c in df.columns:
                 out["event_id"] = df[c].astype(str)
                 break
+
         if "event_id" not in out.columns:
-            # fallback: hash the first available unique field
+
             for c in ("title", "SOURCEURL"):
                 if c in df.columns:
                     out["event_id"] = df[c].apply(
@@ -165,7 +154,6 @@ class GDELT:
                     )
                     break
 
-        # date
         if "date" in df.columns:
             out["date"] = pd.to_datetime(df["date"], errors="coerce")
         elif "seendate" in df.columns:
@@ -175,7 +163,6 @@ class GDELT:
         elif "SQLDATE" in df.columns:
             out["date"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d", errors="coerce")
 
-        # country_iso3  (GDELT uses FIPS 10-4 internally)
         if "ActionGeo_CountryCode" in df.columns:
             out["country_iso3"] = (
                 df["ActionGeo_CountryCode"]
@@ -189,7 +176,6 @@ class GDELT:
                 .fillna(df["sourcecountry"])
             )
 
-        # event_type — from GKG themes or CAMEO root code
         if "themes" in df.columns:
             out["event_type"] = df["themes"].apply(_classify_themes)
         elif "EventRootCode" in df.columns:
@@ -204,13 +190,11 @@ class GDELT:
             rc = pd.to_numeric(df["EventRootCode"], errors="coerce").fillna(-1).astype(int)
             out["event_type"] = rc.map(_CAMEO).fillna("unknown")
 
-        # severity (tone or GoldsteinScale)
         for c in ("tone", "GoldsteinScale", "goldsteinscale"):
             if c in df.columns:
                 out["severity"] = pd.to_numeric(df[c], errors="coerce")
                 break
 
-        # lat / lon
         for lat_c, lon_c in (
             ("ActionGeo_Lat", "ActionGeo_Long"),
             ("actiongeolat", "actiongeolong"),
@@ -225,10 +209,6 @@ class GDELT:
         out = out[[c for c in CANONICAL_COLUMNS if c in out.columns]]
         out = out.dropna(subset=["date"]).reset_index(drop=True)
         return out
-
-    # ──────────────────────────────────────────────
-    #  GDELT Doc API (primary — always works)
-    # ──────────────────────────────────────────────
 
     def _fetch_via_doc_api(
         self,
@@ -281,10 +261,6 @@ class GDELT:
         df = pd.DataFrame(articles)
         logger.info("GDELT Doc API returned %d articles", len(df))
         return df
-
-    # ──────────────────────────────────────────────
-    #  Raw export file download (fallback)
-    # ──────────────────────────────────────────────
 
     def _load_master_list(self, timeout: float = 60.0) -> pd.DataFrame:
         if self._master_df is not None:
@@ -373,10 +349,6 @@ class GDELT:
         full["SQLDATE"] = pd.to_datetime(full["SQLDATE"], format="%Y%m%d")
         return full.sort_values("SQLDATE", ascending=False).reset_index(drop=True)
 
-    # ──────────────────────────────────────────────
-    #  Public API
-    # ──────────────────────────────────────────────
-
     def query_events(
         self,
         countries: list[str] | None = None,
@@ -420,28 +392,8 @@ class GDELT:
             df = self._to_canonical(df)
         return df
 
-    def fetch(
-        self,
-        country_code: str,
-        start_date: datetime,
-        end_date: datetime,
-        force: bool = False,
-    ) -> pd.DataFrame:
-        """Convenience wrapper -- single country, all themes (canonical schema)."""
-        return self.query_events(
-            countries=[country_code],
-            start_date=start_date,
-            end_date=end_date,
-            force=force,
-        )
-
-
-# ──────────────────────────────────────────────
-#  Module-level helpers
-# ──────────────────────────────────────────────
 
 def _classify_themes(themes_list: Any) -> str:
-    """Map a list of GKG theme strings to a single event_type label."""
     if not isinstance(themes_list, list):
         themes_list = str(themes_list).split(";")
     for t in themes_list:
