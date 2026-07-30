@@ -25,7 +25,7 @@ class TestOpenSanction:
             status_code=200,
             content=b'{"results": []}',
         )
-        os._fetch("USA", facets="", changed_since=None, topics="")
+        os.fetch("USA", dataset="default", limit=0)
         assert len(respx.calls) == 1
 
     @respx.mock
@@ -35,8 +35,8 @@ class TestOpenSanction:
             status_code=404,
             content=b"{}",
         )
-        df = os._fetch("USA", facets="", changed_since=None, topics="")
-        assert df.empty
+        result = os.fetch("USA", dataset="default", limit=0)
+        assert result == {}
 
     @respx.mock
     def test_fetch_http_error(self, tmp_cache):
@@ -46,9 +46,9 @@ class TestOpenSanction:
             content=b"{}",
         )
         with pytest.raises(httpx.HTTPStatusError):
-            os._fetch("USA", facets="", changed_since=None, topics="")
+            os.fetch("USA", dataset="default", limit=0)
 
     def test_no_dataset_raises(self, tmp_cache):
         os = OpenSanction(cache=tmp_cache, api_key="test-key")
         with pytest.raises(ValueError, match="dataset parameter is empty"):
-            os._fetch("USA", facets="", changed_since=None, topics="", dataset="")
+            os.fetch("USA", dataset="", limit=0)
