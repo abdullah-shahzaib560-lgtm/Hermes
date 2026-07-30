@@ -1,5 +1,9 @@
 COUNTRIES_ISO3 = [
-    "AFG","ALB", "DZA", "AND","AGO",
+    "AFG",
+    "ALB",
+    "DZA",
+    "AND",
+    "AGO",
     "ATG",
     "ARG",
     "ARM",
