@@ -1,6 +1,6 @@
+import json
 import logging
 import time
-import json
 
 import httpx
 import pycountry
@@ -108,6 +108,7 @@ class OpenSanction:
 
 if __name__ == "__main__":
     import os
+
     from dotenv import load_dotenv
 
     load_dotenv()

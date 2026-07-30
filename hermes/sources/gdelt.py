@@ -10,14 +10,14 @@ import httpx
 import pandas as pd
 
 from hermes.core.cache import RawCache
-from hermes.sources.lib.fips import ISO3_TO_FIPS, FIPS_TO_ISO3, COUNTRIES_ISO3
+from hermes.sources.lib.fips import FIPS_TO_ISO3, ISO3_TO_FIPS
 from hermes.sources.lib.gdlet_help import (
     CANONICAL_COLUMNS,
+    EVENT_THEMES,
     GDELT_DOC_API,
     GDELT_EVENT_COLUMNS,
     GDELT_MASTER,
     GKG_EVENT_TYPES,
-    EVENT_THEMES,
 )
 
 logger = logging.getLogger(__name__)
