@@ -7,6 +7,7 @@ import pandas as pd
 
 from hermes.sources.gdelt import GDELT
 from hermes.sources.world_bank import World_bank
+from hermes.sources.opensanctions import OpenSanction
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +16,10 @@ GDELT_HISTORY_START = datetime(2000, 1, 1)
 
 
 class geopolitical_features:
-    def __init__(self):
+    def __init__(self, opensanction_api):
         self._gdelt = GDELT()
         self._wb = World_bank()
+        self._os = OpenSanction(api_key=opensanction_api)
 
     def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
         now = datetime.utcnow()
@@ -291,14 +293,36 @@ class geopolitical_features:
         composite.name = "governance_wgi_composite"
         return composite
 
-    def sanctions_count_active(self, country_code: str, mode: str = "F") -> int:
-        return 0
+    def sanctions_count_active(self, country_code: str) -> int:
+        data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
+        active_count = 0
+        for result in data.get("results", []):
+            status = result.get("properties", {}).get("status", [])
+            if "Active" in status:
+                active_count += 1
 
-    def sanctions_new_30d(self, country_code: str, mode: str = "F") -> int:
-        return 0
+        return active_count
 
-    def sanctions_sector_coverage(self, country_code: str, mode: str = "F") -> float:
-        return 0.0
+
+    def sanctions_new_30d(self, country_code: str) -> int:
+        from datetime import datetime, timedelta
+        thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
+        new_count = 0
+        for result in data.get("results", []):
+            created = result.get("properties", {}).get("createdAt", [])
+            if created and created[0] >= thirty_days_ago:
+                new_count += 1
+        return new_count
+
+    def sanctions_sector_coverage(self, country_code: str) -> float:
+        data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
+        sectors = set()
+        for result in data.get("results", []):
+            topics = result.get("properties", {}).get("topics", [])
+            sectors.update(topics)
+
+        return len(sectors) / 10 * 100
 
     def corruption_perception_index(self, country_code: str, mode: str = "F") -> int:
         return 0

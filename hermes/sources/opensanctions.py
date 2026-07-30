@@ -1,115 +1,148 @@
 import logging
-import os
 import time
-from datetime import timedelta
+import json
 
 import httpx
-import pandas as pd
 import pycountry
 from dotenv import load_dotenv
-
-from hermes.core.cache import RawCache
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-Api = os.getenv("OPEN_SANCTIONS_API")
 
 
-def iso3_to_iso2(iso3_code):
+def iso3_to_iso2(iso3_code: str) -> str:
     try:
-        return pycountry.countries.get(alpha_3=iso3_code.upper()).alpha_2
+        country = pycountry.countries.get(alpha_3=iso3_code.upper())
+        return country.alpha_2 if country else None
     except AttributeError:
-        return "Not Found"
+        return None
 
 
 class OpenSanction:
-    def __init__(self, api_key: str, cache: RawCache | None = None):
-        self._url = "https://api.opensanctions.org"
-        self._cache = cache or RawCache()
-        self._api = api_key
-
-    def _fetch(
-        self,
-        country: str,
-        facets: str,
-        changed_since,
-        topics: str,
-        dataset: str = "default",
-        limit: int = 0,
-        retries: int = 3,
-        timeout: float = 30.0,
-    ) -> pd.DataFrame:
-
-        country_iso3 = iso3_to_iso2(iso3_code=country)
-        if not dataset:
-            raise ValueError("The dataset parameter is empty")
-        url = f"{self._url}/search/{dataset}"
-
-        params = {"countries": country_iso3, "limit": limit}
-
-        if facets:
-            params["facets"] = facets
-        if topics:
-            params["topics"] = topics
-        if changed_since:
-            params["changed_since"] = changed_since
-
-        empty = pd.DataFrame(columns=["date", "indicator_id", "country", "value", "source"])
-
-        r = None
-        for attempt in range(retries):
-            try:
-                resp = httpx.get(url=url, params=params, timeout=timeout, follow_redirects=True)
-                resp.raise_for_status()
-                r = resp.content
-                r = r.decode()
-                break
-            except httpx.ReadTimeout:
-                if attempt == retries - 1:
-                    raise
-                time.sleep(2**attempt)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.warning(f"404: country={country}")
-                    return empty
-                logger.error(f"HTTP error: {e.response.status_code}")
-                raise
-        logger.debug(f"OpenSanctions response length: {len(r)}")
-        return empty
+    def __init__(self, api_key: str):
+        self._base_url = "https://api.opensanctions.org"
+        self._api_key = api_key
+        self._headers = {
+            "Authorization": f"ApiKey {api_key}",
+            "Accept": "application/json"
+        }
 
     def fetch(
         self,
         country: str,
-        facets: str,
-        changed_since,
-        topics: str,
-        dataset: str = "default",
-        limit: int = 0,
+        dataset: str,
+        limit: int = 50,
+        changed_since: str = None,
+        topics: str = None,
+        facets: str = None,
         retries: int = 3,
         timeout: float = 30.0,
-        force: bool = False,
-    ) -> pd.DataFrame:
-        cache_params = {"country": country, "dataset": dataset, "limit": limit}
+    ) -> dict:
+        """
+        Fetch raw sanctions data from OpenSanctions API.
+        Returns raw JSON response as dict.
+        
+        Common datasets:
+        - us_ofac_sdn: US OFAC Specially Designated Nationals
+        - eu_fsf: EU Financial Sanctions Files
+        - uk_fcdos: UK FCDO Sanctions List
+        - un_sc: UN Security Council Sanctions
+        """
+        country_iso2 = iso3_to_iso2(country)
+        if not country_iso2:
+            logger.warning(f"Invalid country code: {country}")
+            return {}
 
-        return self._cache.get_or_fetch(
-            source="imf",
-            params=cache_params,
-            fetch_fn=lambda: self._fetch(
-                country=country,
-                facets=facets,
-                changed_since=changed_since,
-                topics=topics,
-                dataset=dataset,
-                timeout=timeout,
-                retries=retries,
-            ),
-            force=force,
-            ttl=timedelta(days=7),
-        )
+        url = f"{self._base_url}/search/{dataset}"
+
+        params = {
+            "countries": country_iso2,
+            "limit": min(limit, 1000)
+        }
+
+        if changed_since:
+            params["changed_since"] = changed_since
+        if topics:
+            params["topics"] = topics
+        if facets:
+            params["facets"] = facets
+
+        logger.info(f"Fetching from: {url}")
+        logger.info(f"Params: {params}")
+
+        for attempt in range(retries):
+            try:
+                resp = httpx.get(
+                    url=url,
+                    params=params,
+                    headers=self._headers,
+                    timeout=timeout,
+                    follow_redirects=True
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                logger.info(f"Fetched {data.get('total', {}).get('value', 0)} results")
+                return data
+                
+            except httpx.ReadTimeout:
+                if attempt == retries - 1:
+                    logger.error(f"Timeout after {retries} attempts")
+                    raise
+                wait_time = 2 ** attempt
+                logger.warning(f"Timeout, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+                
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.error(f"Dataset '{dataset}' not found")
+                    return {}
+                if attempt == retries - 1:
+                    raise
+                wait_time = 2 ** attempt
+                logger.warning(f"HTTP {e.response.status_code}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+                
+            except Exception as e:
+                if attempt == retries - 1:
+                    raise
+                wait_time = 2 ** attempt
+                logger.warning(f"Error: {e}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+
+        return {}
 
 
 if __name__ == "__main__":
-    Os = OpenSanction(api_key=Api)
-    data = Os._fetch(country="USA", facets="", changed_since=None, topics="")
-    print(data)
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    API_KEY = os.getenv("OPEN_SANCTIONS_API")
+    
+    if not API_KEY:
+        print("Please set OPEN_SANCTIONS_API environment variable")
+        exit(1)
+    
+    os_client = OpenSanction(api_key=API_KEY)
+    
+    # Test with US OFAC SDN list
+    print("Fetching USA sanctions from US OFAC SDN list...")
+    data = os_client.fetch(
+        country="USA",
+        dataset="us_ofac_sdn",
+        limit=10
+    )
+    
+    if data:
+        print(f"\nResponse keys: {list(data.keys())}")
+        print(f"Total results: {data.get('total', {}).get('value', 0)}")
+        
+        results = data.get("results", [])
+        print(f"Results returned: {len(results)}")
+        
+        if results:
+            print("\nFirst result:")
+            print(json.dumps(results[0], indent=2))
+    else:
+        print("No data returned")
