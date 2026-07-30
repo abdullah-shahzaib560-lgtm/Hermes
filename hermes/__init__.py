@@ -13,11 +13,10 @@ class Hermes:
         new_data_api: str,
         cache_dir: str | None = None,
         use_cache: bool = True,
-        
     ):
         if not opensanction_api or new_data_api:
-            raise KeyError('Add Opensanction API, NewsDataAPI for full usage')
-        
+            raise KeyError("Add Opensanction API, NewsDataAPI for full usage")
+
         self._cache = RawCache(cache_dir=cache_dir) if use_cache else None
         self.features = features_pipeline()
         self.gdelt = GDELT()
@@ -25,10 +24,10 @@ class Hermes:
         self.opensanction = OpenSanction(api_key=opensanction_api)
         self.world_bank = World_bank()
 
-
     def clear_cache(self, older_than: str | None = None):
         if self._cache:
             from datetime import timedelta
+
             td = None
             if older_than:
                 unit = older_than[-1]

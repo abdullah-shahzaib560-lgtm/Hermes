@@ -1,8 +1,10 @@
-import numpy as np
-import pandas as pd
 import logging
 from datetime import datetime, timedelta
 from typing import Literal
+
+import numpy as np
+import pandas as pd
+
 from hermes.sources.gdelt import GDELT
 from hermes.sources.world_bank import World_bank
 
@@ -13,11 +15,9 @@ GDELT_HISTORY_START = datetime(2000, 1, 1)
 
 
 class geopolitical_features:
-
     def __init__(self):
         self._gdelt = GDELT()
         self._wb = World_bank()
-
 
     def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
         now = datetime.utcnow()
@@ -28,19 +28,21 @@ class geopolitical_features:
             end_date=now,
         )
 
-
     def _gdelt_ml_raw(self, country: str, themes: list[str]) -> pd.DataFrame:
         now = datetime.utcnow()
         raw = self._gdelt.query_events(
-            countries=[country], themes=themes,
-            start_date=GDELT_HISTORY_START, end_date=now,
+            countries=[country],
+            themes=themes,
+            start_date=GDELT_HISTORY_START,
+            end_date=now,
             normalize=False,
         )
         if raw.empty:
             return pd.DataFrame()
         raw["date"] = pd.to_datetime(
             raw.get("seendate", raw.get("SQLDATE", pd.Series())).astype(str).str[:14],
-            format="%Y%m%d%H%M%S", errors="coerce",
+            format="%Y%m%d%H%M%S",
+            errors="coerce",
         )
         return raw.dropna(subset=["date"])
 
@@ -52,8 +54,7 @@ class geopolitical_features:
             rolled = daily.rolling(window, min_periods=1).sum()
         return rolled.resample("ME").last()
 
-
-    def conflict_event_count_30d(self, country_code: str, mode: str = Literal['F', 'ML']) -> int | pd.Series:
+    def conflict_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
@@ -64,7 +65,7 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["CONFLICT"], 30))
 
-    def conflict_event_count_90d(self, country_code: str, mode: str = Literal['F', 'ML']) -> int | pd.Series:
+    def conflict_event_count_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
@@ -75,7 +76,9 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["CONFLICT"], 90))
 
-    def conflict_trend(self, country_code: str, mode: str = Literal['F', 'ML']) -> Literal["escalating", "stable", "de-escalating"] | pd.Series:
+    def conflict_trend(
+        self, country_code: str, mode: str = Literal["F", "ML"]
+    ) -> Literal["escalating", "stable", "de-escalating"] | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
@@ -85,22 +88,35 @@ class geopolitical_features:
             monthly = rolling_30.resample("ME").last()
             prior = monthly.shift(1).fillna(1).replace(0, 1)
             ratio = monthly / prior
+
             def classify(r):
-                if r > 1.2: return "escalating"
-                if r < 0.8: return "de-escalating"
+                if r > 1.2:
+                    return "escalating"
+                if r < 0.8:
+                    return "de-escalating"
                 return "stable"
+
             s = ratio.apply(classify)
             s.name = "conflict_trend"
             return s
         now = datetime.utcnow()
-        recent = self._gdelt.query_events(countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now)
-        prior = self._gdelt.query_events(countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=60), end_date=now - timedelta(days=30))
+        recent = self._gdelt.query_events(
+            countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now
+        )
+        prior = self._gdelt.query_events(
+            countries=[country_code],
+            themes=["CONFLICT"],
+            start_date=now - timedelta(days=60),
+            end_date=now - timedelta(days=30),
+        )
         ratio = len(recent) / max(len(prior), 1)
-        if ratio > 1.2: return "escalating"
-        if ratio < 0.8: return "de-escalating"
+        if ratio > 1.2:
+            return "escalating"
+        if ratio < 0.8:
+            return "de-escalating"
         return "stable"
 
-    def goldstein_scale_avg_30d(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def goldstein_scale_avg_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
@@ -112,7 +128,7 @@ class geopolitical_features:
         df = self._query(country_code, ["CONFLICT"], 30)
         return float(df["severity"].mean()) if not df.empty else 0.0
 
-    def goldstein_scale_trend(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def goldstein_scale_trend(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
@@ -124,13 +140,20 @@ class geopolitical_features:
             s.name = "goldstein_scale_trend"
             return s
         now = datetime.utcnow()
-        recent = self._gdelt.query_events(countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now)
-        prior = self._gdelt.query_events(countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=60), end_date=now - timedelta(days=30))
+        recent = self._gdelt.query_events(
+            countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now
+        )
+        prior = self._gdelt.query_events(
+            countries=[country_code],
+            themes=["CONFLICT"],
+            start_date=now - timedelta(days=60),
+            end_date=now - timedelta(days=30),
+        )
         cur = float(recent["severity"].mean()) if not recent.empty else 0.0
         prv = float(prior["severity"].mean()) if not prior.empty else 0.0
         return cur - prv
 
-    def battle_deaths_30d(self, country_code: str, mode: str = Literal['F', 'ML']) -> int | pd.Series:
+    def battle_deaths_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
             if raw.empty:
@@ -141,11 +164,18 @@ class geopolitical_features:
             s.name = "battle_deaths_30d"
             return s
         now = datetime.utcnow()
-        raw = self._gdelt.query_events(countries=[country_code], themes=["ASSAULT", "FIGHT"], start_date=now - timedelta(days=30), end_date=now, normalize=False)
-        if raw.empty: return 0
+        raw = self._gdelt.query_events(
+            countries=[country_code],
+            themes=["ASSAULT", "FIGHT"],
+            start_date=now - timedelta(days=30),
+            end_date=now,
+            normalize=False,
+        )
+        if raw.empty:
+            return 0
         return int(pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").sum())
 
-    def battle_deaths_90d(self, country_code: str, mode: str = Literal['F', 'ML']) -> int | pd.Series:
+    def battle_deaths_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
             if raw.empty:
@@ -156,11 +186,18 @@ class geopolitical_features:
             s.name = "battle_deaths_90d"
             return s
         now = datetime.utcnow()
-        raw = self._gdelt.query_events(countries=[country_code], themes=["ASSAULT", "FIGHT"], start_date=now - timedelta(days=90), end_date=now, normalize=False)
-        if raw.empty: return 0
+        raw = self._gdelt.query_events(
+            countries=[country_code],
+            themes=["ASSAULT", "FIGHT"],
+            start_date=now - timedelta(days=90),
+            end_date=now,
+            normalize=False,
+        )
+        if raw.empty:
+            return 0
         return int(pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").sum())
 
-    def protest_event_count_30d(self, country_code: str, mode: str = Literal['F', 'ML']) -> int | pd.Series:
+    def protest_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["PROTEST"])
             if raw.empty:
@@ -171,7 +208,7 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["PROTEST"], 30))
 
-    def protest_violence_level(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def protest_violence_level(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["PROTEST"])
             if raw.empty:
@@ -183,11 +220,12 @@ class geopolitical_features:
             s.name = "protest_violence_level"
             return s
         df = self._query(country_code, ["PROTEST"], 30)
-        if df.empty: return 0.0
+        if df.empty:
+            return 0.0
         s = float(df["severity"].mean())
         return float(max(0.0, min(1.0, -s / 10.0)))
 
-    def diplomatic_event_count_30d(self, country_code: str, mode: str = Literal['F', 'ML']) -> int | pd.Series:
+    def diplomatic_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
             if raw.empty:
@@ -198,7 +236,7 @@ class geopolitical_features:
             return s
         return len(self._query(country_code, ["DIPLOMACY"], 30))
 
-    def diplomatic_intensity_avg(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def diplomatic_intensity_avg(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
             raw = self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
             if raw.empty:
@@ -217,7 +255,7 @@ class geopolitical_features:
         s.name = name
         return s
 
-    def rule_of_law_score(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def rule_of_law_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         data = self._wb.fetch(country_code=country_code, indicator_code="RL.EST")
         if data.empty:
             return 0.0 if mode == "F" else pd.Series(dtype=float)
@@ -225,7 +263,7 @@ class geopolitical_features:
             return self._wb_annual_to_monthly(data, "rule_of_law_score")
         return float(data["value"].iloc[0])
 
-    def regulatory_quality(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def regulatory_quality(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         data = self._wb.fetch(country_code=country_code, indicator_code="RQ.EST")
         if data.empty:
             return 0.0 if mode == "F" else pd.Series(dtype=float)
@@ -233,7 +271,7 @@ class geopolitical_features:
             return self._wb_annual_to_monthly(data, "regulatory_quality")
         return float(data["value"].iloc[0])
 
-    def governance_wgi_composite(self, country_code: str, mode: str = Literal['F', 'ML']) -> float | pd.Series:
+    def governance_wgi_composite(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "F":
             values = []
             for ind in WGI_INDICATORS:
@@ -253,17 +291,23 @@ class geopolitical_features:
         composite.name = "governance_wgi_composite"
         return composite
 
+    def sanctions_count_active(self, country_code: str, mode: str = "F") -> int:
+        return 0
 
-    def sanctions_count_active(self, country_code: str, mode: str = "F") -> int: return 0
+    def sanctions_new_30d(self, country_code: str, mode: str = "F") -> int:
+        return 0
 
-    def sanctions_new_30d(self, country_code: str, mode: str = "F") -> int: return 0
+    def sanctions_sector_coverage(self, country_code: str, mode: str = "F") -> float:
+        return 0.0
 
-    def sanctions_sector_coverage(self, country_code: str, mode: str = "F") -> float: return 0.0
+    def corruption_perception_index(self, country_code: str, mode: str = "F") -> int:
+        return 0
 
-    def corruption_perception_index(self, country_code: str, mode: str = "F") -> int: return 0
+    def democracy_index(self, country_code: str, mode: str = "F") -> float:
+        return 0.0
 
-    def democracy_index(self, country_code: str, mode: str = "F") -> float: return 0.0
+    def regime_type(self, country_code: str, mode: str = "F") -> Literal["democracy", "hybrid", "autocracy"]:
+        return "hybrid"
 
-    def regime_type(self, country_code: str, mode: str = "F") -> Literal["democracy", "hybrid", "autocracy"]: return "hybrid"
-
-    def press_freedom_score(self, country_code: str, mode: str = "F") -> int: return 0
+    def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
+        return 0
