@@ -6,6 +6,8 @@ import httpx
 import pycountry
 from dotenv import load_dotenv
 
+from hermes.core.cache import RawCache
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ def iso3_to_iso2(iso3_code: str) -> str:
 
 
 class OpenSanction:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, cache: RawCache | None = None):
         self._base_url = "https://api.opensanctions.org"
         self._api_key = api_key
         self._headers = {
