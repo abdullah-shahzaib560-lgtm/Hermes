@@ -341,7 +341,6 @@ class geopolitical_features:
             return self._wb_annual_to_monthly(data, "rule_of_law_score")
         return float(data["value"].iloc[0])
 
-
     @feature(
         name="regulatory_quality",
         group="geopolitical_features",
@@ -406,6 +405,7 @@ class geopolitical_features:
     )
     def sanctions_new_30d(self, country_code: str) -> int:
         from datetime import datetime, timedelta
+
         thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
         data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         new_count = 0
@@ -438,19 +438,19 @@ class geopolitical_features:
     )
     def corruption_perception_index(self, country_code: str, mode: str = "F") -> int:
         data = self._hdxcpi.fetch(country=country_code)
-        
+
         if data.empty:
-            return 0 if mode == 'F' else pd.Series(dtype='float64')
-        data = data.set_index('year')
-        data['score'] = pd.to_numeric(data['score'], errors='coerce')
-        data.sort_index(ascending=False ,inplace=True)
-        
-        if mode == 'F':
-            return float(data['score'].iloc[0])
-            
-        if mode == 'ML':
-            score_series = data['score'].resample('MS').interpolate()   
-            score_series.index.name = None         
+            return 0 if mode == "F" else pd.Series(dtype="float64")
+        data = data.set_index("year")
+        data["score"] = pd.to_numeric(data["score"], errors="coerce")
+        data.sort_index(ascending=False, inplace=True)
+
+        if mode == "F":
+            return float(data["score"].iloc[0])
+
+        if mode == "ML":
+            score_series = data["score"].resample("MS").interpolate()
+            score_series.index.name = None
             return score_series.reset_index(drop=True)
 
     @feature(
@@ -480,12 +480,13 @@ class geopolitical_features:
     def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
         return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     geo = geopolitical_features()
-    print('='*60)
-    data = geo.corruption_perception_index('USA', 'F')
+    print("=" * 60)
+    data = geo.corruption_perception_index("USA", "F")
     print(data)
-    print('='*60)
-    dataa = geo.corruption_perception_index('USA', 'ML')
-    print(f'The data type {type(dataa)}')
+    print("=" * 60)
+    dataa = geo.corruption_perception_index("USA", "ML")
+    print(f"The data type {type(dataa)}")
     print(dataa)
