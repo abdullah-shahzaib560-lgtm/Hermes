@@ -1,6 +1,8 @@
 import logging
 from typing import Literal
 
+from hermes.sources.lib.nato_member import nato_members
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,40 +26,6 @@ class security_features:
         pass
 
     def nato_member(self, country_code: str) -> bool:
-        nato_members = [
-            "ALB",
-            "BEL",
-            "BGR",
-            "CAN",
-            "CZE",
-            "DEU",
-            "DNK",
-            "ESP",
-            "EST",
-            "FIN",
-            "FRA",
-            "GBR",
-            "GRC",
-            "HRV",
-            "HUN",
-            "ISL",
-            "ITA",
-            "LTU",
-            "LUX",
-            "LVA",
-            "MKD",
-            "MNE",
-            "NLD",
-            "NOR",
-            "POL",
-            "PRT",
-            "ROU",
-            "SVK",
-            "SVN",
-            "SWE",
-            "TUR",
-            "USA",
-        ]
         if country_code in nato_members:
             return True
         else:
