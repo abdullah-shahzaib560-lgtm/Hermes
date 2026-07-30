@@ -1,7 +1,8 @@
 import json
+from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 class TieredPlan:
