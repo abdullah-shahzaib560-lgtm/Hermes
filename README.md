@@ -37,6 +37,7 @@ hr.world_bank.search_indicators("gdp")
 
 # Feature engineering
 from hermes.features import FeatureEngineer
+
 fe = FeatureEngineer()
 risk = fe.build_country_risk_features(country="UKR", date="2026-07-14")
 ```

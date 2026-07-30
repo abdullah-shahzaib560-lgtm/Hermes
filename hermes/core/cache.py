@@ -1,9 +1,9 @@
 import hashlib
 import json
 import logging
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 
@@ -111,7 +111,7 @@ class RawCache:
 
     def stats(self) -> dict:
         total = 0
-        by_source = {}
+        by_source: dict[str, int] = {}
         for p in self.cache_dir.rglob("*.parquet"):
             total += 1
             source = p.parent.name
