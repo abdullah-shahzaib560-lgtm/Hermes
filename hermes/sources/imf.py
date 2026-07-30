@@ -21,7 +21,6 @@ class IMF:
 
     def __init__(self, cache: RawCache | None = None):
         self._cache = cache or RawCache()
-        # Active production endpoint for modern SDMX 3.0 data queries
         self.url: str = 'https://api.imf.org/external/sdmx/3.0/data/dataflow/'
 
     def _fetch(
@@ -52,8 +51,7 @@ class IMF:
                     raise
                 time.sleep(2 ** attempt)
             except httpx.HTTPStatusError as e:
-                # 404 = dataflow/key combo doesn't exist or no data for this country.
-                # Treat as "no data" rather than a hard crash, same as an empty 200.
+
                 if e.response.status_code == 404:
                     logger.warning(f"404: country={country}, dataflow={dataflow_id}, key={key}")
                     return empty
@@ -72,10 +70,6 @@ class IMF:
             logger.warning(f"No data: country={country}, dataflow={dataflow_id}, key={key}")
             return empty
 
-        # Dimension naming for "which indicator this is" varies per dataflow
-        # (WEO uses INDICATOR, CPI uses INDEX_TYPE, others may differ again).
-        # Rather than hardcoding one name, try known candidates in order,
-        # and fall back to the raw key if none match.
         INDICATOR_DIM_CANDIDATES = ["INDICATOR", "INDEX_TYPE"]
 
         rows = []
@@ -95,8 +89,6 @@ class IMF:
             for obs_idx, obs_val in series_obj["observations"].items():
                 raw_val = obs_val[0]
                 if raw_val is None:
-                    # Some periods report null (data gap / not yet published) —
-                    # skip rather than crash; the period is simply absent downstream.
                     continue
                 row = {
                     "date": time_values[int(obs_idx)],
@@ -105,9 +97,7 @@ class IMF:
                     "value": float(raw_val),
                     "source": "IMF",
                 }
-                # Keep every raw dimension too, so feature code can reach
-                # dataflow-specific dimensions (e.g. COICOP_1999, FREQUENCY)
-                # without needing changes here.
+
                 for dim_id, dim_val in dim_values.items():
                     row.setdefault(dim_id, dim_val)
                 rows.append(row)
