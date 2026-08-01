@@ -447,7 +447,7 @@ class geopolitical_features:
             return float(data["score"].iloc[0])
 
         if mode == "ML":
-            score_series = data["score"].resample("MS").interpolate()
+            score_series = data["score"].resample("MS")
             score_series.index.name = None
             return score_series.reset_index(drop=True)
 

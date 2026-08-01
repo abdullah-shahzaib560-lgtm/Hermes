@@ -1,6 +1,6 @@
-import json
 import logging
 import time
+from datetime import timedelta
 
 import httpx
 import pycountry
@@ -26,8 +26,9 @@ class OpenSanction:
         self._base_url = "https://api.opensanctions.org"
         self._api_key = api_key
         self._headers = {"Authorization": f"ApiKey {api_key}", "Accept": "application/json"}
+        self._cache = cache or RawCache()
 
-    def fetch(
+    def _fetch(
         self,
         country: str,
         dataset: str,
@@ -105,35 +106,36 @@ class OpenSanction:
 
         return {}
 
+    def fetch(
+        self,
+        country: str,
+        dataset: str,
+        limit: int = 50,
+        changed_since: str | None = None,
+        topic: str | None = None,
+        facets: str | None = None,
+        retries: int = 3,
+        timeout: float = 30.0,
+        force: bool = False,
+    ):
+        cached_params = {
+            "country": country,
+            "dataset": dataset,
+        }
 
-if __name__ == "__main__":
-    import os
-
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    API_KEY = os.getenv("OPEN_SANCTIONS_API")
-
-    if not API_KEY:
-        print("Please set OPEN_SANCTIONS_API environment variable")
-        exit(1)
-
-    os_client = OpenSanction(api_key=API_KEY)
-
-    # Test with US OFAC SDN list
-    print("Fetching USA sanctions from US OFAC SDN list...")
-    data = os_client.fetch(country="USA", dataset="us_ofac_sdn", limit=10)
-
-    if data:
-        print(f"\nResponse keys: {list(data.keys())}")
-        print(f"Total results: {data.get('total', {}).get('value', 0)}")
-
-        results = data.get("results", [])
-        print(f"Results returned: {len(results)}")
-
-        if results:
-            print("\nFirst result:")
-            print(json.dumps(results[0], indent=2))
-    else:
-        print("No data returned")
+        return self._cache.get_or_fetch(
+            source="OpenSanction",
+            params=cached_params,
+            fetch_fn=lambda: self._fetch(
+                country=country,
+                dataset=dataset,
+                limit=limit,
+                changed_since=changed_since,
+                topics=topic,
+                facets=facets,
+                retries=retries,
+                timeout=timeout,
+            ),
+            force=force,
+            ttl=timedelta(days=30),
+        )
