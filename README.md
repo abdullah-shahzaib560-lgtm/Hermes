@@ -98,9 +98,9 @@ panel = hr.features.build_training_panel(
 ### Cache management
 
 ```python
-hr.cache_stats()                      # files, hits/misses, hit rates per source
-hr.clear_cache()                      # wipe everything
-hr.clear_cache(older_than="7d")       # only entries older than 7 days
+hr.cache_stats()  # files, hits/misses, hit rates per source
+hr.clear_cache()  # wipe everything
+hr.clear_cache(older_than="7d")  # only entries older than 7 days
 ```
 
 ## Project layout
