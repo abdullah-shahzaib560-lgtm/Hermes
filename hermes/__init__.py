@@ -12,11 +12,11 @@ class Hermes:
     def __init__(
         self,
         opensanction_api: str,
-        new_data_api: str,
+        # new_data_api: str,
         cache_dir: str | None = None,
         use_cache: bool = True,
     ):
-        if not opensanction_api:
+        if not opensanction_api: # or new_data_api:
             raise KeyError("Add Opensanction API, NewsDataAPI for full usage")
 
         self._cache = RawCache(cache_dir=cache_dir) if use_cache else None
@@ -26,7 +26,7 @@ class Hermes:
         self.opensanction = OpenSanction(api_key=opensanction_api)
         self.world_bank = World_bank()
         self.list_countries = countries
-        self.lf = features()
+        self.lf = features(os_api=opensanction_api)
         self.list_features = self.lf.list_features()
 
     def clear_cache(self, older_than: str | None = None):
