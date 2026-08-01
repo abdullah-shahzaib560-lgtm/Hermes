@@ -13,10 +13,10 @@ export default function Home() {
         storing, and serving intelligence datasets.
       </p>
       <p className="text-sm text-gray-500 max-w-xl">
-        Hermes is a Python SDK that connects to 30+ free global data sources (FRED, BIS, IMF,
-        World Bank, GDELT, UN Comtrade, and more), normalizes everything to canonical schemas,
-        engineers intelligence features, and provides a storage layer for caching, metadata
-        tracking, and data lineage.
+        Hermes is a Python SDK that connects to global data sources (World Bank, IMF,
+        GDELT, OpenSanctions, and more), normalizes everything to canonical schemas,
+        engineers ~60 country risk features across five dimensions, and provides a
+        disk-backed cache with per-source TTLs.
       </p>
       <div className="flex gap-4 mt-8">
         <Link

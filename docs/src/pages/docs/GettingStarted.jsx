@@ -3,66 +3,48 @@ export default function GettingStarted() {
     <>
       <h1>Getting Started</h1>
 
+      <h2>Requirements</h2>
+      <ul>
+        <li>Python <strong>&gt;= 3.11</strong></li>
+        <li><a href="https://docs.astral.sh/uv/" target="_blank">uv</a> for dependency management</li>
+        <li>An <a href="https://www.opensanctions.org/" target="_blank">OpenSanctions</a> API key</li>
+      </ul>
+
       <h2>Installation</h2>
-      <pre><code>{`# Clone the repository
-git clone https://github.com/ryomenhaider/Hermes.git
+      <pre><code>{`git clone <repo-url> Hermes
 cd Hermes
+uv sync --extra dev`}</code></pre>
+      <p>The <code>dev</code> extra pulls in pytest, ruff, mypy, and other development tools. Use plain <code>uv sync</code> for a production install.</p>
 
-# Install with uv (recommended)
-uv sync
-
-# Or with pip
-pip install -e .`}</code></pre>
+      <h2>Configuration</h2>
+      <p>Copy the environment template and add your OpenSanctions API key:</p>
+      <pre><code>{`cp .env.example .env
+# OPEN_SANCTIONS_API=your_key_here`}</code></pre>
+      <blockquote>
+        The API key is required. Instantiating <code>Hermes</code> without one raises a <code>KeyError</code>.
+      </blockquote>
 
       <h2>Quick Start</h2>
       <pre><code>{`from hermes import Hermes
+from dotenv import load_dotenv
+import os
 
-# Initialize the SDK
-hr = Hermes(api_keys={"fred": "YOUR_FRED_API_KEY"})
+load_dotenv()
 
-# Fetch economic data from FRED
-df = hr.fred.fetch(country="USA", indicator="GDPC1")
-print(df.head())
+hr = Hermes(opensanction_api=os.getenv("OPEN_SANCTIONS_API"))
 
-# Get comprehensive risk features for a country
-risk = hr.get_country_risk_features("USA", "2024-12-31")
-print(risk["gdp_growth_yoy"])`}</code></pre>
+# Every supported country code (ISO3)
+print(hr.list_countries)
 
-      <h2>Environment Setup</h2>
-      <p>Create a <code>.env</code> file in the project root:</p>
-      <pre><code>{`FRED_API=your_fred_api_key_here`}</code></pre>
-      <p>FRED requires a free API key (any email). BIS, IMF, and World Bank require no authentication.</p>
+# All available feature functions
+print(hr.list_features)`}</code></pre>
 
-      <h2>Architecture Overview</h2>
-      <p>Hermes is organized into three layers:</p>
-      <table>
-        <thead>
-          <tr><th>Layer</th><th>Path</th><th>Purpose</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><strong>Connectors</strong></td><td><code>hermes/sources/</code></td><td>Fetch data from free APIs, normalize to standard DataFrames</td></tr>
-          <tr><td><strong>Features</strong></td><td><code>hermes/features/</code></td><td>Engineer derived risk indicators from raw connector data</td></tr>
-          <tr><td><strong>Cache</strong></td><td><code>hermes/_cache.py</code></td><td>Parquet file cache with TTL expiration</td></tr>
-        </tbody>
-      </table>
-
-      <h2>Quick Example — Full Pipeline</h2>
-      <pre><code>{`from hermes import Hermes
-
-hr = Hermes(api_keys={"fred": os.getenv("FRED_API")})
-
-# Get risk features for a country
-risk = hr.get_country_risk_features("USA", "2024-12-31")
-
-# Access individual indicators
-print(risk["gdp_growth_yoy"])
-print(risk["inflation_cpi_yoy"])
-print(risk["unemployment_rate"])
-print(risk["regime_classification"])
-
-# List all available connectors
-for c in hr.list_connectors():
-    print(c["name"], c["type"])`}</code></pre>
+      <h2>What's Next</h2>
+      <ul>
+        <li><a href="/docs/hermes">Hermes Class</a> — the SDK facade and its methods</li>
+        <li><a href="/docs/features">Features API</a> — country risk snapshots and ML panels</li>
+        <li><a href="/docs/cache">Data Cache</a> — how raw responses are stored</li>
+      </ul>
     </>
   );
 }
