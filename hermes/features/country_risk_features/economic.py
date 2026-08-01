@@ -6,6 +6,7 @@ import pandas as pd
 import pycountry
 
 from hermes.core.feature_decorator import feature
+from hermes.core.helper import check_empty
 
 logger = logging.getLogger(__name__)
 
@@ -13,23 +14,6 @@ logger = logging.getLogger(__name__)
 from hermes.sources.imf import IMF
 from hermes.sources.world_bank import World_bank
 
-
-def check_iso3(code):
-    country = pycountry.countries.get(alpha_3=code.upper())
-    if not country:
-        raise RuntimeError(f"The {code} is not iso3")
-
-
-def check_empty(mode, data, country):
-    if data.empty:
-        logger.warning(f"No Data for {country}")
-        return empty_result(mode)
-
-    return data
-
-
-def empty_result(mode: str):
-    return np.nan if mode == "F" else pd.Series(dtype=float)
 
 
 class economic_features:
@@ -44,14 +28,13 @@ class economic_features:
         compute="GDP growth YoY, merged from WB and IMF",
     )
     def gdp_growth_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.MKTP.KD.ZG")
-
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
-        return data
-
+        data = check_empty(mode=mode, data=data ,country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            return data['value']
+        
     @feature(
         name="gdp_growth_qoq",
         group="economic_features",
@@ -59,12 +42,9 @@ class economic_features:
         compute="GDP growth QoQ, interpolated from the annual frequency data from the World_Bank",
     )
     def gdp_growth_qoq(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.MKTP.KD")
 
-        if data.empty:
-            logger.warning(f"No GDP level data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
 
         data["date"] = pd.to_datetime(data["date"].astype(str) + "-12-31")
         meta = data[["indicator_id", "indicator_name", "country", "source"]].iloc[0]
@@ -93,9 +73,8 @@ class economic_features:
     def industrial_production_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="NV.IND.MANF.KD.ZG")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
+
         if mode == "F":
             return float(data["value"].iloc[0])
 
@@ -117,9 +96,7 @@ class economic_features:
     def inflation_cpi_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="FP.CPI.TOTL.ZG")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
         if mode == "F":
             return float(data["value"].iloc[0])
 
@@ -139,12 +116,10 @@ class economic_features:
         compute="inflation_volatility_12m from the World Bank data",
     )
     def inflation_volatility_12m(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="FP.CPI.TOTL")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
+
         data["date"] = pd.to_datetime(data["date"].astype(str) + "-12-31")
         data = data.sort_values("date").set_index("date")
 
@@ -166,12 +141,10 @@ class economic_features:
         compute="ppi_yoy from the IMF data",
     )
     def ppi_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency="IMF.STA", dataflow_id="PPI", key="PPI.IX.A")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -188,12 +161,9 @@ class economic_features:
         compute="inflation_yoy from the IMF data",
     )
     def inflation_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency="IMF.STA", dataflow_id="CPI", key="CPI._T.IX.M")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code)
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -210,12 +180,10 @@ class economic_features:
         compute="unemployment_rate from the World Bank data",
     )
     def unemployment_rate(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="SL.UEM.TOTL.ZS")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -232,12 +200,10 @@ class economic_features:
         compute="youth_unemployment from the World Bank data",
     )
     def youth_unemployment(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="SL.UEM.1524.ZS")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -254,12 +220,10 @@ class economic_features:
         compute="labor_force_participation from the World Bank data",
     )
     def labor_force_participation(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="SL.TLF.CACT.ZS")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -276,12 +240,10 @@ class economic_features:
         compute="current_account_gdp_ratio from the World Bank data",
     )
     def current_account_gdp_ratio(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="BN.CAB.XOKA.GD.ZS")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -298,12 +260,10 @@ class economic_features:
         compute="fx_reserves_months_import from the World Bank data",
     )
     def fx_reserves_months_import(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="FI.RES.TOTL.MO")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -320,12 +280,10 @@ class economic_features:
         compute="external_debt_gdp_ratio from the World Bank data",
     )
     def external_debt_gdp_ratio(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.wb.fetch(country_code=country_code, indicator_code="DT.check_emptyD.DECT.GN.ZS")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -342,12 +300,9 @@ class economic_features:
         compute="fiscal_deficit_gdp from the IMF data",
     )
     def fiscal_deficit_gdp(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency="IMF.RES", dataflow_id="WEO", key="GGXCNL_NGDP")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -364,12 +319,9 @@ class economic_features:
         compute="government_debt_gdp from the IMF data",
     )
     def government_debt_gdp(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency="IMF.RES", dataflow_id="WEO", key="GGXWDG_NGDP")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -386,12 +338,10 @@ class economic_features:
         compute="reer_misalignment from the IMF data",
     )
     def reer_misalignment(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
         data = self.imf.fetch(country=country_code, agency="IMF.STA", dataflow_id="ER", key="EREER_IX.M")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -408,12 +358,10 @@ class economic_features:
         compute="banking_sector_health from the World Bank data",
     )
     def banking_sector_health(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
+        
         data = self.wb.fetch(country_code=country_code, indicator_code="FB.AST.NPLN.ZS")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
@@ -430,12 +378,10 @@ class economic_features:
         compute="gdp_per_capita_ppp from the World Bank data",
     )
     def gdp_per_capita_ppp(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        check_iso3(code=country_code)
+
         data = self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.PCAP.PP.CD")
 
-        if data.empty:
-            logger.warning(f"No Data for {country_code}")
-            return empty_result(mode)
+        data = check_empty(mode=mode, country=country_code, data=data)
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":

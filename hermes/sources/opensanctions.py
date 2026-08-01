@@ -13,13 +13,6 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def iso3_to_iso2(iso3_code: str) -> str:
-    try:
-        country = pycountry.countries.get(alpha_3=iso3_code.upper())
-        return country.alpha_2 if country else "Not Found"
-    except AttributeError:
-        return "Not Found"
-
 
 class OpenSanction:
     def __init__(self, api_key: str, cache: RawCache | None = None):
