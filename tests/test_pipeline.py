@@ -98,11 +98,11 @@ class TestPipeline:
             "hermes.features.country_risk_features.pipeline",
             economic_features=lambda: mock_eco,
             enviromental_features=lambda: mock_env,
-            geopolitical_features=lambda: mock_geo,
+            geopolitical_features=lambda os_api=None: mock_geo,
             security_features=lambda: mock_sec,
             social_features=lambda: mock_soc,
         ):
-            p = pipeline()
+            p = pipeline(os_api="test-key")
             yield p
 
     def test_get_country_risk_features_schema(self, pipe):
