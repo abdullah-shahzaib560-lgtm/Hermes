@@ -2,71 +2,122 @@ export default function SchemasDoc() {
   return (
     <>
       <h1>Canonical Schemas</h1>
-      <p><strong>File:</strong> <code>hermes/base.py</code></p>
 
-      <h2>What They Do</h2>
+      <h2>Connector Output</h2>
       <p>
-        All Hermes connectors normalize raw API responses into a single standard
-        pandas DataFrame schema. This guarantees that any downstream consumer
-        receives predictable column names, types, and formats.
+        Every indicator-based connector (World Bank, IMF) returns the same core shape, so
+        feature functions can rely on a stable contract:
       </p>
-
-      <h2>Standard Indicator Schema</h2>
-      <p>Every connector's <code>fetch()</code> output uses these columns:</p>
       <table>
         <thead>
-          <tr><th>Column</th><th>Type</th><th>Example</th><th>Notes</th></tr>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Example</th>
+          </tr>
         </thead>
         <tbody>
           <tr>
             <td><code>date</code></td>
-            <td><code>datetime64[ns]</code></td>
-            <td><code>2024-01-01</code></td>
-            <td>Always coerced via <code>pd.to_datetime</code></td>
+            <td>string</td>
+            <td><code>"2023"</code></td>
+          </tr>
+          <tr>
+            <td><code>indicator_id</code></td>
+            <td>string</td>
+            <td><code>"NY.GDP.MKTP.KD.ZG"</code></td>
           </tr>
           <tr>
             <td><code>country</code></td>
-            <td><code>str</code></td>
+            <td>string</td>
             <td><code>"USA"</code></td>
-            <td>ISO 3166-1 alpha-3, always uppercase</td>
-          </tr>
-          <tr>
-            <td><code>indicator</code></td>
-            <td><code>str</code></td>
-            <td><code>"GDPC1"</code></td>
-            <td>Series or indicator identifier</td>
           </tr>
           <tr>
             <td><code>value</code></td>
-            <td><code>float64</code></td>
-            <td><code>27366.0</code></td>
-            <td>Coerced via <code>pd.to_numeric</code></td>
+            <td>float</td>
+            <td><code>2.1</code></td>
           </tr>
           <tr>
             <td><code>source</code></td>
-            <td><code>str</code></td>
-            <td><code>"fred"</code></td>
-            <td>Lowercase connector name</td>
+            <td>string</td>
+            <td><code>"World_Bank"</code> / <code>"IMF"</code></td>
           </tr>
         </tbody>
       </table>
 
-      <h2>Rules</h2>
+      <h2>GDELT Event Schema</h2>
+      <p>
+        Event-based connectors (GDELT) normalize to a different schema — one row per event,
+        with no fixed frequency:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>event_id</code></td>
+            <td>string</td>
+            <td>Global event ID</td>
+          </tr>
+          <tr>
+            <td><code>date</code></td>
+            <td>datetime</td>
+            <td>Event timestamp</td>
+          </tr>
+          <tr>
+            <td><code>country_iso3</code></td>
+            <td>string</td>
+            <td>ISO3 country code</td>
+          </tr>
+          <tr>
+            <td><code>event_type</code></td>
+            <td>string</td>
+            <td>protest / conflict / diplomacy / sanction / ...</td>
+          </tr>
+          <tr>
+            <td><code>severity</code></td>
+            <td>float</td>
+            <td>Tone or Goldstein scale</td>
+          </tr>
+          <tr>
+            <td><code>lat</code>, <code>lon</code></td>
+            <td>float</td>
+            <td>Coordinates</td>
+          </tr>
+          <tr>
+            <td><code>source</code></td>
+            <td>string</td>
+            <td>Always <code>"gdelt"</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Feature Output</h2>
+      <p>Feature functions return one of two shapes, selected by the <code>mode</code> argument:</p>
       <ul>
-        <li><code>date</code> is always <code>datetime64[ns]</code></li>
-        <li><code>country</code> is always ISO 3166-1 alpha-3 uppercase</li>
-        <li><code>value</code> is always <code>float64</code> (nulls coerce to NaN)</li>
-        <li>Every DataFrame includes all 5 columns in order</li>
+        <li><code>mode="F"</code> — a single <code>float</code> / <code>int</code> (latest snapshot), or <code>NaN</code> when no data exists</li>
+        <li><code>mode="ML"</code> — a <code>pd.Series</code> indexed monthly, empty when no data exists</li>
       </ul>
 
-      <h2>Example Output</h2>
-      <pre><code>{`# From hr.fred.fetch(country="USA", indicator="GDPC1")
-# Columns:
-#   date           datetime64[ns]  e.g. 2024-01-01
-#   country        str             e.g. "USA"
-#   indicator      str             e.g. "GDPC1"
-#   value          float64         e.g. 27366.0
-#   source         str             e.g. "fred"`}</code></pre>
+      <h2>Risk Snapshot Schema</h2>
+      <p><code>get_country_risk_features()</code> returns a nested dict:</p>
+      <pre><code>{`{
+    "country": "UKR",
+    "economic":     { "gdp_growth_yoy": 3.2, ... },
+    "geopolitical": { "conflict_event_count_30d": 47, ... },
+    "security":     { "military_spending_gdp": 4.1, ... },
+    "social":       { "human_development_index": 0.73, ... },
+    "environmental":{ "climate_vulnerability_score": 0.62, ... },
+    "metadata":     { "last_updated": "...", "features_version": "1.0.0" },
+}`}</code></pre>
+
+      <h2>Training Panel Schema</h2>
+      <p><code>build_training_panel()</code> returns a DataFrame with a <code>(country_iso3, date)</code> MultiIndex and one column per feature.</p>
     </>
   );
 }
