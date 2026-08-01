@@ -93,7 +93,7 @@ class RawCache:
                 pass
 
         df = fetch_fn()
-        if df is not None and not df.empty:
+        if isinstance(df, pd.DataFrame) and not df.empty:
             self.put(source, params, df)
         return df
 
