@@ -1,186 +1,140 @@
 # Hermes
 
-> Universal data acquisition and feature engineering SDK for intelligence, finance, and defense applications.
+Foundational intelligence data platform for acquiring, validating, normalizing, storing, and serving country risk datasets.
 
-Hermes fetches data from 40+ free global sources, normalizes it, engineers intelligence-ready features, and exposes everything through a clean Python interface (with CLI and TUI). It is **not** an API server — it is an SDK you import, run, and own.
+Hermes is the data layer between external public data sources (World Bank, IMF, GDELT, OpenSanctions, ...) and your application. It provides a unified Python API for fetching raw indicators, computing ~60 country risk features, and building time-series or ML training panels — with built-in caching, retries, and normalization.
 
-```text
-pip install hermes-plt
-# or
-uv add hermes-plt
+## Features
+
+- **Unified connectors** — one consistent API over multiple sources:
+  - [World Bank](https://data.worldbank.org/) — GDP, inflation, unemployment, governance, debt, and more (indicators API, no key needed)
+  - [IMF](https://www.imf.org/) — SDMX 3.0 dataflows (IFS, WEO, GFS, ...)
+  - [GDELT](https://www.gdeltproject.org/) — conflict/protest/diplomacy events via the Doc API and daily exports, with FIPS→ISO3 normalization and a canonical event schema
+  - [OpenSanctions](https://www.opensanctions.org/) — sanctions datasets (`us_ofac_sdn`, `eu_fsf`, `uk_fcdos`, `un_sc`, ...), requires an API key
+  - HDX CPI — bundled Corruption Perceptions Index dataset
+- **60+ country risk features** across five groups:
+  - `economic` — GDP growth, inflation, unemployment, debt, reserves, banking health, ...
+  - `geopolitical` — conflict events, Goldstein scale, battle deaths, sanctions, governance/WGI, democracy, ...
+  - `security` — military spending, alliances (NATO), arms transfers, peacekeeping
+  - `social` — stability index, human rights, fragility, HDI, Gini, poverty
+  - `environmental` — climate vulnerability/readiness, disaster risk, food prices, energy dependence, water stress
+- **Two output modes per feature** — `"F"` returns the latest float snapshot, `"ML"` returns a monthly `pd.Series` for modeling
+- **Raw cache** — Parquet-backed disk cache (`~/.hermes_cache/raw`) with per-source TTLs, hit/miss stats, and expiry-based eviction
+- **Training panels** — `build_training_panel()` assembles a multi-country, monthly time-series DataFrame ready for ML
+- **Export helpers** — save any result to CSV, JSON, or Parquet
+
+## Installation
+
+Requires Python >= 3.11. The project is managed with [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone <repo-url> Hermes
+cd Hermes
+uv sync --extra dev   # or: uv sync
 ```
 
----
+## Setup
 
-## Quickstart
+Copy the environment template and add your OpenSanctions API key:
+
+```bash
+cp .env.example .env
+# add: OPEN_SANCTIONS_API=your_key_here
+```
+
+An API key is required to instantiate the main `Hermes` facade (a `KeyError` is raised otherwise).
+
+## Quick start
 
 ```python
 from hermes import Hermes
+from dotenv import load_dotenv
+import os
 
-hr = Hermes()
+load_dotenv()
 
-# FRED — US macro data (free key required)
-hr.fred.connect("YOUR_API_KEY")
-gdp = hr.fred.get_series("GDP")
+hr = Hermes(opensanction_api=os.getenv("OPEN_SANCTIONS_API"))
 
-# FRED — search by keyword
-results = hr.fred.search_series("inflation")
+# Every supported country code (ISO3)
+print(hr.list_countries)
 
-# FRED — multiple series in one DataFrame
-multi = hr.fred.get_multiple_series(["GDP", "UNRATE", "CPIAUCSL"])
-
-# World Bank — no key needed
-china_gdp = hr.world_bank.get_data("NY.GDP.MKTP.CD", country="CHN")
-
-# World Bank — browse indicators
-hr.world_bank.search_indicators("gdp")
-
-# Feature engineering
-from hermes.features import FeatureEngineer
-
-fe = FeatureEngineer()
-risk = fe.build_country_risk_features(country="UKR", date="2026-07-14")
+# All available feature functions
+print(hr.list_features)
 ```
 
-Every connector returns a **pandas DataFrame**. Optional `export=True` saves to JSON, CSV, Parquet, or Pickle.
+### Fetch raw data from a connector
 
----
+```python
+# World Bank indicator time series
+df = hr.world_bank.fetch(country_code="USA", indicator_code="NY.GDP.MKTP.KD.ZG")
 
-## Interfaces
+# GDELT events by country and theme
+events = hr.gdelt.query_events(countries=["UKR"], themes=["CONFLICT"])
 
-| Interface | Command | Purpose |
-|---|---|---|
-| **Python SDK** | `from hermes import Hermes` | Primary interface |
-| **CLI** | `$ hermes fetch <source> <indicator>` | Scripting, automation |
-| **TUI** | `$ hermes tui` | Terminal dashboard |
+# OpenSanctions dataset (e.g. US OFAC SDN list)
+sanc = hr.opensanction.fetch(country="RUS", dataset="us_ofac_sdn")
 
-```text
-$ hermes fetch fred GDP --country USA --start 2020-01-01
-$ hermes fetch world-bank NY.GDP.MKTP.CD --country CHN
-$ hermes features build --country UKR --output risk_features.parquet
-$ hermes connectors list
-$ hermes cache clear --older-than 7d
+# IMF SDMX dataflow
+imf_df = hr.imf.fetch(country="USA", agency="IFS", dataflow_id="IFS", key="NGDP_R")
 ```
 
----
+### Country risk snapshot
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              HERMES SDK                                     │
-│                    from hermes import Hermes                                │
-│                                                                             │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                         CONNECTOR LAYER                               │  │
-│  │  FRED  World Bank  IMF  GDELT  NewsAPI  UN Comtrade  BIS  OECD  ...   │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                   ▼                                         │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                      CORE / CLEANING LAYER                            │  │
-│  │  • Schema normalization (ISO dates, ISO country codes, USD values)    │  │
-│  │  • Missing value handling (forward-fill, interpolation)               │  │
-│  │  • Frequency alignment (D → M → Q → A)                                │  │
-│  │  • Outlier detection (IQR, Z-score, MAD)                              │  │
-│  │  • Deduplication (hash-based + fuzzy)                                 │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                   ▼                                         │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                   FEATURE ENGINEERING LAYER                           │  │
-│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐  │  │
-│  │  │     Economic     │ │  Geopolitical   │ │       Composite        │  │  │
-│  │  │   • Growth       │ │   • Conflict    │ │  • Country Risk Score  │  │  │
-│  │  │   • Volatility   │ │   • Diplomatic  │ │  • Financial Stress    │  │  │
-│  │  │   • Inflation    │ │   • Protest     │ │  • Supply Chain Vuln.  │  │  │
-│  │  │   • External     │ │   • Governance  │ │  • Social Stability    │  │  │
-│  │  └─────────────────┘ └─────────────────┘ └─────────────────────────┘  │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                   ▼                                         │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                   STORAGE & METADATA LAYER                            │  │
-│  │  Raw Cache (Parquet) · Feature Store · Metadata Registry · Lineage    │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                   ▼                                         │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                      USER INTERFACES                                  │  │
-│  │        Python SDK (Primary)    CLI    TUI (Terminal Dashboard)        │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
+```python
+risk = hr.features.get_country_risk_features("UKR")
+print(risk["economic"]["gdp_growth_yoy"])
+print(risk["geopolitical"]["conflict_event_count_30d"])
 ```
 
----
+### Build an ML training panel
 
-## Feature Engineering
+```python
+panel = hr.features.build_training_panel(
+    fns=[hr.lf.eco.gdp_growth_yoy, hr.lf.eco.inflation_cpi_yoy],
+    countries=["USA", "UKR", "DEU"],
+)
+```
 
-Hermes transforms raw connector output into intelligence-ready features through a declarative pipeline. Features are versioned, cached, and documented in the metadata registry.
+### Cache management
 
-### Economic
+```python
+hr.cache_stats()                      # files, hits/misses, hit rates per source
+hr.clear_cache()                      # wipe everything
+hr.clear_cache(older_than="7d")       # only entries older than 7 days
+```
 
-| Category | Examples | Input Sources | Output Use |
-|---|---|---|---|
-| Growth | GDP YoY/QoQ, industrial production growth | FRED, WB, IMF | Risk scoring, forecasting |
-| Volatility | Rolling std (12m), max drawdown, CV | FRED, IMF | Anomaly detection |
-| Stress | Credit spread, yield curve inversion | FRED, BIS | Financial risk |
-| External | Current account/GDP, FX reserves, debt/GDP | WB, IMF | Sovereign risk |
-| Inflation | CPI YoY, PPI, hyperinflation flag | FRED, WB | Monetary stability |
-| Labor | Unemployment, youth unemployment | FRED, WB, OECD | Social stability |
+## Project layout
 
-### Geopolitical
+```
+hermes/
+├── __init__.py            # Hermes facade (connectors + features + cache)
+├── core/
+│   ├── cache.py           # RawCache: parquet-backed disk cache with TTLs
+│   ├── countries.py       # supported ISO3 country codes
+│   ├── export.py          # export DataFrame/Series to csv/json/parquet
+│   ├── feature_decorator.py  # @feature decorator + lineage graph
+│   └── features.py        # registry of all feature functions
+├── features/
+│   └── country_risk_features/
+│       ├── pipeline.py    # risk snapshot + training panel builder
+│       ├── economic.py    # geopolitical.py · security.py · social.py · environmental.py
+├── sources/               # connectors: world_bank, imf, gdelt, opensanctions, hdx_cpi
+tests/                     # pytest suite (respx-mocked API tests)
+docs/                      # React-based documentation site
+```
 
-| Category | Examples | Input Sources | Output Use |
-|---|---|---|---|
-| Conflict | Event count, Goldstein scale, battle deaths | GDELT, UCDP | Security risk |
-| Diplomatic | Treaty signings, diplomatic expulsions | GDELT | Political risk |
-| Protest | Event count, violence level, spread | GDELT | Social stability |
-| Governance | WGI composite, corruption, rule of law | WB, V-DEM | Institutional risk |
-| Media | News sentiment, narrative shift velocity | NewsAPI, GDELT GKG | Trend analysis |
+Every feature function is registered via the `@feature(name, group, deps, compute)` decorator, which populates a lineage graph used to resolve dependency tiers for a group.
 
----
+## Development
 
-## Sources
-
-### Build Order
-
-| Prio | Connector | Key Required | Aegis Uses | Atlas Uses |
-|---|---|---|---|---|
-| W1 | FRED | Free (any email) | Economic risk, forecasting | Macro context |
-| W1 | World Bank | None | GDP, poverty, governance | Country properties |
-| W2 | IMF | None | Financial stats, BOP, WEO | Financial context |
-| W3 | BIS | None | Banking stress, credit | Financial institutions |
-| W3 | UN Comtrade | Free (any email) | Trade flows, sanctions | Trade relationships |
-| W4 | GDELT | None | Conflict, protest, events | Event / actor nodes |
-| W4 | UCDP | None | Armed conflict baseline | Conflict nodes |
-| W5 | NewsAPI | Free (any email) | RAG, sentiment, trends | Entity extraction |
-| W5 | FAO | None | Food security, prices | Commodity nodes |
-| W6 | OECD | None | Policy, tax, trade | Policy context |
-| W6 | Eurostat | None | EU economic data | EU country properties |
-| W7 | EIA | Free (any email) | Energy prices, production | Energy nodes |
-| W7 | IEA | Free account | Energy dependence | Energy relationships |
-| W8 | USGS | None | Minerals, earthquakes | Mineral / location nodes |
-| W8 | V-DEM | Free download | Democracy, regime type | Governance edges |
-| W9 | Freedom House | Free download | Political rights | Freedom properties |
-| W9 | Transparency Int. | Free download | Corruption index | Corruption properties |
-| W10 | ND-GAIN | None | Climate vulnerability | Climate risk properties |
-| W10 | EM-DAT | Free account | Natural disasters | Disaster event nodes |
-| W11 | NASA POWER | None | Climate data | Environmental context |
-| W11 | Open-Meteo | None | Weather, forecasts | Agricultural risk |
-| W12 | Wikidata | None | Entity resolution | Entity enrichment |
-| W12 | OpenStreetMap | None | Geocoding, boundaries | Location nodes |
-
-### Complete Inventory (40+ sources)
-
-**Economic & Financial** — FRED ✅ · World Bank ✅ · IMF · BIS · UN Comtrade · OECD · Eurostat · Penn World Table · Maddison Project · CEPII
-
-**Geopolitical & Conflict** — GDELT · UCDP · PRIO / Prio Grid · Correlates of War · SIPRI Arms Transfers · Polity IV / V-DEM · CIRI Human Rights · Freedom House · Transparency International · Reporters Without Borders · Fragile States Index · Fund for Peace
-
-**Environmental, Social & Commodity** — FAO · IEA · EIA · USGS · ND-GAIN · EM-DAT · NASA POWER · Open-Meteo · Our World in Data · UN Data
-
-**Media, Knowledge & Geospatial** — NewsAPI · GDELT GKG · Wikidata · Wikipedia API · OpenStreetMap · Natural Earth · Sentinel Hub · OpenCorporates
-
-All sources are free to access. None require an institutional (.edu/.org/.gov) email.
-
----
+```bash
+uv run pytest                 # run tests
+uv run pytest --cov=hermes    # test with coverage
+uv run ruff check .           # lint
+uv run ruff format .          # format
+uv run mypy hermes            # type check
+```
 
 ## License
 
-MIT
+MIT — see [LICENSE.md](LICENSE.md).
