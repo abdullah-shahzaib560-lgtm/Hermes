@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-
+import pycountry
 import pandas as pd
 
 from hermes.features.country_risk_features.economic import economic_features
@@ -10,6 +10,12 @@ from hermes.features.country_risk_features.security import security_features
 from hermes.features.country_risk_features.social import social_features
 
 logger = logging.getLogger(__name__)
+
+
+def check_iso3(code):
+    country = pycountry.countries.get(alpha_3=code.upper())
+    if not country:
+        raise RuntimeError(f"The {code} is not iso3")
 
 
 class pipeline:
@@ -22,7 +28,7 @@ class pipeline:
         self.os_api = os_api
 
     def get_country_risk_features(self, country):
-
+        self.check_iso3(code=country)
         return {
             "country": f"{country}",
             "economic": {
