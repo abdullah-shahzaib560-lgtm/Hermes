@@ -16,11 +16,11 @@ class Hermes:
         cache_dir: str | None = None,
         use_cache: bool = True,
     ):
-        if not opensanction_api or new_data_api:
+        if not opensanction_api:
             raise KeyError("Add Opensanction API, NewsDataAPI for full usage")
 
         self._cache = RawCache(cache_dir=cache_dir) if use_cache else None
-        self.features = features_pipeline()
+        self.features = features_pipeline(os_api=opensanction_api)
         self.gdelt = GDELT()
         self.imf = IMF()
         self.opensanction = OpenSanction(api_key=opensanction_api)

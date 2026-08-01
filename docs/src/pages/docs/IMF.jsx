@@ -6,37 +6,76 @@ export default function IMFDoc() {
 
       <h2>What It Does</h2>
       <p>
-        Fetches financial statistics from the International Monetary Fund (IMF) API.
-        Covers International Financial Statistics (IFS), Balance of Payments (BOP),
-        World Economic Outlook (WEO), and Government Finance Statistics (GFS).
-        No authentication required.
+        Fetches time series from the IMF SDMX 3.0 API — International Financial Statistics
+        (IFS), World Economic Outlook (WEO), Government Finance Statistics (GFS), and other
+        dataflows. No authentication required.
       </p>
-      <p><strong>API:</strong> <a href="https://data.imf.org/" target="_blank">data.imf.org</a></p>
+      <p><strong>API:</strong> <code>https://api.imf.org/external/sdmx/3.0/data/dataflow/</code></p>
 
-      <h2>Architecture</h2>
+      <h2>Usage</h2>
+      <pre><code>{`from hermes import Hermes
+
+hr = Hermes(opensanction_api=...)
+
+# GDP in national currency, IFS dataflow
+df = hr.imf.fetch(
+    country="USA",
+    agency="IFS",
+    dataflow_id="IFS",
+    key="NGDP_R",
+)`}</code></pre>
+
+      <h3><code>fetch(country, agency, dataflow_id, key, force=False) → DataFrame</code></h3>
       <ul>
-        <li><strong><code>IMFLogic</code></strong> — Handles the JSON-stat format used by IMF's SDMX-JSON API. Parses dimension metadata, builds queries, and transforms responses.</li>
-        <li><strong><code>IMF</code></strong> — User-facing class that composes <code>IMFLogic</code>.</li>
+        <li><code>country</code> — ISO3 code, e.g. <code>"USA"</code> (converted to ISO2 internally)</li>
+        <li><code>agency</code> — SDMX agency, e.g. <code>"IFS"</code>, <code>"WEO"</code></li>
+        <li><code>dataflow_id</code> — dataflow, e.g. <code>"IFS"</code>, <code>"WEO"</code></li>
+        <li><code>key</code> — indicator key within the dataflow, e.g. <code>"NGDP_R"</code></li>
+        <li><code>force</code> — bypass the cache and refresh from the API</li>
       </ul>
 
-      <h2>Methods</h2>
+      <h2>Output Columns</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>date</code></td>
+            <td>Observation period</td>
+          </tr>
+          <tr>
+            <td><code>indicator_id</code></td>
+            <td>Indicator code (from the <code>INDICATOR</code>/<code>INDEX_TYPE</code> dimension)</td>
+          </tr>
+          <tr>
+            <td><code>country</code></td>
+            <td>Country code</td>
+          </tr>
+          <tr>
+            <td><code>value</code></td>
+            <td>The observation value</td>
+          </tr>
+          <tr>
+            <td><code>source</code></td>
+            <td>Always <code>"IMF"</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Any additional SDMX series dimensions (e.g. <code>FREQ</code>, <code>UNIT</code>) are
+        appended as extra columns.
+      </p>
 
-      <h3><code>get_data(flow, country=None, indicator=None, freq=None, start=None, end=None, ...) → DataFrame</code></h3>
-      <p>Fetch data from an IMF data flow. Returns canonical DataFrame.</p>
-      <pre><code>{`# IFS — GDP in national currency
-df = hr.imf.get_data("IFS",
-    country="US",
-    indicator="NGDP_XDC",
-    freq="A")
-
-# WEO — Gross domestic product, constant prices
-df = hr.imf.get_data("WEO",
-    country="CHN",
-    indicator="NGDP_RPCH",
-    freq="A")`}</code></pre>
-
-      <h3><code>export(data, filetype) → str</code></h3>
-      <p>Export DataFrame to CSV, JSON, Parquet, or Pickle.</p>
+      <h2>Behavior</h2>
+      <ul>
+        <li>Responses are cached with a <strong>7-day TTL</strong>.</li>
+        <li>404s (unknown country/dataflow) return an empty DataFrame instead of raising.</li>
+        <li>Includes retry logic with exponential backoff on timeouts.</li>
+      </ul>
     </>
   );
 }

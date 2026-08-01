@@ -9,6 +9,7 @@ from hermes.core.feature_decorator import feature
 from hermes.sources.gdelt import GDELT
 from hermes.sources.hdx_cpi import HDXCPI
 from hermes.sources.world_bank import World_bank
+from hermes.sources.opensanctions import OpenSanction
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,10 @@ GDELT_HISTORY_START = datetime(2000, 1, 1)
 
 
 class geopolitical_features:
-    def __init__(self):
+    def __init__(self, os_api: str):
         self._gdelt = GDELT()
         self._wb = World_bank()
-        # self._os = OpenSanction(api_key=opensanction_api)
+        self._os = OpenSanction(api_key=os_api)
         self._hdxcpi = HDXCPI()
 
     def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
