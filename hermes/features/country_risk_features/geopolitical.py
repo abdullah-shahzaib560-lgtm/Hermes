@@ -5,12 +5,10 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-from hermes.sources.gdelt import GDELT
-from hermes.sources.world_bank import World_bank
-from hermes.sources.opensanctions import OpenSanction
-from hermes.sources.hdx_cpi import HDXCPI
-
 from hermes.core.feature_decorator import feature
+from hermes.sources.gdelt import GDELT
+from hermes.sources.hdx_cpi import HDXCPI
+from hermes.sources.world_bank import World_bank
 
 logger = logging.getLogger(__name__)
 
@@ -449,7 +447,7 @@ class geopolitical_features:
             return float(data["score"].iloc[0])
 
         if mode == "ML":
-            score_series = data["score"].resample("MS").interpolate()
+            score_series = data["score"].resample("MS")
             score_series.index.name = None
             return score_series.reset_index(drop=True)
 

@@ -1,4 +1,6 @@
 from hermes.core.cache import RawCache
+from hermes.core.countries import countries
+from hermes.core.features import features
 from hermes.features import pipeline as features_pipeline
 from hermes.sources.gdelt import GDELT
 from hermes.sources.imf import IMF
@@ -23,6 +25,9 @@ class Hermes:
         self.imf = IMF()
         self.opensanction = OpenSanction(api_key=opensanction_api)
         self.world_bank = World_bank()
+        self.list_countries = countries
+        self.lf = features()
+        self.list_features = self.lf.list_features()
 
     def clear_cache(self, older_than: str | None = None):
         if self._cache:
