@@ -7,15 +7,9 @@ import pandas as pd
 import pycountry
 
 from hermes.core.cache import RawCache
+from hermes.sources import  * # placeholder
 
 logger = logging.getLogger(__name__)
-
-
-def iso3_to_iso2(iso3_code):
-    try:
-        return pycountry.countries.get(alpha_3=iso3_code.upper()).alpha_2
-    except AttributeError:
-        return "Not Found"
 
 
 class IMF:
