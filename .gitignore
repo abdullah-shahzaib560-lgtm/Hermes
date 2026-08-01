@@ -6,3 +6,8 @@ res/
 test/
 *.ipynb
 data/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/

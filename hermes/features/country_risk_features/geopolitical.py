@@ -8,8 +8,8 @@ import pandas as pd
 from hermes.core.feature_decorator import feature
 from hermes.sources.gdelt import GDELT
 from hermes.sources.hdx_cpi import HDXCPI
-from hermes.sources.world_bank import World_bank
 from hermes.sources.opensanctions import OpenSanction
+from hermes.sources.world_bank import World_bank
 
 logger = logging.getLogger(__name__)
 
