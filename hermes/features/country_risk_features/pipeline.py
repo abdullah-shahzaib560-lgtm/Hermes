@@ -13,12 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class pipeline:
-    def __init__(self):
+    def __init__(self, os_api: str):
         self.eco = economic_features()
         self.env = enviromental_features()
-        self.geo = geopolitical_features()
+        self.geo = geopolitical_features(os_api=os_api)
         self.sec = security_features()
         self.soc = social_features()
+        self.os_api = os_api
 
     def get_country_risk_features(self, country):
 
