@@ -7,8 +7,8 @@ import pandas as pd
 
 from hermes.core.feature_decorator import feature
 from hermes.sources.gdelt import GDELT
-from hermes.sources.hdx_cpi import HDXCPI
 from hermes.sources.opensanctions import OpenSanction
+from hermes.sources.public_data import PUBLIC_DATASET
 from hermes.sources.world_bank import World_bank
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class geopolitical_features:
         self._gdelt = GDELT()
         self._wb = World_bank()
         self._os = OpenSanction(api_key=os_api)
-        self._hdxcpi = HDXCPI()
+        self._p_data = PUBLIC_DATASET()
 
     def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
         now = datetime.utcnow()
@@ -436,7 +436,7 @@ class geopolitical_features:
         compute="corruption_perception_index from the orld HDX CPI downloaded dataset",
     )
     def corruption_perception_index(self, country_code: str, mode: str = "F") -> int:
-        data = self._hdxcpi.fetch(country=country_code)
+        data = self._p_data.fetch_cpi(country=country_code)
 
         if data.empty:
             return 0 if mode == "F" else pd.Series(dtype="float64")
