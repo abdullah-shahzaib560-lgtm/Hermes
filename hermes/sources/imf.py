@@ -4,10 +4,8 @@ from datetime import timedelta
 
 import httpx
 import pandas as pd
-import pycountry
 
 from hermes.core.cache import RawCache
-from hermes.sources import  * # placeholder
 
 logger = logging.getLogger(__name__)
 

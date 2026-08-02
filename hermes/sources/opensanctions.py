@@ -3,15 +3,11 @@ import time
 from datetime import timedelta
 
 import httpx
-import pycountry
-from dotenv import load_dotenv
 
 from hermes.core.cache import RawCache
-
-load_dotenv()
+from hermes.core.helper import iso3_to_iso2
 
 logger = logging.getLogger(__name__)
-
 
 
 class OpenSanction:

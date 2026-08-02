@@ -4,7 +4,8 @@ import httpx
 import pytest
 import respx
 
-from hermes.sources.imf import IMF, iso3_to_iso2
+from hermes.core.helper import iso3_to_iso2
+from hermes.sources.imf import IMF
 
 IMF_URL = "https://api.imf.org/external/sdmx/3.0/data/dataflow"
 
