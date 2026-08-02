@@ -1,19 +1,14 @@
 import logging
 from typing import Literal
 
-import numpy as np
 import pandas as pd
-import pycountry
 
 from hermes.core.feature_decorator import feature
 from hermes.core.helper import check_empty
-
-logger = logging.getLogger(__name__)
-
-
 from hermes.sources.imf import IMF
 from hermes.sources.world_bank import World_bank
 
+logger = logging.getLogger(__name__)
 
 
 class economic_features:
@@ -29,12 +24,9 @@ class economic_features:
     )
     def gdp_growth_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.MKTP.KD.ZG")
-        data = check_empty(mode=mode, data=data ,country=country_code)
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data['value']
-        
+        data = check_empty(mode=mode, data=data, country=country_code)
+        return data
+
     @feature(
         name="gdp_growth_qoq",
         group="economic_features",
@@ -45,18 +37,13 @@ class economic_features:
         data = self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.MKTP.KD")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         data["date"] = pd.to_datetime(data["date"].astype(str) + "-12-31")
-        meta = data[["indicator_id", "indicator_name", "country", "source"]].iloc[0]
-
         data = data.set_index("date")
         df = data[["value"]].resample("QE").interpolate(method="linear")
         df["gdp_growth_qoq"] = df["value"].pct_change() * 100
-
-        for col in ["indicator_id", "indicator_name", "country", "source"]:
-            df[col] = meta[col]
-
-        df = df.drop(columns=["value"]).reset_index().sort_values("date", ascending=False)
 
         if mode == "F":
             return df["gdp_growth_qoq"].iloc[0]
@@ -74,15 +61,15 @@ class economic_features:
         data = self.wb.fetch(country_code=country_code, indicator_code="NV.IND.MANF.KD.ZG")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return float(data["value"].iloc[0])
 
         if mode == "ML":
             data = data.set_index("date")
-
             data.index = pd.to_datetime(data.index)
-
             data = data.sort_index()
             data = data.resample("MS").ffill()
             return data["value"]
@@ -97,14 +84,15 @@ class economic_features:
         data = self.wb.fetch(country_code=country_code, indicator_code="FP.CPI.TOTL.ZG")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
+
         if mode == "F":
             return float(data["value"].iloc[0])
 
         if mode == "ML":
             data = data.set_index("date")
-
             data.index = pd.to_datetime(data.index)
-
             data = data.sort_index()
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -119,6 +107,8 @@ class economic_features:
         data = self.wb.fetch(country_code=country_code, indicator_code="FP.CPI.TOTL")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         data["date"] = pd.to_datetime(data["date"].astype(str) + "-12-31")
         data = data.sort_values("date").set_index("date")
@@ -144,12 +134,14 @@ class economic_features:
         data = self.imf.fetch(country=country_code, agency="IMF.STA", dataflow_id="PPI", key="PPI.IX.A")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -163,12 +155,15 @@ class economic_features:
     def inflation_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.imf.fetch(country=country_code, agency="IMF.STA", dataflow_id="CPI", key="CPI._T.IX.M")
 
-        data = check_empty(mode=mode, country=country_code)
+        data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -182,13 +177,15 @@ class economic_features:
     def unemployment_rate(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="SL.UEM.TOTL.ZS")
 
-        data = check_empty(mode=mode, country=country_code)
+        data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -202,13 +199,15 @@ class economic_features:
     def youth_unemployment(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="SL.UEM.1524.ZS")
 
-        data = check_empty(mode=mode, country=country_code)
+        data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -222,13 +221,15 @@ class economic_features:
     def labor_force_participation(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="SL.TLF.CACT.ZS")
 
-        data = check_empty(mode=mode, country=country_code)
+        data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -242,13 +243,15 @@ class economic_features:
     def current_account_gdp_ratio(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = self.wb.fetch(country_code=country_code, indicator_code="BN.CAB.XOKA.GD.ZS")
 
-        data = check_empty(mode=mode, country=country_code)
+        data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -263,12 +266,14 @@ class economic_features:
         data = self.wb.fetch(country_code=country_code, indicator_code="FI.RES.TOTL.MO")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -276,19 +281,21 @@ class economic_features:
     @feature(
         name="external_debt_gdp_ratio",
         group="economic_features",
-        deps=["world_bank:DT.check_emptyD.DECT.GN.ZS"],
+        deps=["world_bank:DT.DOD.DECT.GN.ZS"],
         compute="external_debt_gdp_ratio from the World Bank data",
     )
     def external_debt_gdp_ratio(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        data = self.wb.fetch(country_code=country_code, indicator_code="DT.check_emptyD.DECT.GN.ZS")
+        data = self.wb.fetch(country_code=country_code, indicator_code="DT.DOD.DECT.GN.ZS")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -303,11 +310,14 @@ class economic_features:
         data = self.imf.fetch(country=country_code, agency="IMF.RES", dataflow_id="WEO", key="GGXCNL_NGDP")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -322,11 +332,14 @@ class economic_features:
         data = self.imf.fetch(country=country_code, agency="IMF.RES", dataflow_id="WEO", key="GGXWDG_NGDP")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -341,12 +354,14 @@ class economic_features:
         data = self.imf.fetch(country=country_code, agency="IMF.STA", dataflow_id="ER", key="EREER_IX.M")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
 
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -358,15 +373,17 @@ class economic_features:
         compute="banking_sector_health from the World Bank data",
     )
     def banking_sector_health(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-        
         data = self.wb.fetch(country_code=country_code, indicator_code="FB.AST.NPLN.ZS")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]
@@ -378,15 +395,17 @@ class economic_features:
         compute="gdp_per_capita_ppp from the World Bank data",
     )
     def gdp_per_capita_ppp(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
-
         data = self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.PCAP.PP.CD")
 
         data = check_empty(mode=mode, country=country_code, data=data)
+        if not isinstance(data, pd.DataFrame):
+            return data
+
         if mode == "F":
             return data["value"].iloc[0]
         if mode == "ML":
             data = data.set_index("date")
-            data.index = pd.to_datetime("date")
+            data.index = pd.to_datetime(data.index)
             data.sort_index(inplace=True)
             data = data.resample("MS").interpolate()
             return data["value"]

@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from hermes.features.country_risk_features.economic import check_empty, check_iso3, economic_features, empty_result
+from hermes.core.helper import check_empty, check_iso3, empty_result, iso3_to_iso2
+from hermes.features.country_risk_features.economic import economic_features
 
 
 class TestHelpers:

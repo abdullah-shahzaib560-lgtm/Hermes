@@ -7,8 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class security_features:
-    def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        ...
+    def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
     def military_spending_growth_yoy(country_code: str, mode: str = Literal["F", "ML"]) -> float:
         pass
