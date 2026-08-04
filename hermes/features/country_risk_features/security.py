@@ -7,24 +7,24 @@ logger = logging.getLogger(__name__)
 
 
 class security_features:
-    def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
+    async def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
-    def military_spending_growth_yoy(country_code: str, mode: str = Literal["F", "ML"]) -> float:
+    async def military_spending_growth_yoy(country_code: str, mode: str = Literal["F", "ML"]) -> float:
         pass
 
-    def alliance_strength_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+    async def alliance_strength_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
         pass
 
-    def arms_imports_12m(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
+    async def arms_imports_12m(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
         pass
 
-    def arms_exports_12m(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
+    async def arms_exports_12m(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
         pass
 
-    def peacekeeping_troops(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
+    async def peacekeeping_troops(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
         pass
 
-    def nato_member(self, country_code: str) -> bool:
+    async def nato_member(self, country_code: str) -> bool:
         if country_code in nato_members:
             return True
         else:

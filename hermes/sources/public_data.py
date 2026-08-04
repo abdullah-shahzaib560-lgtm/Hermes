@@ -7,7 +7,7 @@ CURRENT_DIR = Path(__file__).parent
 HRS_PATH = CURRENT_DIR / "lib" / "datasets" / "hrs.csv"
 HDI_PATH = CURRENT_DIR / "lib" / "datasets" / "hdi1.csv"
 CPI_PATH = CURRENT_DIR / "lib" / "datasets" / "global_cpi_all.csv"
-
+FSI_PATH = CURRENT_DIR / "lib" / "datasets" / "fsi.csv"
 
 class PUBLIC_DATASET:
     def fetch_hrs(self, country: str) -> pd.DataFrame:
@@ -33,4 +33,8 @@ class PUBLIC_DATASET:
         data = data[data["iso3"] == country]
         return data
 
-    def fetch_fsi(self, country: str) -> pd.DataFrame: ...
+    def fetch_fsi(self, country: str) -> pd.DataFrame:
+        df = pd.read_csv(FSI_PATH)
+        data = df[df['country'] == country]
+        data['Year'] = pd.to_datetime(data['Year'], format='%Y')
+        return data
