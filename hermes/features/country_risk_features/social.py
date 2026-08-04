@@ -15,17 +15,33 @@ class social_features:
         self.wb = World_bank()
         self._data = PUBLIC_DATASET()
 
-    def social_stability_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
+    async def social_stability_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
-    def human_rights_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        pass
+    async def human_rights_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+        data = self._data.fetch_hrs(country=country_code)
+        data = check_empty(data=data, mode=mode)
+        data = data.set_index('date')
+        data.sort_index(inplace=True)
+        data = data.resample("MS")
+        if mode == 'F':
+            return data['human_right_score'].iloc[0]
+        if mode == 'ML':
+            return data['human_right_score']
+        
+    async def fragile_state_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+        data = self._data.fetch_fsi(country=country_code)
+        data = check_empty(data=data, mode=mode)
+        data = data.set_index('date')
+        data.sort_index(inplace=True)
+        data = data.resample('MS')
+        if mode == 'F':
+            return data['Total'].iloc[0]
+        if mode == 'ML':
+            return data['Total']
 
-    def fragile_state_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        pass
-
-    def human_development_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+    async def human_development_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
         data = self._data.fetch_hdi(country=country_code)
-        data = check_empty(data=data)
+        data = check_empty(data=data, mode=mode)
         data = data.set_index("Year")
         data.sort_index(inplace=True)
         data.resample("MS")
@@ -34,9 +50,9 @@ class social_features:
         if mode == "ML":
             return data["HDI"]
 
-    def gini_coefficient(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+    async def gini_coefficient(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
         data = self.wb.fetch(country_code=country_code, indicator_code="SI.POV.GINI")
-        data = check_empty(data=data)
+        data = check_empty(data=data, mode=mode)
 
         data = data.set_index("date")
         data.index = pd.to_datetime("date")
@@ -47,9 +63,9 @@ class social_features:
         if mode == "ML":
             return data["value"]
 
-    def poverty_headcount_ratio(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+    async def poverty_headcount_ratio(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
         data = self.wb.fetch(country_code=country_code, indicator_code="SI.POV.DDAY")
-        data = check_empty(data=data)
+        data = check_empty(data=data, mode=mode)
 
         data = data.set_index("date")
         data.index = pd.to_datetime("date")
