@@ -21,7 +21,6 @@ def export(data: pd.DataFrame | pd.Series, filetype: str = "csv", loc: Path | st
     target_dir = Path(loc)
     target_dir.mkdir(parents=True, exist_ok=True)
     full_path = target_dir / file_name
-
     try:
         if filetype == "csv":
             data.to_csv(full_path, index=False)
