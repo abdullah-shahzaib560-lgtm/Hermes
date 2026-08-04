@@ -16,7 +16,7 @@ class Hermes:
         cache_dir: str | None = None,
         use_cache: bool = True,
     ):
-        if not opensanction_api or new_data_api:
+        if not opensanction_api and not new_data_api:
             raise KeyError("Add Opensanction API, NewsDataAPI for full usage")
 
         self._cache = RawCache(cache_dir=cache_dir) if use_cache else None
