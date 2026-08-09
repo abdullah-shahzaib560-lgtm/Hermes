@@ -1,6 +1,7 @@
+import asyncio
 import logging
-import time
 from datetime import timedelta
+from functools import partial
 
 import httpx
 import pandas as pd
@@ -15,7 +16,7 @@ class IMF:
         self._cache = cache or RawCache()
         self.url: str = "https://api.imf.org/external/sdmx/3.0/data/dataflow/"
 
-    def _fetch(
+    async def _fetch(
         self,
         country: str,
         agency: str,
@@ -32,22 +33,23 @@ class IMF:
         empty = pd.DataFrame(columns=["date", "indicator_id", "country", "value", "source"])
 
         r = None
-        for attempt in range(retries):
-            try:
-                resp = httpx.get(url=url, headers=headers, timeout=timeout, follow_redirects=True)
-                resp.raise_for_status()
-                r = resp.json()
-                break
-            except httpx.ReadTimeout:
-                if attempt == retries - 1:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            for attempt in range(retries):
+                try:
+                    resp = await client.get(url=url, headers=headers)
+                    resp.raise_for_status()
+                    r = resp.json()
+                    break
+                except httpx.ReadTimeout:
+                    if attempt == retries - 1:
+                        raise
+                    await asyncio.sleep(2**attempt)
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 404:
+                        logger.warning(f"404: country={country}, dataflow={dataflow_id}, key={key}")
+                        return empty
+                    logger.error(f"HTTP error: {e.response.status_code}")
                     raise
-                time.sleep(2**attempt)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.warning(f"404: country={country}, dataflow={dataflow_id}, key={key}")
-                    return empty
-                logger.error(f"HTTP error: {e.response.status_code}")
-                raise
 
         data = r["data"]
         structure = data["structures"][0]
@@ -103,7 +105,7 @@ class IMF:
         df = df.reset_index()
         return df
 
-    def fetch(
+    async def fetch(
         self,
         country: str,
         agency: str,
@@ -121,10 +123,11 @@ class IMF:
             "dataflow_id": dataflow_id,
         }
 
-        return self._cache.get_or_fetch(
+        return await self._cache.get_or_fetch(
             source="imf",
             params=cache_params,
-            fetch_fn=lambda: self._fetch(
+            fetch_fn=partial(
+                self._fetch,
                 country=country,
                 agency=agency,
                 dataflow_id=dataflow_id,

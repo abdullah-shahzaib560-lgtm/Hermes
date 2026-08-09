@@ -1,7 +1,7 @@
 import hashlib
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -78,11 +78,11 @@ class RawCache:
         meta_path.write_text(json.dumps(meta, indent=2, default=str))
         logger.debug(f"Cached {len(df)} rows for {source}:{params}")
 
-    def get_or_fetch(
+    async def get_or_fetch(
         self,
         source: str,
         params: dict,
-        fetch_fn: Callable[[], pd.DataFrame],
+        fetch_fn: Callable[[], Awaitable[pd.DataFrame]],
         force: bool = False,
         ttl: timedelta | None = None,
     ) -> pd.DataFrame:
@@ -92,7 +92,7 @@ class RawCache:
             except CacheMiss:
                 pass
 
-        df = fetch_fn()
+        df = await fetch_fn()
         if isinstance(df, pd.DataFrame) and not df.empty:
             self.put(source, params, df)
         return df

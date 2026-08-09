@@ -18,7 +18,7 @@ class social_features:
     async def social_stability_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
     async def human_rights_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        data = self._data.fetch_hrs(country=country_code)
+        data = await self._data.fetch_hrs(country=country_code)
         data = check_empty(data=data, mode=mode)
         data = data.set_index('date')
         data.sort_index(inplace=True)
@@ -27,9 +27,9 @@ class social_features:
             return data['human_right_score'].iloc[0]
         if mode == 'ML':
             return data['human_right_score']
-        
+
     async def fragile_state_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        data = self._data.fetch_fsi(country=country_code)
+        data = await self._data.fetch_fsi(country=country_code)
         data = check_empty(data=data, mode=mode)
         data = data.set_index('date')
         data.sort_index(inplace=True)
@@ -40,7 +40,7 @@ class social_features:
             return data['Total']
 
     async def human_development_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        data = self._data.fetch_hdi(country=country_code)
+        data = await self._data.fetch_hdi(country=country_code)
         data = check_empty(data=data, mode=mode)
         data = data.set_index("Year")
         data.sort_index(inplace=True)
@@ -51,7 +51,7 @@ class social_features:
             return data["HDI"]
 
     async def gini_coefficient(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        data = self.wb.fetch(country_code=country_code, indicator_code="SI.POV.GINI")
+        data = await self.wb.fetch(country_code=country_code, indicator_code="SI.POV.GINI")
         data = check_empty(data=data, mode=mode)
 
         data = data.set_index("date")
@@ -64,7 +64,7 @@ class social_features:
             return data["value"]
 
     async def poverty_headcount_ratio(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        data = self.wb.fetch(country_code=country_code, indicator_code="SI.POV.DDAY")
+        data = await self.wb.fetch(country_code=country_code, indicator_code="SI.POV.DDAY")
         data = check_empty(data=data, mode=mode)
 
         data = data.set_index("date")

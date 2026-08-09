@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 import pandas as pd
@@ -8,33 +9,41 @@ HRS_PATH = CURRENT_DIR / "lib" / "datasets" / "hrs.csv"
 HDI_PATH = CURRENT_DIR / "lib" / "datasets" / "hdi1.csv"
 CPI_PATH = CURRENT_DIR / "lib" / "datasets" / "global_cpi_all.csv"
 FSI_PATH = CURRENT_DIR / "lib" / "datasets" / "fsi.csv"
+NATO_PATH = CURRENT_DIR / "lib" / "datasets" / "nato.csv"
 
 class PUBLIC_DATASET:
-    def fetch_hrs(self, country: str) -> pd.DataFrame:
-        df = pd.read_csv(HRS_PATH)
+
+    async def fetch_hrs(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, HRS_PATH)
         data = df[df["country_text_id"] == country]
         data["date"] = pd.to_datetime(data["date"], format="%Y")
         return data
 
-    def fetch_hdi(
+    async def fetch_hdi(
         self,
         country: str,
     ) -> pd.DataFrame:
-        df = pd.read_csv(HDI_PATH)
+        df = await asyncio.to_thread(pd.read_csv, HDI_PATH)
         data = df[["iso3", "year", "score"]]
         data["year"] = pd.to_datetime(data["year"], format="%Y")
         data = data[data["iso3"] == country]
         return data
 
-    def fetch_cpi(self, country: str) -> pd.DataFrame:
-        df = pd.read_csv(CPI_PATH)
+    async def fetch_cpi(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, CPI_PATH)
         data = df[["iso3", "year", "score"]]
         data["year"] = pd.to_datetime(data["year"], format="%Y")
         data = data[data["iso3"] == country]
         return data
 
-    def fetch_fsi(self, country: str) -> pd.DataFrame:
-        df = pd.read_csv(FSI_PATH)
+    async def fetch_fsi(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, FSI_PATH)
         data = df[df['country'] == country]
+        data['Year'] = pd.to_datetime(data['Year'], format='%Y')
+        return data
+
+    async def fetch_nato(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, NATO_PATH)
+        data = df[df['ISO3'] == country]
         data['Year'] = pd.to_datetime(data['Year'], format='%Y')
         return data
