@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -16,4 +17,10 @@ hr = Hermes(
 print(hr.list_countries)
 
 
-print(hr.features.get_country_risk_features('USA'))
+async def main():
+    result = await hr.features.get_country_risk_features('USA')
+    print(result)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

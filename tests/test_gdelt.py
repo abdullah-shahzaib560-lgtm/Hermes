@@ -96,22 +96,22 @@ class TestToCanonical:
 
 class TestGDELTQuery:
     @respx.mock
-    def test_query_events_cache_hit(self, tmp_cache):
+    async def test_query_events_cache_hit(self, tmp_cache):
         gdelt = GDELT(cache=tmp_cache)
         respx.get(GDELT_DOC_API).respond(
             status_code=200,
             json={"articles": [{"url": "http://x", "seendate": "20240301000000", "themes": ["PROTEST"]}]},
         )
-        df1 = gdelt.query_events(themes=["PROTEST"])
-        df2 = gdelt.query_events(themes=["PROTEST"])
+        df1 = await gdelt.query_events(themes=["PROTEST"])
+        df2 = await gdelt.query_events(themes=["PROTEST"])
         assert len(respx.calls) == 1
 
     @respx.mock
-    def test_query_events_no_articles(self, tmp_cache):
+    async def test_query_events_no_articles(self, tmp_cache):
         gdelt = GDELT(cache=tmp_cache)
         respx.get(GDELT_DOC_API).respond(
             status_code=200,
             json={"articles": []},
         )
-        df = gdelt.query_events(themes=["PROTEST"])
+        df = await gdelt.query_events(themes=["PROTEST"])
         assert df.empty

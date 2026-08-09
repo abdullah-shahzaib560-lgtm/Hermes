@@ -1,12 +1,15 @@
 import logging
 from typing import Literal
 
-from hermes.sources.lib.nato_member import nato_members
+from hermes.sources.public_data import PUBLIC_DATASET
 
 logger = logging.getLogger(__name__)
 
 
 class security_features:
+    def __init__(self):
+        self._data = PUBLIC_DATASET()
+
     async def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
     async def military_spending_growth_yoy(country_code: str, mode: str = Literal["F", "ML"]) -> float:
@@ -25,7 +28,5 @@ class security_features:
         pass
 
     async def nato_member(self, country_code: str) -> bool:
-        if country_code in nato_members:
-            return True
-        else:
-            return False
+        data = await self._data.fetch_nato(country=country_code)
+        return bool((data["NATO Member"] == 1).any())

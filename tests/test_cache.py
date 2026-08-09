@@ -39,53 +39,53 @@ class TestRawCache:
         with pytest.raises(CacheMiss):
             tmp_cache.get("src", {"k": "v"})
 
-    def test_get_or_fetch_hit(self, tmp_cache: RawCache):
+    async def test_get_or_fetch_hit(self, tmp_cache: RawCache):
         tmp_cache.put("src", {"k": "v"}, pd.DataFrame({"x": [1]}))
         called = False
 
-        def fetch():
+        async def fetch():
             nonlocal called
             called = True
             return pd.DataFrame({"x": [2]})
 
-        result = tmp_cache.get_or_fetch("src", {"k": "v"}, fetch)
+        result = await tmp_cache.get_or_fetch("src", {"k": "v"}, fetch)
         assert called is False
         assert result["x"].iloc[0] == 1
 
-    def test_get_or_fetch_miss(self, tmp_cache: RawCache):
+    async def test_get_or_fetch_miss(self, tmp_cache: RawCache):
         called = False
 
-        def fetch():
+        async def fetch():
             nonlocal called
             called = True
             return pd.DataFrame({"x": [42]})
 
-        result = tmp_cache.get_or_fetch("src", {"k": "v"}, fetch)
+        result = await tmp_cache.get_or_fetch("src", {"k": "v"}, fetch)
         assert called
         assert result["x"].iloc[0] == 42
 
-    def test_get_or_fetch_force(self, tmp_cache: RawCache):
+    async def test_get_or_fetch_force(self, tmp_cache: RawCache):
         tmp_cache.put("src", {"k": "v"}, pd.DataFrame({"x": [1]}))
         called = False
 
-        def fetch():
+        async def fetch():
             nonlocal called
             called = True
             return pd.DataFrame({"x": [99]})
 
-        result = tmp_cache.get_or_fetch("src", {"k": "v"}, fetch, force=True)
+        result = await tmp_cache.get_or_fetch("src", {"k": "v"}, fetch, force=True)
         assert called
         assert result["x"].iloc[0] == 99
 
-    def test_get_or_fetch_empty_df_not_cached(self, tmp_cache: RawCache):
+    async def test_get_or_fetch_empty_df_not_cached(self, tmp_cache: RawCache):
         called = False
 
-        def fetch():
+        async def fetch():
             nonlocal called
             called = True
             return pd.DataFrame()
 
-        result = tmp_cache.get_or_fetch("src", {"k": "v"}, fetch)
+        result = await tmp_cache.get_or_fetch("src", {"k": "v"}, fetch)
         assert called
         assert result.empty
         with pytest.raises(CacheMiss):

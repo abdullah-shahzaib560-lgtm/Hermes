@@ -24,18 +24,18 @@ class geopolitical_features:
         self._os = OpenSanction(api_key=os_api)
         self._p_data = PUBLIC_DATASET()
 
-    def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
+    async def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
         now = datetime.utcnow()
-        return self._gdelt.query_events(
+        return await self._gdelt.query_events(
             countries=[country],
             themes=themes,
             start_date=now - timedelta(days=days),
             end_date=now,
         )
 
-    def _gdelt_ml_raw(self, country: str, themes: list[str]) -> pd.DataFrame:
+    async def _gdelt_ml_raw(self, country: str, themes: list[str]) -> pd.DataFrame:
         now = datetime.utcnow()
-        raw = self._gdelt.query_events(
+        raw = await self._gdelt.query_events(
             countries=[country],
             themes=themes,
             start_date=GDELT_HISTORY_START,
@@ -67,14 +67,14 @@ class geopolitical_features:
     )
     async def conflict_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
+            raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "conflict_event_count_30d"
             return s
-        return len(self._query(country_code, ["CONFLICT"], 30))
+        return len(await self._query(country_code, ["CONFLICT"], 30))
 
     @feature(
         name="conflict_event_count_90d",
@@ -84,14 +84,14 @@ class geopolitical_features:
     )
     async def conflict_event_count_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
+            raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
             s = self._monthly_rolling(daily, 90, "sum")
             s.name = "conflict_event_count_90d"
             return s
-        return len(self._query(country_code, ["CONFLICT"], 90))
+        return len(await self._query(country_code, ["CONFLICT"], 90))
 
     @feature(
         name="conflict_trend",
@@ -103,7 +103,7 @@ class geopolitical_features:
         self, country_code: str, mode: str = Literal["F", "ML"]
     ) -> Literal["escalating", "stable", "de-escalating"] | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
+            raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=str)
             daily = raw.set_index("date").resample("D").size()
@@ -123,10 +123,10 @@ class geopolitical_features:
             s.name = "conflict_trend"
             return s
         now = datetime.utcnow()
-        recent = self._gdelt.query_events(
+        recent = await self._gdelt.query_events(
             countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now
         )
-        prior = self._gdelt.query_events(
+        prior = await self._gdelt.query_events(
             countries=[country_code],
             themes=["CONFLICT"],
             start_date=now - timedelta(days=60),
@@ -147,14 +147,14 @@ class geopolitical_features:
     )
     async def goldstein_scale_avg_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
+            raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
             s = self._monthly_rolling(daily, 30, "mean")
             s.name = "goldstein_scale_avg_30d"
             return s
-        df = self._query(country_code, ["CONFLICT"], 30)
+        df = await self._query(country_code, ["CONFLICT"], 30)
         return float(df["severity"].mean()) if not df.empty else 0.0
 
     @feature(
@@ -165,7 +165,7 @@ class geopolitical_features:
     )
     async def goldstein_scale_trend(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["CONFLICT"])
+            raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
@@ -175,10 +175,10 @@ class geopolitical_features:
             s.name = "goldstein_scale_trend"
             return s
         now = datetime.utcnow()
-        recent = self._gdelt.query_events(
+        recent = await self._gdelt.query_events(
             countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now
         )
-        prior = self._gdelt.query_events(
+        prior = await self._gdelt.query_events(
             countries=[country_code],
             themes=["CONFLICT"],
             start_date=now - timedelta(days=60),
@@ -196,7 +196,7 @@ class geopolitical_features:
     )
     async def battle_deaths_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
+            raw = await self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             raw["mentions"] = pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").fillna(0)
@@ -205,7 +205,7 @@ class geopolitical_features:
             s.name = "battle_deaths_30d"
             return s
         now = datetime.utcnow()
-        raw = self._gdelt.query_events(
+        raw = await self._gdelt.query_events(
             countries=[country_code],
             themes=["ASSAULT", "FIGHT"],
             start_date=now - timedelta(days=30),
@@ -224,7 +224,7 @@ class geopolitical_features:
     )
     async def battle_deaths_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
+            raw = await self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             raw["mentions"] = pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").fillna(0)
@@ -233,7 +233,7 @@ class geopolitical_features:
             s.name = "battle_deaths_90d"
             return s
         now = datetime.utcnow()
-        raw = self._gdelt.query_events(
+        raw = await self._gdelt.query_events(
             countries=[country_code],
             themes=["ASSAULT", "FIGHT"],
             start_date=now - timedelta(days=90),
@@ -252,14 +252,14 @@ class geopolitical_features:
     )
     async def protest_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["PROTEST"])
+            raw = await self._gdelt_ml_raw(country_code, ["PROTEST"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "protest_event_count_30d"
             return s
-        return len(self._query(country_code, ["PROTEST"], 30))
+        return len(await self._query(country_code, ["PROTEST"], 30))
 
     @feature(
         name="protest_violence_level",
@@ -269,7 +269,7 @@ class geopolitical_features:
     )
     async def protest_violence_level(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["PROTEST"])
+            raw = await self._gdelt_ml_raw(country_code, ["PROTEST"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
@@ -278,7 +278,7 @@ class geopolitical_features:
             s = monthly.apply(lambda x: max(0.0, min(1.0, -x / 10.0)))
             s.name = "protest_violence_level"
             return s
-        df = self._query(country_code, ["PROTEST"], 30)
+        df = await self._query(country_code, ["PROTEST"], 30)
         if df.empty:
             return 0.0
         s = float(df["severity"].mean())
@@ -292,14 +292,14 @@ class geopolitical_features:
     )
     async def diplomatic_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
+            raw = await self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "diplomatic_event_count_30d"
             return s
-        return len(self._query(country_code, ["DIPLOMACY"], 30))
+        return len(await self._query(country_code, ["DIPLOMACY"], 30))
 
     @feature(
         name="diplomatic_intensity_avg",
@@ -309,14 +309,14 @@ class geopolitical_features:
     )
     async def diplomatic_intensity_avg(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         if mode == "ML":
-            raw = self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
+            raw = await self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
             s = self._monthly_rolling(daily, 30, "mean")
             s.name = "diplomatic_intensity_avg"
             return s
-        df = self._query(country_code, ["DIPLOMACY"], 30)
+        df = await self._query(country_code, ["DIPLOMACY"], 30)
         return float(df["severity"].mean()) if not df.empty else 0.0
 
     async def _wb_annual_to_monthly(self, data: pd.DataFrame, name: str) -> pd.Series:
@@ -333,11 +333,11 @@ class geopolitical_features:
         compute="rule_of_law_score from the World Bank data",
     )
     async def rule_of_law_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
-        data = self._wb.fetch(country_code=country_code, indicator_code="RL.EST")
+        data = await self._wb.fetch(country_code=country_code, indicator_code="RL.EST")
         if data.empty:
             return 0.0 if mode == "F" else pd.Series(dtype=float)
         if mode == "ML":
-            return self._wb_annual_to_monthly(data, "rule_of_law_score")
+            return await self._wb_annual_to_monthly(data, "rule_of_law_score")
         return float(data["value"].iloc[0])
 
     @feature(
@@ -347,11 +347,11 @@ class geopolitical_features:
         compute="regulatory_quality from the World Bank data",
     )
     async def regulatory_quality(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
-        data = self._wb.fetch(country_code=country_code, indicator_code="RQ.EST")
+        data = await self._wb.fetch(country_code=country_code, indicator_code="RQ.EST")
         if data.empty:
             return 0.0 if mode == "F" else pd.Series(dtype=float)
         if mode == "ML":
-            return self._wb_annual_to_monthly(data, "regulatory_quality")
+            return await self._wb_annual_to_monthly(data, "regulatory_quality")
         return float(data["value"].iloc[0])
 
     @feature(
@@ -364,16 +364,16 @@ class geopolitical_features:
         if mode == "F":
             values = []
             for ind in WGI_INDICATORS:
-                data = self._wb.fetch(country_code=country_code, indicator_code=ind)
+                data = await self._wb.fetch(country_code=country_code, indicator_code=ind)
                 if not data.empty:
                     values.append(float(data["value"].iloc[0]))
             return float(np.mean(values)) if values else 0.0
 
         all_series = []
         for ind in WGI_INDICATORS:
-            data = self._wb.fetch(country_code=country_code, indicator_code=ind)
+            data = await self._wb.fetch(country_code=country_code, indicator_code=ind)
             if not data.empty:
-                all_series.append(self._wb_annual_to_monthly(data, ind))
+                all_series.append(await self._wb_annual_to_monthly(data, ind))
         if not all_series:
             return pd.Series(dtype=float)
         composite = pd.concat(all_series, axis=1).mean(axis=1)
@@ -387,7 +387,7 @@ class geopolitical_features:
         compute="sanctions_count_active from the OpenSanction",
     )
     async def sanctions_count_active(self, country_code: str) -> int:
-        data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
+        data = await self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         active_count = 0
         for result in data.get("results", []):
             status = result.get("properties", {}).get("status", [])
@@ -406,7 +406,7 @@ class geopolitical_features:
         from datetime import datetime, timedelta
 
         thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-        data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
+        data = await self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         new_count = 0
         for result in data.get("results", []):
             created = result.get("properties", {}).get("createdAt", [])
@@ -421,7 +421,7 @@ class geopolitical_features:
         compute="sanctions_sector_coverage from the OpenSanction",
     )
     async def sanctions_sector_coverage(self, country_code: str) -> float | pd.Series:
-        data = self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
+        data = await self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         sectors = set()
         for result in data.get("results", []):
             topics = result.get("properties", {}).get("topics", [])
@@ -436,7 +436,7 @@ class geopolitical_features:
         compute="corruption_perception_index from the orld HDX CPI downloaded dataset",
     )
     async def corruption_perception_index(self, country_code: str, mode: str = "F") -> int:
-        data = self._p_data.fetch_cpi(country=country_code)
+        data = await self._p_data.fetch_cpi(country=country_code)
 
         if data.empty:
             return 0 if mode == "F" else pd.Series(dtype="float64")
@@ -481,11 +481,16 @@ class geopolitical_features:
 
 
 if __name__ == "__main__":
-    geo = geopolitical_features()
-    print("=" * 60)
-    data = geo.corruption_perception_index("USA", "F")
-    print(data)
-    print("=" * 60)
-    dataa = geo.corruption_perception_index("USA", "ML")
-    print(f"The data type {type(dataa)}")
-    print(dataa)
+    import asyncio
+
+    async def main():
+        geo = geopolitical_features(os_api="")
+        print("=" * 60)
+        data = await geo.corruption_perception_index("USA", "F")
+        print(data)
+        print("=" * 60)
+        dataa = await geo.corruption_perception_index("USA", "ML")
+        print(f"The data type {type(dataa)}")
+        print(dataa)
+
+    asyncio.run(main())
