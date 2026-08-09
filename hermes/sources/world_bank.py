@@ -1,6 +1,7 @@
+import asyncio
 import logging
-import time
 from datetime import timedelta
+from functools import partial
 
 import httpx
 import pandas as pd
@@ -15,7 +16,7 @@ class World_bank:
         self.url = "https://api.worldbank.org/v2"
         self._cache = cache or RawCache()
 
-    def _fetch(
+    async def _fetch(
         self,
         country_code: str,
         indicator_code: str,
@@ -38,19 +39,20 @@ class World_bank:
             params["mrv"] = most_recent
 
         r = None
-        for attempt in range(retries):
-            try:
-                resp = httpx.get(url=url, params=params, timeout=timeout)
-                resp.raise_for_status()
-                r = resp.json()
-                break
-            except httpx.ReadTimeout:
-                if attempt == retries - 1:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            for attempt in range(retries):
+                try:
+                    resp = await client.get(url=url, params=params)
+                    resp.raise_for_status()
+                    r = resp.json()
+                    break
+                except httpx.ReadTimeout:
+                    if attempt == retries - 1:
+                        raise
+                    await asyncio.sleep(2**attempt)
+                except httpx.HTTPStatusError as e:
+                    logger.error(f"HTTP error: {e.response.status_code}")
                     raise
-                time.sleep(2**attempt)
-            except httpx.HTTPStatusError as e:
-                logger.error(f"HTTP error: {e.response.status_code}")
-                raise
         if len(r) < 2 or not r[1]:
             logger.warning(f"No data: country={country_code}, indicator={indicator_code}")
             return pd.DataFrame(columns=[...])  # match whatever columns _fetch normally returns
@@ -87,7 +89,7 @@ class World_bank:
         data = data.reset_index()
         return data
 
-    def fetch(
+    async def fetch(
         self,
         country_code: str,
         indicator_code: str,
@@ -108,11 +110,19 @@ class World_bank:
             "per_page": per_page,
         }
 
-        return self._cache.get_or_fetch(
+        return await self._cache.get_or_fetch(
             source="world_bank",
             params=cache_params,
-            fetch_fn=lambda: self._fetch(
-                country_code, indicator_code, frequency, most_recent, per_page, page, timeout, retries
+            fetch_fn=partial(
+                self._fetch,
+                country_code,
+                indicator_code,
+                frequency,
+                most_recent,
+                per_page,
+                page,
+                timeout,
+                retries,
             ),
             force=force,
             ttl=timedelta(days=7),  # WB data updates weekly
@@ -120,9 +130,14 @@ class World_bank:
 
 
 if __name__ == "__main__":
-    wb = World_bank()
-    df = wb.fetch(
-        country_code="USA",
-        indicator_code="NY.GDP.MKTP.KD.ZG",
-    )
-    print(df)
+    import asyncio
+
+    async def main():
+        wb = World_bank()
+        df = await wb.fetch(
+            country_code="USA",
+            indicator_code="NY.GDP.MKTP.KD.ZG",
+        )
+        print(df)
+
+    asyncio.run(main())

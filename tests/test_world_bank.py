@@ -11,7 +11,7 @@ WB_API_URL = "https://api.worldbank.org/v2"
 
 class TestWorldBank:
     @respx.mock
-    def test_fetch_success(self, tmp_path):
+    async def test_fetch_success(self, tmp_path):
         wb = World_bank(cache=None)
         respx.get(f"{WB_API_URL}/country/USA/indicator/NY.GDP.MKTP.KD.ZG").respond(
             status_code=200,
@@ -27,40 +27,40 @@ class TestWorldBank:
                 ],
             ],
         )
-        df = wb._fetch("USA", "NY.GDP.MKTP.KD.ZG")
+        df = await wb._fetch("USA", "NY.GDP.MKTP.KD.ZG")
         assert not df.empty
         assert df["value"].iloc[0] == 2.5
         assert df["country"].iloc[0] == "USA"
         assert df["source"].iloc[0] == "World_Bank"
 
     @respx.mock
-    def test_fetch_no_data(self, tmp_path):
+    async def test_fetch_no_data(self, tmp_path):
         wb = World_bank(cache=None)
         respx.get(f"{WB_API_URL}/country/XYZ/indicator/SOME.IND").respond(
             status_code=200,
             json=[{"page": 1, "pages": 1}, []],
         )
-        df = wb._fetch("XYZ", "SOME.IND")
+        df = await wb._fetch("XYZ", "SOME.IND")
         assert df.empty
 
     @respx.mock
-    def test_fetch_http_error(self, tmp_path):
+    async def test_fetch_http_error(self, tmp_path):
         wb = World_bank(cache=None)
         respx.get(f"{WB_API_URL}/country/USA/indicator/BAD").respond(status_code=404)
         with pytest.raises(httpx.HTTPStatusError):
-            wb._fetch("USA", "BAD")
+            await wb._fetch("USA", "BAD")
 
     @respx.mock
-    def test_fetch_retry_on_timeout(self, tmp_path):
+    async def test_fetch_retry_on_timeout(self, tmp_path):
         wb = World_bank(cache=None)
         route = respx.get(f"{WB_API_URL}/country/USA/indicator/NY.GDP.MKTP.KD.ZG")
         route.mock(side_effect=httpx.ReadTimeout("timed out"))
 
         with pytest.raises(httpx.ReadTimeout):
-            wb._fetch("USA", "NY.GDP.MKTP.KD.ZG", retries=1)
+            await wb._fetch("USA", "NY.GDP.MKTP.KD.ZG", retries=1)
 
     @respx.mock
-    def test_public_fetch_uses_cache(self, tmp_cache, tmp_path):
+    async def test_public_fetch_uses_cache(self, tmp_cache, tmp_path):
         wb = World_bank(cache=tmp_cache)
         respx.get(f"{WB_API_URL}/country/USA/indicator/GDP.PROT").respond(
             status_code=200,
@@ -76,8 +76,8 @@ class TestWorldBank:
                 ],
             ],
         )
-        df1 = wb.fetch("USA", "GDP.PROT")
-        df2 = wb.fetch("USA", "GDP.PROT")
+        df1 = await wb.fetch("USA", "GDP.PROT")
+        df2 = await wb.fetch("USA", "GDP.PROT")
         assert len(respx.calls) == 1
         assert not df1.empty
         assert not df2.empty
