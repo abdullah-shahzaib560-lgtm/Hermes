@@ -26,10 +26,15 @@ class enviromental_features:
         pass
 
     async def water_stress_index(self, country_code: str) -> float:
-        data = self.wb.fetch(country_code=country_code, indicator_code='ER.H2O.FWTL.ZS')
-        
+        data = await self.wb.fetch(country_code=country_code, indicator_code='ER.H2O.FWTL.ZS')
+        return data
 
 if __name__ == '__main__':
-    env = enviromental_features()
-    data = env.water_stress_index(country_code='PAK')
-    print(data)
+    import asyncio
+
+    async def main():
+        env = enviromental_features()
+        data = await env.water_stress_index(country_code='PAK')
+        print(data)
+
+    asyncio.run(main())

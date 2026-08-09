@@ -1,8 +1,9 @@
+import asyncio
 import io
 import logging
 import zipfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Any
 from urllib.parse import urlencode
 
@@ -108,7 +109,7 @@ class GDELT:
         out = out.dropna(subset=["date"]).reset_index(drop=True)
         return out
 
-    def _fetch_via_doc_api(
+    async def _fetch_via_doc_api(
         self,
         countries: list[str] | None = None,
         themes: list[str] | None = None,
@@ -140,15 +141,17 @@ class GDELT:
         url = f"{GDELT_DOC_API}?{urlencode(params, doseq=True)}"
         logger.debug("GDELT Doc API: %s", url[:300])
 
-        for attempt in range(retries):
-            try:
-                resp = httpx.get(url, timeout=timeout, follow_redirects=True)
-                resp.raise_for_status()
-                break
-            except httpx.ReadTimeout:
-                if attempt == retries - 1:
-                    raise
-                logger.warning("GDELT Doc API timeout, retry %d", attempt + 1)
+        resp = None
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            for attempt in range(retries):
+                try:
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                    break
+                except httpx.ReadTimeout:
+                    if attempt == retries - 1:
+                        raise
+                    logger.warning("GDELT Doc API timeout, retry %d", attempt + 1)
 
         data = resp.json()
         articles = data.get("articles", data.get("result", []))
@@ -160,17 +163,18 @@ class GDELT:
         logger.info("GDELT Doc API returned %d articles", len(df))
         return df
 
-    def _load_master_list(self, timeout: float = 60.0) -> pd.DataFrame:
+    async def _load_master_list(self, timeout: float = 60.0) -> pd.DataFrame:
         if self._master_df is not None:
             return self._master_df
-        resp = httpx.get(GDELT_MASTER, timeout=timeout)
-        resp.raise_for_status()
-        df = pd.read_csv(
-            io.StringIO(resp.text),
-            sep=r"\s+",
-            header=None,
-            names=["size", "hash", "url"],
-        )
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            resp = await client.get(GDELT_MASTER)
+            resp.raise_for_status()
+            df = pd.read_csv(
+                io.StringIO(resp.text),
+                sep=r"\s+",
+                header=None,
+                names=["size", "hash", "url"],
+            )
         df = df[df["url"].str.contains("export.CSV.zip", na=False)].copy()
         df["timestamp"] = pd.to_datetime(
             df["url"].str.extract(r"/(\d{14})\.export")[0],
@@ -180,31 +184,33 @@ class GDELT:
         self._master_df = df
         return df
 
-    def _urls_in_range(self, start: datetime, end: datetime) -> list[str]:
-        master = self._load_master_list()
+    async def _urls_in_range(self, start: datetime, end: datetime) -> list[str]:
+        master = await self._load_master_list()
         mask = (master["timestamp"] >= start) & (master["timestamp"] <= end)
         return master.loc[mask, "url"].tolist()
 
-    def _download_one(self, url: str, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
-        for attempt in range(retries):
-            try:
-                resp = httpx.get(url, timeout=timeout, follow_redirects=True)
-                resp.raise_for_status()
-                break
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.warning("404 for %s", url)
-                    return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
-                raise
-            except httpx.ReadTimeout:
-                if attempt == retries - 1:
+    async def _download_one(self, url: str, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
+        resp = None
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            for attempt in range(retries):
+                try:
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                    break
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 404:
+                        logger.warning("404 for %s", url)
+                        return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
                     raise
+                except httpx.ReadTimeout:
+                    if attempt == retries - 1:
+                        raise
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
             inner = zf.namelist()[0]
             with zf.open(inner) as f:
                 return pd.read_csv(f, sep="\t", header=None, names=GDELT_EVENT_COLUMNS, dtype=str)
 
-    def _fetch_via_exports(
+    async def _fetch_via_exports(
         self,
         country_code: str,
         start_date: datetime,
@@ -212,7 +218,7 @@ class GDELT:
         max_workers: int = 8,
         max_files: int = 96,
     ) -> pd.DataFrame:
-        urls = self._urls_in_range(start_date, end_date)
+        urls = await self._urls_in_range(start_date, end_date)
         if not urls:
             logger.warning("No GDELT files in range %s - %s", start_date, end_date)
             return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
@@ -220,16 +226,24 @@ class GDELT:
             logger.warning("Range covers %d files - capping to last %d", len(urls), max_files)
             urls = urls[-max_files:]
 
+        semaphore = asyncio.Semaphore(max_workers)
+
+        async def _download(url: str) -> pd.DataFrame:
+            async with semaphore:
+                return await self._download_one(url)
+
+        results = await asyncio.gather(
+            *(_download(u) for u in urls),
+            return_exceptions=True,
+        )
+
         frames: list[pd.DataFrame] = []
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            fut_map = {pool.submit(self._download_one, u): u for u in urls}
-            for fut in as_completed(fut_map):
-                try:
-                    df = fut.result()
-                    if not df.empty:
-                        frames.append(df)
-                except Exception:
-                    logger.exception("Download failed for %s", fut_map[fut])
+        for url, result in zip(urls, results):
+            if isinstance(result, Exception):
+                logger.exception("Download failed for %s: %s", url, result)
+                continue
+            if not result.empty:
+                frames.append(result)
 
         if not frames:
             return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
@@ -244,7 +258,7 @@ class GDELT:
         full["SQLDATE"] = pd.to_datetime(full["SQLDATE"], format="%Y%m%d")
         return full.sort_values("SQLDATE", ascending=False).reset_index(drop=True)
 
-    def query_events(
+    async def query_events(
         self,
         countries: list[str] | None = None,
         themes: list[str] | None = None,
@@ -269,10 +283,11 @@ class GDELT:
             "end_date": end_date.isoformat() if end_date else "",
         }
 
-        df = self._cache.get_or_fetch(
+        df = await self._cache.get_or_fetch(
             source="gdelt",
             params=cache_params,
-            fetch_fn=lambda: self._fetch_via_doc_api(
+            fetch_fn=partial(
+                self._fetch_via_doc_api,
                 countries=countries,
                 themes=list(gkg_themes) if gkg_themes else None,
                 start_date=start_date,

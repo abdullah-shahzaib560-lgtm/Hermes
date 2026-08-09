@@ -1,6 +1,7 @@
+import asyncio
 import logging
-import time
 from datetime import timedelta
+from functools import partial
 
 import httpx
 
@@ -17,7 +18,7 @@ class OpenSanction:
         self._headers = {"Authorization": f"ApiKey {api_key}", "Accept": "application/json"}
         self._cache = cache or RawCache()
 
-    def _fetch(
+    async def _fetch(
         self,
         country: str,
         dataset: str,
@@ -60,42 +61,43 @@ class OpenSanction:
         logger.info(f"Fetching from: {url}")
         logger.info(f"Params: {params}")
 
-        for attempt in range(retries):
-            try:
-                resp = httpx.get(url=url, params=params, headers=self._headers, timeout=timeout, follow_redirects=True)
-                resp.raise_for_status()
-                data = resp.json()
-                logger.info(f"Fetched {data.get('total', {}).get('value', 0)} results")
-                return data
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            for attempt in range(retries):
+                try:
+                    resp = await client.get(url=url, params=params, headers=self._headers)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    logger.info(f"Fetched {data.get('total', {}).get('value', 0)} results")
+                    return data
 
-            except httpx.ReadTimeout:
-                if attempt == retries - 1:
-                    logger.error(f"Timeout after {retries} attempts")
-                    raise
-                wait_time = 2**attempt
-                logger.warning(f"Timeout, retrying in {wait_time}s...")
-                time.sleep(wait_time)
+                except httpx.ReadTimeout:
+                    if attempt == retries - 1:
+                        logger.error(f"Timeout after {retries} attempts")
+                        raise
+                    wait_time = 2**attempt
+                    logger.warning(f"Timeout, retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
 
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    logger.error(f"Dataset '{dataset}' not found")
-                    return {}
-                if attempt == retries - 1:
-                    raise
-                wait_time = 2**attempt
-                logger.warning(f"HTTP {e.response.status_code}, retrying in {wait_time}s...")
-                time.sleep(wait_time)
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 404:
+                        logger.error(f"Dataset '{dataset}' not found")
+                        return {}
+                    if attempt == retries - 1:
+                        raise
+                    wait_time = 2**attempt
+                    logger.warning(f"HTTP {e.response.status_code}, retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
 
-            except Exception as e:
-                if attempt == retries - 1:
-                    raise
-                wait_time = 2**attempt
-                logger.warning(f"Error: {e}, retrying in {wait_time}s...")
-                time.sleep(wait_time)
+                except Exception as e:
+                    if attempt == retries - 1:
+                        raise
+                    wait_time = 2**attempt
+                    logger.warning(f"Error: {e}, retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
 
         return {}
 
-    def fetch(
+    async def fetch(
         self,
         country: str,
         dataset: str,
@@ -112,10 +114,11 @@ class OpenSanction:
             "dataset": dataset,
         }
 
-        return self._cache.get_or_fetch(
+        return await self._cache.get_or_fetch(
             source="OpenSanction",
             params=cached_params,
-            fetch_fn=lambda: self._fetch(
+            fetch_fn=partial(
+                self._fetch,
                 country=country,
                 dataset=dataset,
                 limit=limit,
