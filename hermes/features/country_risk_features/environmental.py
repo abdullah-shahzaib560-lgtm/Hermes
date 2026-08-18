@@ -58,8 +58,7 @@ class enviromental_features:
         deps=[],
         compute=''
     )
-    async def natural_disaster_risk(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        pass
+    async def natural_disaster_risk(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
     @feature(
         name='food_price_index_change_yoy',
@@ -67,8 +66,7 @@ class enviromental_features:
         deps=[],
         compute=''
     )
-    async def food_price_index_change_yoy(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        pass
+    async def food_price_index_change_yoy(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
 
     @feature(
         name='energy_dependence_ratio',
@@ -77,7 +75,16 @@ class enviromental_features:
         compute=''
     )
     async def energy_dependence_ratio(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
-        pass
+        data = await self.wb.fetch(country_code=country_code, indicator_code='EG.IMP.CONS.ZS')
+        data = check_empty(mode=mode, data=data, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index("date")
+            data.index = pd.to_datetime(data.index)
+            data = data.sort_index()
+            data = data.resample("MS").interpolate()
+            return data["value"]
 
     @feature(
         name='water_stress_index',
@@ -85,9 +92,17 @@ class enviromental_features:
         deps=[],
         compute=''
     )
-    async def water_stress_index(self, country_code: str) -> float:
+    async def water_stress_index(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
         data = await self.wb.fetch(country_code=country_code, indicator_code='ER.H2O.FWTL.ZS')
-        
+        data = check_empty(mode=mode, data=data, country=country_code)
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            data = data.set_index("date")
+            data.index = pd.to_datetime(data.index)
+            data = data.sort_index()
+            data = data.resample("MS").interpolate()
+            return data["value"]
 
 if __name__ == '__main__':
     import asyncio
