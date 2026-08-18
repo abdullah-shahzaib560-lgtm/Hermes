@@ -1,4 +1,4 @@
-date,country_text_id,country_name,human_right_score,source
+date,country,country_name,human_right_score,source
 1961,MEX,Mexico,-0.546,V-Dem
 1962,MEX,Mexico,-0.546,V-Dem
 1963,MEX,Mexico,-0.546,V-Dem

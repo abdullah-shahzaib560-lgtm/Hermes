@@ -71,7 +71,7 @@ class economic_features:
             data = data.set_index("date")
             data.index = pd.to_datetime(data.index)
             data = data.sort_index()
-            data = data.resample("MS").ffill()
+            data = data.resample("MS").interpolate()
             return data["value"]
 
     @feature(
