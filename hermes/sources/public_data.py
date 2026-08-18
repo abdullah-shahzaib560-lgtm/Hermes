@@ -10,12 +10,14 @@ HDI_PATH = CURRENT_DIR / "lib" / "datasets" / "hdi1.csv"
 CPI_PATH = CURRENT_DIR / "lib" / "datasets" / "global_cpi_all.csv"
 FSI_PATH = CURRENT_DIR / "lib" / "datasets" / "fsi.csv"
 NATO_PATH = CURRENT_DIR / "lib" / "datasets" / "nato.csv"
+CRS_PATH = CURRENT_DIR / "lib" / "datasets" / "crs.csv"
+CVS_PATH = CURRENT_DIR / "lib" / "datasets" / "cvs.csv"
 
 class PUBLIC_DATASET:
 
     async def fetch_hrs(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, HRS_PATH)
-        data = df[df["country_text_id"] == country]
+        data = df[df["country"] == country]
         data["date"] = pd.to_datetime(data["date"], format="%Y")
         return data
 
@@ -47,3 +49,16 @@ class PUBLIC_DATASET:
         data = df[df['ISO3'] == country]
         data['Year'] = pd.to_datetime(data['Year'], format='%Y')
         return data
+
+    async def fetch_crs(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, CRS_PATH)
+        data = df[df['ISO3'] == country]
+        data['year'] = pd.to_datetime(data['year'], format='%Y')
+        return data
+
+    async def fetch_cvs(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, CVS_PATH)
+        data = df[df['ISO3'] == country]
+        data['year'] = pd.to_datetime(data['year'], format='%Y')
+        return data
+    
