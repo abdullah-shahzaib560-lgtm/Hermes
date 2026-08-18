@@ -2,26 +2,65 @@
 
 Foundational intelligence data platform for acquiring, validating, normalizing, storing, and serving country risk datasets.
 
-Hermes is the data layer between external public data sources (World Bank, IMF, GDELT, OpenSanctions, ...) and your application. It provides a unified Python API for fetching raw indicators, computing ~60 country risk features, and building time-series or ML training panels — with built-in caching, retries, and normalization.
+## What is Hermes?
 
-## Features
+Hermes is a Python data platform that sits between external public data sources (World Bank, IMF, GDELT, OpenSanctions, ...) and your application. It provides a single, unified async API for:
 
-- **Unified connectors** — one consistent API over multiple sources:
-  - [World Bank](https://data.worldbank.org/) — GDP, inflation, unemployment, governance, debt, and more (indicators API, no key needed)
-  - [IMF](https://www.imf.org/) — SDMX 3.0 dataflows (IFS, WEO, GFS, ...)
-  - [GDELT](https://www.gdeltproject.org/) — conflict/protest/diplomacy events via the Doc API and daily exports, with FIPS→ISO3 normalization and a canonical event schema
-  - [OpenSanctions](https://www.opensanctions.org/) — sanctions datasets (`us_ofac_sdn`, `eu_fsf`, `uk_fcdos`, `un_sc`, ...), requires an API key
-  - HDX CPI — bundled Corruption Perceptions Index dataset
-- **60+ country risk features** across five groups:
-  - `economic` — GDP growth, inflation, unemployment, debt, reserves, banking health, ...
-  - `geopolitical` — conflict events, Goldstein scale, battle deaths, sanctions, governance/WGI, democracy, ...
-  - `security` — military spending, alliances (NATO), arms transfers, peacekeeping
-  - `social` — stability index, human rights, fragility, HDI, Gini, poverty
-  - `environmental` — climate vulnerability/readiness, disaster risk, food prices, energy dependence, water stress
-- **Two output modes per feature** — `"F"` returns the latest float snapshot, `"ML"` returns a monthly `pd.Series` for modeling
-- **Raw cache** — Parquet-backed disk cache (`~/.hermes_cache/raw`) with per-source TTLs, hit/miss stats, and expiry-based eviction
-- **Training panels** — `build_training_panel()` assembles a multi-country, monthly time-series DataFrame ready for ML
-- **Export helpers** — save any result to CSV, JSON, or Parquet
+- **Acquiring** raw indicators and events from heterogeneous public APIs
+- **Normalizing** them into a consistent, country-keyed data model
+- **Computing** ~58 country risk features across five dimensions
+- **Storing** raw responses in a TTL-based disk cache
+- **Serving** both latest-value snapshots (`"F"` mode) and monthly time series (`"ML"` mode) ready for dashboards or ML training
+
+## Why does it exist?
+
+Country risk analysis requires stitching together dozens of unrelated public datasets: macroeconomic indicators from the World Bank and IMF, conflict and protest events from GDELT, sanctions lists from OpenSanctions, governance scores, fragile state indices, climate risk scores, and more. Each source has its own API, schema, country-code convention (ISO3 vs ISO2 vs FIPS), update cadence, and failure modes.
+
+Hermes exists to hide that complexity behind one facade, so analysts and engineers work with a single `Hermes` object instead of N SDKs.
+
+## What problem does it solve?
+
+- **Fragmentation** — one API over five source families instead of bespoke integration code per source
+- **Code mismatch** — GDELT reports FIPS codes, OpenSanctions wants ISO2, features key on ISO3; Hermes normalizes all of it
+- **Repetitive network work** — every fetch is cached (Parquet-backed, per-source TTLs) and retried with backoff
+- **Feature engineering duplication** — 58 battle-tested features (GDP growth, inflation volatility, conflict trends, Goldstein-scale averages, sanctions coverage, WGI governance, climate vulnerability, ...) computed consistently across countries and time
+- **Two incompatible consumption modes** — the same feature returns either a latest float for a risk dashboard or a monthly `pd.Series` for a training set, with no extra code
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Hermes facade  (hermes/__init__.py)                        │
+│  connectors · feature groups · cache · listings            │
+└─────────────────────────────────────────────────────────────┘
+        │                        │
+        ▼                        ▼
+┌────────────────┐      ┌───────────────────────────────┐
+│ sources/       │      │ features/country_risk_features│
+│ connectors     │      │ pipeline + 5 feature groups   │
+│                │      │ (eco · geo · sec · soc · env) │
+│ world_bank     │◄────►│ each fn: mode="F" | "ML"      │
+│ imf            │      │ @feature decorator → lineage  │
+│ gdelt          │      └───────────────────────────────┘
+│ opensanctions  │
+│ public_data    │
+└───────┬────────┘
+        ▼
+┌────────────────┐
+│ core/          │
+│ cache (RawCache│ parquet + meta.json, TTLs, stats
+│ countries      │ ISO3 listing + validation
+│ export         │ csv / json / parquet
+│ feature_decorator │ lineage graph, tiered plans
+│ helper         │ iso3↔iso2, empty-result guards
+└────────────────┘
+```
+
+- **Facade** — `Hermes` bundles connectors, the feature pipeline, and cache controls into one object.
+- **Connectors** — one class per source family (`sources/`), each exposing an async `fetch(...)` backed by `RawCache`.
+- **Feature layer** — five group modules (`economic`, `geopolitical`, `security`, `social`, `environmental`). Every feature is registered via the `@feature(name, group, deps, compute)` decorator, which populates a lineage graph (`core/feature_decorator.py`) used to resolve dependency tiers for a group.
+- **Pipeline** — `get_country_risk_features()` computes all features of a group concurrently via `asyncio.gather`; `build_training_panel()` assembles multi-country monthly panels.
+- **Cache** — `RawCache` stores normalized raw responses as Parquet files with sidecar `.meta.json` (params, cached_at, row/column stats), per-source TTLs, expiry-based eviction, and hit/miss statistics.
 
 ## Installation
 
@@ -30,111 +69,182 @@ Requires Python >= 3.11. The project is managed with [uv](https://docs.astral.sh
 ```bash
 git clone <repo-url> Hermes
 cd Hermes
-uv sync --extra dev   # or: uv sync
+uv sync --dev        # include dev group for testing; plain `uv sync` otherwise
 ```
 
-## Setup
+## Quickstart
 
-Copy the environment template and add your OpenSanctions API key:
+Create a `.env` file with your API keys:
 
 ```bash
 cp .env.example .env
-# add: OPEN_SANCTIONS_API=your_key_here
+# add:
+# OPEN_SANCTIONS_API=your_opensanctions_key_here
+# NEWS_DATA_API=your_newsdata_key_here
 ```
 
-An API key is required to instantiate the main `Hermes` facade (a `KeyError` is raised otherwise).
-
-## Quick start
+An OpenSanctions key is required to instantiate the facade (a `KeyError` is raised if neither key is provided) — it backs the sanctions features. The NewsData key is reserved for the upcoming news connector.
 
 ```python
-from hermes import Hermes
-from dotenv import load_dotenv
+import asyncio
 import os
+
+from dotenv import load_dotenv
+from hermes import Hermes
 
 load_dotenv()
 
-hr = Hermes(opensanction_api=os.getenv("OPEN_SANCTIONS_API"))
+hr = Hermes(
+    opensanction_api=os.getenv("OPEN_SANCTIONS_API"),
+    new_data_api=os.getenv("NEWS_DATA_API"),
+)
 
-# Every supported country code (ISO3)
-print(hr.list_countries)
+async def main():
+    # Every supported country code (ISO3) and every available feature
+    print(hr.list_countries)
+    print([f.__name__ for f in hr.list_features])
 
-# All available feature functions
-print(hr.list_features)
+    # Latest country risk snapshot (all groups, computed concurrently)
+    risk = await hr.features.get_country_risk_features("UKR")
+    print(risk["economic"]["gdp_growth_yoy"])
+    print(risk["geopolitical"]["conflict_event_count_30d"])
+
+    # ML training panel: monthly series for a set of countries
+    panel = await hr.features.build_training_panel(
+        fns=[hr.lf.eco.gdp_growth_yoy, hr.lf.eco.inflation_cpi_yoy],
+        countries=["USA", "UKR", "DEU"],
+    )
+    print(panel)
+
+    # Cache controls
+    print(hr.cache_stats())
+    hr.clear_cache(older_than="7d")
+
+asyncio.run(main())
 ```
 
-### Fetch raw data from a connector
+## Example
+
+Fetch raw data from any connector:
 
 ```python
 # World Bank indicator time series
-df = hr.world_bank.fetch(country_code="USA", indicator_code="NY.GDP.MKTP.KD.ZG")
+df = await hr.world_bank.fetch(country_code="USA", indicator_code="NY.GDP.MKTP.KD.ZG")
 
-# GDELT events by country and theme
-events = hr.gdelt.query_events(countries=["UKR"], themes=["CONFLICT"])
+# GDELT events by country and theme (normalized to canonical schema)
+events = await hr.gdelt.query_events(countries=["UKR"], themes=["CONFLICT"])
 
-# OpenSanctions dataset (e.g. US OFAC SDN list)
-sanc = hr.opensanction.fetch(country="RUS", dataset="us_ofac_sdn")
+# OpenSanctions dataset (e.g. US OFAC SDN list) — raw JSON
+sanc = await hr.opensanction.fetch(country="RUS", dataset="us_ofac_sdn")
 
-# IMF SDMX dataflow
-imf_df = hr.imf.fetch(country="USA", agency="IFS", dataflow_id="IFS", key="NGDP_R")
+# IMF SDMX 3.0 dataflow
+imf_df = await hr.imf.fetch(country="USA", agency="IFS", dataflow_id="IFS", key="NGDP_R")
 ```
 
-### Country risk snapshot
+Work with individual features in either mode:
 
 ```python
-risk = hr.features.get_country_risk_features("UKR")
-print(risk["economic"]["gdp_growth_yoy"])
-print(risk["geopolitical"]["conflict_event_count_30d"])
+# "F" — latest value as a float/string/bool
+gdp = await hr.lf.eco.gdp_growth_yoy(country_code="USA", mode="F")
+
+# "ML" — monthly pd.Series (resampled, interpolated) for modeling
+gdp_series = await hr.lf.eco.gdp_growth_yoy(country_code="USA", mode="ML")
+
+# Export anything to csv / json / parquet
+from hermes.core.export import export
+export(data=panel, filetype="parquet", name="training_panel")
 ```
 
-### Build an ML training panel
+## API
 
-```python
-panel = hr.features.build_training_panel(
-    fns=[hr.lf.eco.gdp_growth_yoy, hr.lf.eco.inflation_cpi_yoy],
-    countries=["USA", "UKR", "DEU"],
-)
-```
+### Facade `Hermes`
 
-### Cache management
+| Member | Type | Description |
+|---|---|---|
+| `Hermes(opensanction_api, new_data_api, cache_dir=None, use_cache=True)` | ctor | One key required, else `KeyError` |
+| `.world_bank` / `.imf` / `.gdelt` / `.opensanction` | connectors | Async data fetchers |
+| `.features` | `pipeline` | `get_country_risk_features(country)` and `build_training_panel(fns, countries)` |
+| `.lf` | `features` | Feature registry: `.eco`, `.geo`, `.sec`, `.soc`, `.env` groups |
+| `.list_countries` | `list[str]` | All supported ISO3 codes |
+| `.list_features` | `list[Callable]` | All feature functions |
+| `.clear_cache(older_than="7d")` | method | Evict cache entries (`h`/`d`/`w` units) |
+| `.cache_stats()` | `dict` | Files, per-source hit/miss counts and hit rates |
 
-```python
-hr.cache_stats()  # files, hits/misses, hit rates per source
-hr.clear_cache()  # wipe everything
-hr.clear_cache(older_than="7d")  # only entries older than 7 days
-```
+### Connectors
 
-## Project layout
+All connectors expose `async fetch(...)` (plus `query_events(...)` for GDELT) and share `force` and retry/timeout parameters.
 
-```
-hermes/
-├── __init__.py            # Hermes facade (connectors + features + cache)
-├── core/
-│   ├── cache.py           # RawCache: parquet-backed disk cache with TTLs
-│   ├── countries.py       # supported ISO3 country codes
-│   ├── export.py          # export DataFrame/Series to csv/json/parquet
-│   ├── feature_decorator.py  # @feature decorator + lineage graph
-│   └── features.py        # registry of all feature functions
-├── features/
-│   └── country_risk_features/
-│       ├── pipeline.py    # risk snapshot + training panel builder
-│       ├── economic.py    # geopolitical.py · security.py · social.py · environmental.py
-├── sources/               # connectors: world_bank, imf, gdelt, opensanctions, hdx_cpi
-tests/                     # pytest suite (respx-mocked API tests)
-docs/                      # React-based documentation site
-```
+### Features
 
-Every feature function is registered via the `@feature(name, group, deps, compute)` decorator, which populates a lineage graph used to resolve dependency tiers for a group.
+Every feature is `async fn(country_code: str, mode: "F" | "ML")`:
 
-## Development
+- `"F"` — latest value: `float`, `int`, `str`, or `bool` (e.g. `nato_member`)
+- `"ML"` — monthly `pd.Series` with a `DatetimeIndex`, interpolated to month-start frequency
+- Missing data returns `np.nan` (`"F"`) or an empty `pd.Series` (`"ML"`) instead of raising
+
+### Pipeline
+
+| Method | Returns |
+|---|---|
+| `await pipeline.get_country_risk_features(country)` | dict: `country`, five group dicts, `metadata` (`last_updated`, `features_version`) |
+| `await pipeline.build_training_panel(fns, countries)` | `pd.DataFrame` with `MultiIndex (country_iso3, date)`, one column per feature |
+
+## Data model
+
+- **Connector frames** — normalized `pd.DataFrame`s:
+  - World Bank: `date, indicator_id, indicator_name, country, value, source`
+  - IMF: `date, indicator_id, country, value, source` (+ any SDMX dimension attributes)
+  - GDELT: canonical event schema `event_id, date, country_iso3, event_type, severity, lat, lon, source` (FIPS → ISO3 mapped, CAMEO/GKG themes classified into `conflict`, `protest`, `diplomacy`, `sanction`, ...)
+  - OpenSanctions: raw JSON response as returned by the API
+- **Risk snapshot** — nested dict: `{country, economic, geopolitical, security, social, environmental, metadata}`
+- **Training panel** — monthly time-series `pd.DataFrame` with `MultiIndex (country_iso3, date)`
+- **Cache** — Parquet data files + sidecar `.meta.json` under `~/.hermes_cache/raw/<source>/<hash>.parquet`
+
+## Supported sources
+
+| Source | What it provides | Auth | Cache TTL |
+|---|---|---|---|
+| [World Bank](https://data.worldbank.org/) indicators API | GDP, inflation, unemployment, governance, debt, ... | none | 7 days |
+| [IMF](https://www.imf.org/) SDMX 3.0 dataflows | IFS, WEO, GFS, ... | none | 7 days |
+| [GDELT](https://www.gdeltproject.org/) Doc API + daily exports | conflict/protest/diplomacy events, Goldstein scale, battle deaths | none | 6 hours |
+| [OpenSanctions](https://www.opensanctions.org/) | sanctions lists (`us_ofac_sdn`, `eu_fsf`, `uk_fcdos`, `un_sc`, ...) | API key | 30 days |
+| Bundled datasets (`sources/lib/datasets/`) | HDX CPI, Human Development Index, Fragile State Index, Human Rights Score, NATO membership, climate vulnerability/readiness, crisis risk | none | static |
+
+### Feature groups (~58 features)
+
+- **economic** (18) — GDP growth YoY/QoQ, CPI/PPI inflation, inflation volatility, unemployment, current account, FX reserves, external debt, fiscal deficit, government debt, REER misalignment, banking sector health, GDP per capita PPP
+- **geopolitical** (21) — conflict/protest/diplomatic event counts, conflict trend, Goldstein scale, battle deaths, sanctions (count, new, sector coverage), WGI governance, CPI, rule of law, regulatory quality, democracy index, regime type, press freedom
+- **security** (7) — military spending (level, growth), alliance strength, arms imports/exports, peacekeeping troops, NATO membership
+- **social** (6) — social stability, human rights, fragile state index, HDI, Gini, poverty headcount
+- **environmental** (6) — climate vulnerability/readiness, natural disaster risk, food price index, energy dependence, water stress
+
+## Tests
+
+The suite is pytest-based with `respx`-mocked HTTP calls (no live network) and async tests:
 
 ```bash
-uv run pytest                 # run tests
-uv run pytest --cov=hermes    # test with coverage
-uv run ruff check .           # lint
-uv run ruff format .          # format
-uv run mypy hermes            # type check
+uv run pytest                 # run all tests
+uv run pytest --cov=hermes    # run with coverage
 ```
+
+Coverage is collected from the `hermes` package (`tests/` omitted); `asyncio_mode = "auto"` means async tests need no explicit markers.
+
+## CI
+
+GitHub Actions (`.github/workflows/publish.yml`) runs on push/PR to `main` and on releases:
+
+- **quality** job — matrix over Python 3.11 / 3.12 / 3.13: `ruff check .` (lint) → `mypy hermes` (type check) → `pytest --cov` (tests with coverage)
+- **publish** job — on release: `uv build` and `uv publish` to PyPI (trusted publishing via `PYPI_TOKEN`)
 
 ## License
 
 MIT — see [LICENSE.md](LICENSE.md).
+
+## Roadmap
+
+- **NewsData connector** — the `new_data_api` parameter is already wired into the facade; implement the news/event source it unlocks
+- **Validation layer** — schema checks and outlier detection on fetched frames before caching
+- **Serving layer** — REST/query interface over the feature registry so non-Python consumers can use Hermes
+- **Documentation site** — dedicated docs replacing the README for API reference and source coverage
+- **More sources** — SIPRI arms transfers, FAO food/water data, UN peacekeeping feeds to replace bundled static datasets
+- **Broader country coverage** — fill gaps where sources lack data for smaller economies; per-feature availability reporting
