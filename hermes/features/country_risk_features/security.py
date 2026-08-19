@@ -12,7 +12,15 @@ class security_features:
     def __init__(self):
         self._data = PUBLIC_DATASET()
 
-    async def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float: ...
+    async def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
+        data = await self._data.fetch_sipri(country=country_code)
+        data = data.set_index('year')
+        data.sort_index(ascending=False, inplace=True)
+        data['year'] = pd.to_datetime(data['year'])
+        if mode == 'F':
+            return data['value'].iloc[0]
+        if mode == 'ML':
+            return data.resample('MS')
 
     async def military_spending_growth_yoy(country_code: str, mode: str = Literal["F", "ML"]) -> float:
         pass
