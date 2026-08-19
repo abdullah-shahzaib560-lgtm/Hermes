@@ -1,5 +1,7 @@
 import logging
 from typing import Literal
+import pandas as pd
+import asyncio
 
 from hermes.sources.public_data import PUBLIC_DATASET
 
@@ -27,6 +29,12 @@ class security_features:
     async def peacekeeping_troops(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
         pass
 
-    async def nato_member(self, country_code: str) -> bool:
+    async def nato_member(self, country_code: str, mode: str = Literal['F', 'ML']) -> bool:
         data = await self._data.fetch_nato(country=country_code)
-        return bool((data["NATO Member"] == 1).any())
+        data = data.set_index('Year')
+        data.sort_index(ascending=False ,inplace=True)
+        data['Year'] = pd.to_datetime(data['Year'])
+        if mode == 'F':
+            return bool(data['NATO Member'].iloc[0])
+        elif mode == 'ML':
+            return data.resample('MS')
