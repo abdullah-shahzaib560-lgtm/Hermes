@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 from functools import partial
 
-import httpx
+import aiohttp
 
 from hermes.core.cache import RawCache
 from hermes.core.helper import iso3_to_iso2
@@ -61,7 +61,7 @@ class OpenSanction:
         logger.info(f"Fetching from: {url}")
         logger.info(f"Params: {params}")
 
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url=url, params=params, headers=self._headers)
@@ -70,7 +70,7 @@ class OpenSanction:
                     logger.info(f"Fetched {data.get('total', {}).get('value', 0)} results")
                     return data
 
-                except httpx.ReadTimeout:
+                except aiohttp.ClientTimeout:
                     if attempt == retries - 1:
                         logger.error(f"Timeout after {retries} attempts")
                         raise
@@ -78,7 +78,7 @@ class OpenSanction:
                     logger.warning(f"Timeout, retrying in {wait_time}s...")
                     await asyncio.sleep(wait_time)
 
-                except httpx.HTTPStatusError as e:
+                except aiohttp.ClientResponseError as e:
                     if e.response.status_code == 404:
                         logger.error(f"Dataset '{dataset}' not found")
                         return {}
