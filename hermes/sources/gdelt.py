@@ -7,7 +7,7 @@ from functools import partial
 from typing import Any
 from urllib.parse import urlencode
 
-import httpx
+import aiohttp
 import pandas as pd
 
 from hermes.core.cache import RawCache
@@ -142,13 +142,13 @@ class GDELT:
         logger.debug("GDELT Doc API: %s", url[:300])
 
         resp = None
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url)
                     resp.raise_for_status()
                     break
-                except httpx.ReadTimeout:
+                except aiohttp.ClientTimeout:
                     if attempt == retries - 1:
                         raise
                     logger.warning("GDELT Doc API timeout, retry %d", attempt + 1)
@@ -166,7 +166,7 @@ class GDELT:
     async def _load_master_list(self, timeout: float = 60.0) -> pd.DataFrame:
         if self._master_df is not None:
             return self._master_df
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(GDELT_MASTER)
             resp.raise_for_status()
             df = pd.read_csv(
@@ -191,18 +191,18 @@ class GDELT:
 
     async def _download_one(self, url: str, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
         resp = None
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url)
                     resp.raise_for_status()
                     break
-                except httpx.HTTPStatusError as e:
+                except aiohttp.ClientResponseError as e:
                     if e.response.status_code == 404:
                         logger.warning("404 for %s", url)
                         return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
                     raise
-                except httpx.ReadTimeout:
+                except aiohttp.ClientTimeout:
                     if attempt == retries - 1:
                         raise
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
