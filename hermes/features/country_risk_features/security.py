@@ -14,13 +14,13 @@ class security_features:
 
     async def military_spending_gdp(self, country_code: str, mode: str = Literal["F", "ML"]) -> float:
         data = await self._data.fetch_sipri(country=country_code)
-        data = data.set_index('year')
+        data = data.set_index("year")
         data.sort_index(ascending=False, inplace=True)
-        data['year'] = pd.to_datetime(data['year'])
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
-            return data.resample('MS')
+        data["year"] = pd.to_datetime(data["year"])
+        if mode == "F":
+            return data["value"].iloc[0]
+        if mode == "ML":
+            return data.resample("MS")
 
     async def military_spending_growth_yoy(country_code: str, mode: str = Literal["F", "ML"]) -> float:
         pass
@@ -37,12 +37,12 @@ class security_features:
     async def peacekeeping_troops(self, country_code: str, mode: str = Literal["F", "ML"]) -> int:
         pass
 
-    async def nato_member(self, country_code: str, mode: str = Literal['F', 'ML']) -> bool:
+    async def nato_member(self, country_code: str, mode: str = Literal["F", "ML"]) -> bool:
         data = await self._data.fetch_nato(country=country_code)
-        data = data.set_index('Year')
-        data.sort_index(ascending=False ,inplace=True)
-        data['Year'] = pd.to_datetime(data['Year'])
-        if mode == 'F':
-            return bool(data['NATO Member'].iloc[0])
-        elif mode == 'ML':
-            return data.resample('MS')
+        data = data.set_index("Year")
+        data.sort_index(ascending=False, inplace=True)
+        data["Year"] = pd.to_datetime(data["Year"])
+        if mode == "F":
+            return bool(data["NATO Member"].iloc[0])
+        elif mode == "ML":
+            return data.resample("MS")

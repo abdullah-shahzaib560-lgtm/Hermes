@@ -55,7 +55,7 @@ class World_bank:
                     raise
         if len(r) < 2 or not r[1]:
             logger.warning(f"No data: country={country_code}, indicator={indicator_code}")
-            return pd.DataFrame(columns=['date', 'indicator_id', 'indicator_name','country','value','source'])
+            return pd.DataFrame(columns=["date", "indicator_id", "indicator_name", "country", "value", "source"])
 
         _, records = r[0], r[1]
         data = []

@@ -25,9 +25,11 @@ class economic_features:
     async def gdp_growth_yoy(self, country_code: str, mode: str = Literal["ML", "F"]) -> float | pd.Series:
         data = await self.wb.fetch(country_code=country_code, indicator_code="NY.GDP.MKTP.KD.ZG")
         data = check_empty(mode=mode, data=data, country=country_code)
-        if mode == 'F':
-            return data['value'].iloc[0]
-        if mode == 'ML':
+        if not isinstance(data, pd.DataFrame):
+            return data
+        if mode == "F":
+            return data["value"].iloc[0]
+        if mode == "ML":
             data = data.set_index("date")
             data.index = pd.to_datetime(data.index)
             data = data.sort_index()
