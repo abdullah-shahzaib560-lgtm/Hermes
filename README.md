@@ -99,6 +99,7 @@ hr = Hermes(
     new_data_api=os.getenv("NEWS_DATA_API"),
 )
 
+
 async def main():
     # Every supported country code (ISO3) and every available feature
     print(hr.list_countries)
@@ -119,6 +120,7 @@ async def main():
     # Cache controls
     print(hr.cache_stats())
     hr.clear_cache(older_than="7d")
+
 
 asyncio.run(main())
 ```
@@ -152,6 +154,7 @@ gdp_series = await hr.lf.eco.gdp_growth_yoy(country_code="USA", mode="ML")
 
 # Export anything to csv / json / parquet
 from hermes.core.export import export
+
 export(data=panel, filetype="parquet", name="training_panel")
 ```
 

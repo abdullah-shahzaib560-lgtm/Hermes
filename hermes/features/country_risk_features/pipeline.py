@@ -39,13 +39,19 @@ class pipeline:
                 "industrial_production_yoy": lambda: self.eco.industrial_production_yoy(
                     country_code=country, mode="F"
                 ),  # float, percent
-                "inflation_cpi_yoy": lambda: self.eco.inflation_cpi_yoy(country_code=country, mode="F"),  # float, percent
+                "inflation_cpi_yoy": lambda: self.eco.inflation_cpi_yoy(
+                    country_code=country, mode="F"
+                ),  # float, percent
                 "inflation_volatility_12m": lambda: self.eco.inflation_volatility_12m(
                     country_code=country, mode="F"
                 ),  # float, rolling std
                 "ppi_yoy": lambda: self.eco.ppi_yoy(country_code=country, mode="F"),  # float, percent
-                "unemployment_rate": lambda: self.eco.unemployment_rate(country_code=country, mode="F"),  # float, percent
-                "youth_unemployment": lambda: self.eco.youth_unemployment(country_code=country, mode="F"),  # float, percent
+                "unemployment_rate": lambda: self.eco.unemployment_rate(
+                    country_code=country, mode="F"
+                ),  # float, percent
+                "youth_unemployment": lambda: self.eco.youth_unemployment(
+                    country_code=country, mode="F"
+                ),  # float, percent
                 "labor_force_participation": lambda: self.eco.labor_force_participation(
                     country_code=country, mode="F"
                 ),  # float, percent
@@ -58,10 +64,18 @@ class pipeline:
                 "external_debt_gdp_ratio": lambda: self.eco.external_debt_gdp_ratio(
                     country_code=country, mode="F"
                 ),  # float, percent
-                "fiscal_deficit_gdp": lambda: self.eco.fiscal_deficit_gdp(country_code=country, mode="F"),  # float, percent
-                "government_debt_gdp": lambda: self.eco.government_debt_gdp(country_code=country, mode="F"),  # float, percent
-                "reer_misalignment": lambda: self.eco.reer_misalignment(country_code=country, mode="F"),  # int, basis points
-                "inflation_yoy": lambda: self.eco.inflation_yoy(country_code=country, mode="F"),  # float, percentage points
+                "fiscal_deficit_gdp": lambda: self.eco.fiscal_deficit_gdp(
+                    country_code=country, mode="F"
+                ),  # float, percent
+                "government_debt_gdp": lambda: self.eco.government_debt_gdp(
+                    country_code=country, mode="F"
+                ),  # float, percent
+                "reer_misalignment": lambda: self.eco.reer_misalignment(
+                    country_code=country, mode="F"
+                ),  # int, basis points
+                "inflation_yoy": lambda: self.eco.inflation_yoy(
+                    country_code=country, mode="F"
+                ),  # float, percentage points
                 "banking_sector_health": lambda: self.eco.banking_sector_health(
                     country_code=country, mode="F"
                 ),  # float, 0-1 score
@@ -101,14 +115,18 @@ class pipeline:
                 ),  # float, 0-10 scale
                 "sanctions_count_active": lambda: self.geo.sanctions_count_active(country_code=country),  # int
                 "sanctions_new_30d": lambda: self.geo.sanctions_new_30d(country_code=country),  # int
-                "sanctions_sector_coverage": lambda: self.geo.sanctions_sector_coverage(country_code=country),  # float, 0-1
+                "sanctions_sector_coverage": lambda: self.geo.sanctions_sector_coverage(
+                    country_code=country
+                ),  # float, 0-1
                 "governance_wgi_composite": lambda: self.geo.governance_wgi_composite(
                     country_code=country, mode="F"
                 ),  # float, -2.5 to +2.5
                 "corruption_perception_index": lambda: self.geo.corruption_perception_index(
                     country_code=country, mode="F"
                 ),  # int, 0-100
-                "rule_of_law_score": lambda: self.geo.rule_of_law_score(country_code=country, mode="F"),  # float, -2.5 to +2.5
+                "rule_of_law_score": lambda: self.geo.rule_of_law_score(
+                    country_code=country, mode="F"
+                ),  # float, -2.5 to +2.5
                 "regulatory_quality": lambda: self.geo.regulatory_quality(
                     country_code=country, mode="F"
                 ),  # float, -2.5 to +2.5
@@ -116,7 +134,9 @@ class pipeline:
                 "regime_type": lambda: self.geo.regime_type(
                     country_code=country, mode="F"
                 ),  # string: democracy/hybrid/autocracy
-                "press_freedom_score": lambda: self.geo.press_freedom_score(country_code=country, mode="F"),  # int, 0-100
+                "press_freedom_score": lambda: self.geo.press_freedom_score(
+                    country_code=country, mode="F"
+                ),  # int, 0-100
             }
         )
         security = await _await_group(
@@ -130,8 +150,12 @@ class pipeline:
                 "alliance_strength_score": lambda: self.sec.alliance_strength_score(
                     country_code=country, mode="F"
                 ),  # float, 0-1
-                "arms_imports_12m": lambda: self.sec.arms_imports_12m(country_code=country, mode="F"),  # int, millions USD
-                "arms_exports_12m": lambda: self.sec.arms_exports_12m(country_code=country, mode="F"),  # int, millions USD
+                "arms_imports_12m": lambda: self.sec.arms_imports_12m(
+                    country_code=country, mode="F"
+                ),  # int, millions USD
+                "arms_exports_12m": lambda: self.sec.arms_exports_12m(
+                    country_code=country, mode="F"
+                ),  # int, millions USD
                 "peacekeeping_troops": lambda: self.sec.peacekeeping_troops(country_code=country, mode="F"),  # int
                 "nato_member": lambda: self.sec.nato_member(country_code=country),  # bool
             }
@@ -142,7 +166,9 @@ class pipeline:
                     country_code=country, mode="F"
                 ),  # float, 0-1
                 "human_rights_score": lambda: self.soc.human_rights_score(country_code=country, mode="F"),  # float, 0-1
-                "fragile_state_index": lambda: self.soc.fragile_state_index(country_code=country, mode="F"),  # float, 0-120
+                "fragile_state_index": lambda: self.soc.fragile_state_index(
+                    country_code=country, mode="F"
+                ),  # float, 0-120
                 "human_development_index": lambda: self.soc.human_development_index(
                     country_code=country, mode="F"
                 ),  # float, 0-1
@@ -160,7 +186,9 @@ class pipeline:
                 "climate_readiness_score": lambda: self.env.climate_readiness_score(
                     country_code=country, mode="F"
                 ),  # float, 0-1
-                "natural_disaster_risk": lambda: self.env.natural_disaster_risk(country_code=country, mode="F"),  # float, 0-1
+                "natural_disaster_risk": lambda: self.env.natural_disaster_risk(
+                    country_code=country, mode="F"
+                ),  # float, 0-1
                 "food_price_index_change_yoy": lambda: self.env.food_price_index_change_yoy(
                     country_code=country, mode="F"
                 ),  # float, percent

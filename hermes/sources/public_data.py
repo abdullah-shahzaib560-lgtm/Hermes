@@ -14,8 +14,8 @@ CRS_PATH = CURRENT_DIR / "lib" / "datasets" / "crs.csv"
 CVS_PATH = CURRENT_DIR / "lib" / "datasets" / "cvs.csv"
 SIPRI_PATH = CURRENT_DIR / "lib" / "datasets" / "sipri.csv"
 
-class PUBLIC_DATASET:
 
+class PUBLIC_DATASET:
     async def fetch_hrs(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, HRS_PATH)
         data = df[df["country"] == country]
@@ -38,30 +38,30 @@ class PUBLIC_DATASET:
 
     async def fetch_fsi(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, FSI_PATH)
-        data = df[df['country'] == country]
-        data['Year'] = pd.to_datetime(data['Year'], format='%Y')
+        data = df[df["country"] == country]
+        data["Year"] = pd.to_datetime(data["Year"], format="%Y")
         return data
 
     async def fetch_nato(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, NATO_PATH)
-        data = df[df['ISO3'] == country]
-        data['Year'] = pd.to_datetime(data['Year'], format='%Y')
+        data = df[df["ISO3"] == country]
+        data["Year"] = pd.to_datetime(data["Year"], format="%Y")
         return data
 
     async def fetch_crs(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, CRS_PATH)
-        data = df[df['ISO3'] == country]
-        data['year'] = pd.to_datetime(data['year'], format='%Y')
+        data = df[df["ISO3"] == country]
+        data["year"] = pd.to_datetime(data["year"], format="%Y")
         return data
 
     async def fetch_cvs(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, CVS_PATH)
-        data = df[df['ISO3'] == country]
-        data['year'] = pd.to_datetime(data['year'], format='%Y')
+        data = df[df["ISO3"] == country]
+        data["year"] = pd.to_datetime(data["year"], format="%Y")
         return data
-    
+
     async def fetch_sipri(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, SIPRI_PATH)
-        data = df[df['iso3'] == country]
-        data['year'] = pd.to_datetime(data['year'], format='%Y')
+        data = df[df["iso3"] == country]
+        data["year"] = pd.to_datetime(data["year"], format="%Y")
         return data
