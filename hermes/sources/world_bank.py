@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 from functools import partial
 
-import httpx
+import aiohttp
 import pandas as pd
 
 from hermes.core.cache import RawCache
@@ -39,18 +39,18 @@ class World_bank:
             params["mrv"] = most_recent
 
         r = None
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with aiohttp.ClientSession(timeout=timeout) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url=url, params=params)
                     resp.raise_for_status()
                     r = resp.json()
                     break
-                except httpx.ReadTimeout:
+                except aiohttp.ClientTimeout:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
-                except httpx.HTTPStatusError as e:
+                except aiohttp.ClientResponseError as e:
                     logger.error(f"HTTP error: {e.response.status_code}")
                     raise
         if len(r) < 2 or not r[1]:
