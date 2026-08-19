@@ -12,6 +12,7 @@ FSI_PATH = CURRENT_DIR / "lib" / "datasets" / "fsi.csv"
 NATO_PATH = CURRENT_DIR / "lib" / "datasets" / "nato.csv"
 CRS_PATH = CURRENT_DIR / "lib" / "datasets" / "crs.csv"
 CVS_PATH = CURRENT_DIR / "lib" / "datasets" / "cvs.csv"
+SIPRI_PATH = CURRENT_DIR / "lib" / "datasets" / "sipri.csv"
 
 class PUBLIC_DATASET:
 
@@ -62,3 +63,8 @@ class PUBLIC_DATASET:
         data['year'] = pd.to_datetime(data['year'], format='%Y')
         return data
     
+    async def fetch_sipri(self, country: str) -> pd.DataFrame:
+        df = await asyncio.to_thread(pd.read_csv, SIPRI_PATH)
+        data = df[df['iso3'] == country]
+        data['year'] = pd.to_datetime(data['year'], format='%Y')
+        return data
