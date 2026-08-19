@@ -22,10 +22,7 @@ class PUBLIC_DATASET:
         data["date"] = pd.to_datetime(data["date"], format="%Y")
         return data
 
-    async def fetch_hdi(
-        self,
-        country: str,
-    ) -> pd.DataFrame:
+    async def fetch_hdi(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, HDI_PATH)
         data = df[["iso3", "year", "score"]]
         data["year"] = pd.to_datetime(data["year"], format="%Y")
