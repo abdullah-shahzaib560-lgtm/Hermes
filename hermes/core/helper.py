@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 import pycountry
+from sec_cik_mapper import StockMapper
 
 logger = logging.getLogger(__name__)
 
@@ -50,3 +51,10 @@ def adjust_year_range(df, year_col, start_year, end_year, fill_method="null", fi
         adjusted_df = adjusted_df.interpolate(method="linear").bfill().ffill()
 
     return adjusted_df
+
+def get_CIK(ticker: str) -> str:
+    mapper = StockMapper()
+    ticker_to_cik_dict = mapper.ticker_to_cik
+    
+    cik = ticker_to_cik_dict.get(ticker.upper())
+    return f"CIK{cik}" if cik else "Not Found"
