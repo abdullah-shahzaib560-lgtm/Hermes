@@ -21,13 +21,15 @@ class Hermes:
 
         self._cache = RawCache(cache_dir=cache_dir) if use_cache else None
         self.features = features_pipeline(os_api=opensanction_api)
+        self.list_countries = countries
+        self.lf = features(os_api=opensanction_api)
+        self.list_features = self.lf.list_features()
+
         self.gdelt = GDELT()
         self.imf = IMF()
         self.opensanction = OpenSanction(api_key=opensanction_api)
         self.world_bank = World_bank()
-        self.list_countries = countries
-        self.lf = features(os_api=opensanction_api)
-        self.list_features = self.lf.list_features()
+
 
     def clear_cache(self, older_than: str | None = None):
         if self._cache:
