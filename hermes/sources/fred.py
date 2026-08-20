@@ -1,5 +1,6 @@
 import asyncio
 import pandas as pd
+from aiohttp import ClientSession, ClientTimeout
 import aiohttp
 import logging
 
