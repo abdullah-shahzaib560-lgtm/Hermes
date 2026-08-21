@@ -24,7 +24,7 @@ class enviromental_features:
     )
     async def climate_vulnerability_score(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         data = await self._data.fetch_cvs(country=country_code)
-        data = check_empty(data=data)
+        data = check_empty(data=data, mode=mode)
         if mode == "F":
             data = data.sort_values("year", ascending=False)
             return data["score"].iloc[0]
@@ -42,7 +42,7 @@ class enviromental_features:
     )
     async def climate_readiness_score(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         data = await self._data.fetch_crs(country=country_code)
-        data = check_empty(data=data)
+        data = check_empty(data=data, mode=mode)
         if mode == "F":
             data = data.sort_values("year", ascending=False)
             return data["score"].iloc[0]

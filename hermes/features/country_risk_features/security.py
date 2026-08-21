@@ -3,9 +3,9 @@ from typing import Literal
 import pandas as pd
 import asyncio
 
+from hermes.core.feature_decorator import feature
 from hermes.sources.public_data import PUBLIC_DATASET
 from hermes.core.helper import adjust_year_range
-from hermes.core.feature_decorator import feature
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class security_features:
             latest = yoy.dropna()
             if latest.empty:
                 return float("nan")
-            return float(latest.iloc[-1])
+            return float(latest.iloc[1])
         if mode == "ML":
             yoy = yoy.reset_index()
             yoy = adjust_year_range(yoy, "year", 2000, 2025, fill_method="ffill")
