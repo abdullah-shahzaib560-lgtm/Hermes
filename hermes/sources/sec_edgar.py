@@ -417,7 +417,7 @@ if __name__ == "__main__":
     async def main():
 
         sec = SECEDGAR(
-            email="haiderali.dev95@gmail.com"
+            email=""
         )
 
         df = await sec.fetch(

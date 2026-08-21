@@ -61,7 +61,7 @@ class OpenSanction:
         logger.info(f"Fetching from: {url}")
         logger.info(f"Params: {params}")
 
-        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url=url, params=params, headers=self._headers)

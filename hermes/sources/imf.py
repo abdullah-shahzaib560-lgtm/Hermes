@@ -33,7 +33,7 @@ class IMF:
         empty = pd.DataFrame(columns=["date", "indicator_id", "country", "value", "source"])
 
         r = None
-        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url=url, headers=headers)
