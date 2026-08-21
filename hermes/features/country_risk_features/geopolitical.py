@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from hermes.core.feature_decorator import feature
+from hermes.core.helper import adjust_year_range
 from hermes.sources.gdelt import GDELT
 from hermes.sources.opensanctions import OpenSanction
 from hermes.sources.public_data import PUBLIC_DATASET
@@ -65,12 +66,16 @@ class geopolitical_features:
         deps=["GDELT:CONFLICT"],
         compute="conflict_event_count_30d from the GDELT",
     )
-    async def conflict_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
+    async def conflict_event_count_30d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> int | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "conflict_event_count_30d"
             return s
@@ -82,12 +87,16 @@ class geopolitical_features:
         deps=["GDELT:CONFLICT"],
         compute="conflict_event_count_90d from the GDELT",
     )
-    async def conflict_event_count_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
+    async def conflict_event_count_90d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> int | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 90, "sum")
             s.name = "conflict_event_count_90d"
             return s
@@ -100,13 +109,17 @@ class geopolitical_features:
         compute="conflict_trend from the GDELT",
     )
     async def conflict_trend(
-        self, country_code: str, mode: str = Literal["F", "ML"]
+        self, country_code: str, mode: Literal["F", "ML"] = "F"
     ) -> Literal["escalating", "stable", "de-escalating"] | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=str)
             daily = raw.set_index("date").resample("D").size()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             rolling_30 = daily.rolling(30, min_periods=1).sum()
             monthly = rolling_30.resample("ME").last()
             prior = monthly.shift(1).fillna(1).replace(0, 1)
@@ -145,12 +158,16 @@ class geopolitical_features:
         deps=["GDELT:CONFLICT"],
         compute="goldstein_scale_avg_30d from the GDELT",
     )
-    async def goldstein_scale_avg_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def goldstein_scale_avg_30d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 30, "mean")
             s.name = "goldstein_scale_avg_30d"
             return s
@@ -163,12 +180,16 @@ class geopolitical_features:
         deps=["GDELT:CONFLICT"],
         compute="goldstein_scale_trend from the GDELT",
     )
-    async def goldstein_scale_trend(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def goldstein_scale_trend(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["CONFLICT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             rolling_30 = daily.rolling(30, min_periods=1).mean()
             monthly = rolling_30.resample("ME").last()
             s = monthly - monthly.shift(1).fillna(0)
@@ -194,13 +215,17 @@ class geopolitical_features:
         deps=["GDELT:ASSAULT:FIGHT"],
         compute="battle_deaths_30d from the GDELT",
     )
-    async def battle_deaths_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
+    async def battle_deaths_30d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> int | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             raw["mentions"] = pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").fillna(0)
             daily = raw.set_index("date").resample("D")["mentions"].sum()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "battle_deaths_30d"
             return s
@@ -222,13 +247,17 @@ class geopolitical_features:
         deps=["GDELT:ASSAULT:FIGHT"],
         compute="battle_deaths_90d from the GDELT",
     )
-    async def battle_deaths_90d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
+    async def battle_deaths_90d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> int | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["ASSAULT", "FIGHT"])
             if raw.empty:
                 return pd.Series(dtype=float)
             raw["mentions"] = pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").fillna(0)
             daily = raw.set_index("date").resample("D")["mentions"].sum()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 90, "sum")
             s.name = "battle_deaths_90d"
             return s
@@ -250,12 +279,16 @@ class geopolitical_features:
         deps=["GDELT:PROTEST"],
         compute="protest_event_count_30d from the GDELT",
     )
-    async def protest_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
+    async def protest_event_count_30d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> int | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["PROTEST"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "protest_event_count_30d"
             return s
@@ -267,12 +300,16 @@ class geopolitical_features:
         deps=["GDELT:PROTEST"],
         compute="protest_violence_level from the GDELT",
     )
-    async def protest_violence_level(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def protest_violence_level(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["PROTEST"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             rolling = daily.rolling(30, min_periods=1).mean()
             monthly = rolling.resample("ME").last()
             s = monthly.apply(lambda x: max(0.0, min(1.0, -x / 10.0)))
@@ -290,12 +327,16 @@ class geopolitical_features:
         deps=["GDLET:DIPLOMACY"],
         compute="diplomatic_event_count_30d from the GDELT",
     )
-    async def diplomatic_event_count_30d(self, country_code: str, mode: str = Literal["F", "ML"]) -> int | pd.Series:
+    async def diplomatic_event_count_30d(self, country_code: str, mode: Literal["F", "ML"] = "F") -> int | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D").size()
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "diplomatic_event_count_30d"
             return s
@@ -307,12 +348,16 @@ class geopolitical_features:
         deps=["GDLET:DIPLOMACY"],
         compute="diplomatic_intensity_avg from the GDELT",
     )
-    async def diplomatic_intensity_avg(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def diplomatic_intensity_avg(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         if mode == "ML":
             raw = await self._gdelt_ml_raw(country_code, ["DIPLOMACY"])
             if raw.empty:
                 return pd.Series(dtype=float)
             daily = raw.set_index("date").resample("D")["severity"].mean().fillna(0)
+            daily.index = pd.to_datetime(daily.index)
+            daily["year"] = daily.index.year
+            daily = adjust_year_range(daily.reset_index(), "year", 2000, 2025, fill_method="ffill")
+            daily = daily.set_index("date")
             s = self._monthly_rolling(daily, 30, "mean")
             s.name = "diplomatic_intensity_avg"
             return s
@@ -320,9 +365,9 @@ class geopolitical_features:
         return float(df["severity"].mean()) if not df.empty else 0.0
 
     async def _wb_annual_to_monthly(self, data: pd.DataFrame, name: str) -> pd.Series:
+        data["year"] = pd.to_datetime(data["date"]).dt.year
+        data = adjust_year_range(data, "year", 2000, 2025, fill_method="ffill")
         s = data.set_index("date")["value"]
-        s.index = pd.to_datetime(s.index.astype(str) + "-06-30", errors="coerce")
-        s = s.sort_index().resample("ME").ffill()
         s.name = name
         return s
 
@@ -332,7 +377,7 @@ class geopolitical_features:
         deps=["world_bank:RL.EST"],
         compute="rule_of_law_score from the World Bank data",
     )
-    async def rule_of_law_score(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def rule_of_law_score(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         data = await self._wb.fetch(country_code=country_code, indicator_code="RL.EST")
         if data.empty:
             return 0.0 if mode == "F" else pd.Series(dtype=float)
@@ -346,7 +391,7 @@ class geopolitical_features:
         deps=["world_bank:RQ.EST"],
         compute="regulatory_quality from the World Bank data",
     )
-    async def regulatory_quality(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def regulatory_quality(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         data = await self._wb.fetch(country_code=country_code, indicator_code="RQ.EST")
         if data.empty:
             return 0.0 if mode == "F" else pd.Series(dtype=float)
@@ -360,7 +405,7 @@ class geopolitical_features:
         deps=[f"world_bank:{WGI_INDICATORS}"],
         compute="governance_wgi_composite from the World Bank data",
     )
-    async def governance_wgi_composite(self, country_code: str, mode: str = Literal["F", "ML"]) -> float | pd.Series:
+    async def governance_wgi_composite(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float | pd.Series:
         if mode == "F":
             values = []
             for ind in WGI_INDICATORS:
@@ -448,33 +493,35 @@ class geopolitical_features:
             return float(data["score"].iloc[0])
 
         if mode == "ML":
-            score_series = data["score"].resample("MS")
-            score_series.index.name = None
-            return score_series.reset_index(drop=True)
+            data = data.reset_index()
+            data["year"] = data["year"].dt.year
+            data = adjust_year_range(data, "year", 2000, 2025, fill_method="ffill")
+            data = data.set_index("year")
+            return data["score"]
 
     @feature(
-        name="labor_force_participation",
+        name="democracy_index",
         group="geopolitical_features",
-        deps=["world_bank:SL.TLF.CACT.ZS"],
-        compute="labor_force_participation from the World Bank data",
+        deps=[],
+        compute="democracy_index",
     )
     async def democracy_index(self, country_code: str, mode: str = "F") -> float:
         return 0.0
 
     @feature(
-        name="labor_force_participation",
+        name="regime_type",
         group="geopolitical_features",
-        deps=["world_bank:SL.TLF.CACT.ZS"],
-        compute="labor_force_participation from the World Bank data",
+        deps=[],
+        compute="regime_type",
     )
     async def regime_type(self, country_code: str, mode: str = "F") -> Literal["democracy", "hybrid", "autocracy"]:
         return "hybrid"
 
     @feature(
-        name="labor_force_participation",
+        name="press_freedom_score",
         group="geopolitical_features",
-        deps=["world_bank:SL.TLF.CACT.ZS"],
-        compute="labor_force_participation from the World Bank data",
+        deps=[],
+        compute="press_freedom_score",
     )
     async def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
         return 0
