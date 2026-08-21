@@ -46,12 +46,12 @@ class World_bank:
                     resp.raise_for_status()
                     r = await resp.json()
                     break
-                except aiohttp.ClientTimeout:
+                except asyncio.TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
                 except aiohttp.ClientResponseError as e:
-                    logger.error(f"HTTP error: {e.response.status_code}")
+                    logger.error(f"HTTP error: {e.status}")
                     raise
         if len(r) < 2 or not r[1]:
             logger.warning(f"No data: country={country_code}, indicator={indicator_code}")

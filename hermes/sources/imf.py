@@ -38,17 +38,17 @@ class IMF:
                 try:
                     resp = await client.get(url=url, headers=headers)
                     resp.raise_for_status()
-                    r = resp.json()
+                    r = await resp.json()
                     break
-                except aiohttp.ClientTimeout:
+                except asyncio.TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
                 except aiohttp.ClientResponseError as e:
-                    if e.response.status_code == 404:
+                    if e.status == 404:
                         logger.warning(f"404: country={country}, dataflow={dataflow_id}, key={key}")
                         return empty
-                    logger.error(f"HTTP error: {e.response.status_code}")
+                    logger.error(f"HTTP error: {e.status}")
                     raise
 
         data = r["data"]

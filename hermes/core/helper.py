@@ -21,9 +21,16 @@ def check_iso3(code):
         raise RuntimeError(f"The {code} is not iso3")
 
 
-def check_empty(mode, data, country):
+def check_empty(mode, data, country="unknown"):
     if data.empty:
         logger.warning(f"No Data for {country}")
+        return empty_result(mode)
+
+    if "value" in data.columns:
+        data = data[data["value"].notna()]
+
+    if data.empty:
+        logger.warning(f"No valid data for {country}")
         return empty_result(mode)
 
     return data
