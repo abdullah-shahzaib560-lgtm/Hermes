@@ -25,7 +25,9 @@ class PUBLIC_DATASET:
 
     async def fetch_hdi(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, HDI_PATH)
-        data = df[["iso3", "year", "score"]]
+        df.columns = [c if c != "" else "index" for c in df.columns]
+        data = df[["country", "Year", "HDI"]].copy()
+        data.columns = ["iso3", "year", "score"]
         data["year"] = pd.to_datetime(data["year"], format="%Y")
         data = data[data["iso3"] == country]
         return data
@@ -39,8 +41,8 @@ class PUBLIC_DATASET:
 
     async def fetch_fsi(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, FSI_PATH)
-        data = df[df["country"] == country]
-        data["Year"] = pd.to_datetime(data["Year"], format="%Y")
+        data = df[df["country"] == country].copy()
+        data["date"] = pd.to_datetime(data["date"], format="%Y")
         return data
 
     async def fetch_nato(self, country: str) -> pd.DataFrame:

@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 import logging
 import zipfile
 from datetime import datetime, timedelta
@@ -116,7 +117,7 @@ class GDELT:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timeout: float = 30.0,
-        retries: int = 2,
+        retries: int = 4,
     ) -> pd.DataFrame:
         query_parts: list[str] = []
 
@@ -147,13 +148,27 @@ class GDELT:
                 try:
                     resp = await client.get(url)
                     resp.raise_for_status()
+                    text = await resp.text()
+                    if text.lstrip().startswith("<") or "html" in resp.content_type.lower():
+                        logger.warning("GDELT Doc API returned HTML (rate limited), retry %d", attempt + 1)
+                        if attempt == retries - 1:
+                            return pd.DataFrame()
+                        await asyncio.sleep(5 * (attempt + 1))
+                        continue
+                    data = json.loads(text)
                     break
-                except aiohttp.ClientTimeout:
+                except (aiohttp.ClientResponseError, asyncio.TimeoutError) as e:
+                    if isinstance(e, aiohttp.ClientResponseError) and e.status != 429:
+                        raise
                     if attempt == retries - 1:
                         raise
-                    logger.warning("GDELT Doc API timeout, retry %d", attempt + 1)
+                    logger.warning("GDELT Doc API %s, retry %d", type(e).__name__, attempt + 1)
+                    await asyncio.sleep(5 * (attempt + 1))
 
-        data = resp.json()
+        if resp is None:
+            logger.warning("GDELT Doc API: all retries failed for: %s", query[:200])
+            return pd.DataFrame()
+
         articles = data.get("articles", data.get("result", []))
         if not articles:
             logger.info("GDELT Doc API returned 0 articles for: %s", query[:200])
@@ -197,12 +212,12 @@ class GDELT:
                     resp = await client.get(url)
                     resp.raise_for_status()
                     break
-                except aiohttp.ClientResponseError as e:
-                    if e.response.status_code == 404:
-                        logger.warning("404 for %s", url)
-                        return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
-                    raise
-                except aiohttp.ClientTimeout:
+                except (aiohttp.ClientResponseError, asyncio.TimeoutError) as e:
+                    if isinstance(e, aiohttp.ClientResponseError):
+                        if e.status == 404:
+                            logger.warning("404 for %s", url)
+                            return pd.DataFrame(columns=GDELT_EVENT_COLUMNS)
+                        raise
                     if attempt == retries - 1:
                         raise
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
