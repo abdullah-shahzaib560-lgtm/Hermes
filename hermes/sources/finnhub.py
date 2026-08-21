@@ -25,6 +25,20 @@ FinnhubEndpoint = Literal[
     "news",
     "symbol",
 ]
+FinnhubEndpoints = [
+    "candles", 
+    "quote",
+    "profile",
+    "metric",
+    "peers",
+    "earnings",
+    "insider",
+    "eps",
+    "ebitda",
+    "revenue",
+    "news",
+    "symbol",
+]
 
 class FINNHUB:
 
@@ -72,12 +86,12 @@ class FINNHUB:
         self,
         endpoint: str,
         symbol: str,
-        resolution: str,
+        resolution: str | None = None,
         timeout: float = 30.0,
         retries: int = 3,
         _from: int | None = None,
         _to: int | None = None
-    ) -> pd.DataFrame:
+    ):
 
         params = {
             "token": self._api,
@@ -87,17 +101,18 @@ class FINNHUB:
         _url = self.build_url(endpoint=endpoint)
 
         if endpoint == 'candles':
+            if None in (resolution, _from, _to): raise ValueError('this endpoint requires resolution, _from and _to arguments')
             params['resolution'] = resolution
             params['from'] = _from
             params['to'] = _to
         elif endpoint == 'metric':
             params['metric'] = 'all'
         elif endpoint == 'insider':
-            params['symbol'] = symbol
+            if None in (_from, _to): raise ValueError('this endpoint requires _from and _to arguments')
             params['from'] = _from
             params['to'] = _to
         elif endpoint == 'news':
-            params['symbol'] = symbol
+            if None in (_from, _to): raise ValueError('this endpoint requires _from and _to arguments')
             params['from'] = _from
             params['to'] = _to
 
@@ -118,5 +133,80 @@ class FINNHUB:
                     if e.status == 404:
                         logger.warning(f"404")
                         return r
+                    if e.status == 403:
+                        logger.error('error 403')
+                        continue
                     logger.error(f"HTTP error: {e.status}")
                     raise
+        return r
+    
+    async def fetch(
+        self,
+        endpoint: str,
+        symbol: str,
+        resolution: str | None = None,
+        _from: int | None = None,
+        _to : int | None = None,
+        timeout: float = 30.0,
+        retries: int = 3,
+        force: bool = False
+    ):
+        cached_params = {
+            'endpoint': endpoint,
+            'symbol': symbol,
+            'resolution': resolution,
+            '_to': _to,
+            '_from': _from,
+        }
+
+        return await self._cache.get_or_fetch(
+            source='finnhub',
+            params=cached_params,
+            fetch_fn=partial(
+                self._fetch,
+                endpoint=endpoint,
+                symbol=symbol,
+                resolution=resolution,
+                _from=_from,
+                _to=_to,
+                timeout=timeout,
+                retries=retries,
+            ),
+            force=force,
+            ttl=timedelta(days=7)
+        )
+
+
+
+if __name__ == "__main__":
+    async def main():
+        fin = FINNHUB(api="")
+
+        for f in FinnhubEndpoints:
+            print(f"Fetching {f}...")
+
+            if f == "candles":
+                data = await fin.fetch(
+                    endpoint=f,
+                    symbol="AAPL",
+                    resolution="D",
+                    _from=1704067200,
+                    _to=1735689600,
+                )
+            elif f in ("insider", "news"):
+                data = await fin.fetch(
+                    endpoint=f,
+                    symbol="AAPL",
+                    _from=1704067200,
+                    _to=1735689600,
+                )
+            else:
+                data = await fin.fetch(
+                    endpoint=f,
+                    symbol="AAPL",
+                )
+
+            print(f"{f}: {data}\n")
+            await asyncio.sleep(1)  # be nice to the API
+
+    asyncio.run(main())

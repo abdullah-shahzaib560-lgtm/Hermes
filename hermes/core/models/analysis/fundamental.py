@@ -19,9 +19,8 @@ class CompanyFundamental:
     # Market data (point-in-time)
     market_cap: Optional[float] = None
     shares_outstanding: Optional[float] = None
-    price: Optional[float] = None  # latest close or quote
+    price: Optional[float] = None  
 
-    # Income statement (latest annual or TTM – document your choice)
     revenue: Optional[float] = None
     revenue_growth_yoy: Optional[float] = None
     gross_profit: Optional[float] = None
@@ -65,9 +64,7 @@ class CompanyFundamental:
     dividend_yield: Optional[float] = None
     fcf_yield: Optional[float] = None
 
-    # Earnings quality (you can define your own metric)
-    earnings_quality_score: Optional[float] = None  # 0–100 or 0–1
+    earnings_quality_score: Optional[float] = None
 
-    # Meta
     source_map: Dict[str, List[str]] = field(default_factory=dict)
     as_of_date: Optional[date] = None
