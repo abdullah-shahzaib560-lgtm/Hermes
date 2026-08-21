@@ -17,7 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 async def _await_group(fns: dict[str, Callable[..., Any]]) -> dict[str, Any]:
-    values = await asyncio.gather(*(f() for f in fns.values()))
+    async def _safe_call(fn):
+        try:
+            return await fn()
+        except Exception as e:
+            logger.warning(f"Feature failed: {e}")
+            return None
+
+    values = await asyncio.gather(*(_safe_call(f) for f in fns.values()))
     return dict(zip(fns.keys(), values))
 
 
@@ -220,8 +227,8 @@ class pipeline:
             for fn in fns:
                 try:
                     series = await fn(country, mode="ML")
-                    # series is pd.Series with DatetimeIndex, monthly freq
                     if isinstance(series, pd.Series) and not series.empty:
+                        series = series[~series.index.duplicated(keep="first")]
                         series_dict[fn.__name__] = series
                 except Exception as e:
                     logger.warning(f"{fn.__name__} failed for {country}: {e}")

@@ -70,13 +70,13 @@ class social_features:
         data = await self._data.fetch_hdi(country=country_code)
         data = check_empty(data=data, mode=mode)
         if mode == "F":
-            data = data.sort_values("Year", ascending=False)
-            return data["HDI"].iloc[0]
+            data = data.sort_values("year", ascending=False)
+            return data["score"].iloc[0]
         if mode == "ML":
-            data["year"] = data["Year"].dt.year
+            data["year"] = data["year"].dt.year
             data = adjust_year_range(data, "year", 2000, 2025, fill_method="ffill")
-            data = data.set_index("Year")
-            return data["HDI"]
+            data = data.set_index("year")
+            return data["score"]
 
     @feature(
         name="gini_coefficient",

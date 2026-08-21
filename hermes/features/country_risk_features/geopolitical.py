@@ -1,13 +1,18 @@
+import asyncio
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Literal
+from urllib.parse import urlencode
 
+import aiohttp
 import numpy as np
 import pandas as pd
 
 from hermes.core.feature_decorator import feature
 from hermes.core.helper import adjust_year_range
 from hermes.sources.gdelt import GDELT
+from hermes.sources.lib.gdlet_help import GDELT_DOC_API
 from hermes.sources.opensanctions import OpenSanction
 from hermes.sources.public_data import PUBLIC_DATASET
 from hermes.sources.world_bank import World_bank
@@ -16,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 WGI_INDICATORS = ["CC.EST", "GE.EST", "PV.EST", "RQ.EST", "RL.EST", "VA.EST"]
 GDELT_HISTORY_START = datetime(2000, 1, 1)
+_GDELT_SEMAPHORE = asyncio.Semaphore(1)
+_GDELT_LAST_CALL = 0.0
+_GDELT_MIN_INTERVAL = 5.0
+_gdelt_session_cache: dict[str, pd.DataFrame] = {}
+_gdelt_available: bool | None = None
 
 
 class geopolitical_features:
@@ -25,24 +35,70 @@ class geopolitical_features:
         self._os = OpenSanction(api_key=os_api)
         self._p_data = PUBLIC_DATASET()
 
+    async def _gdelt_rate_limit(self):
+        global _GDELT_LAST_CALL
+        now = time.monotonic()
+        wait = _GDELT_MIN_INTERVAL - (now - _GDELT_LAST_CALL)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _GDELT_LAST_CALL = time.monotonic()
+
+    async def _gdelt_health_check(self) -> bool:
+        global _gdelt_available
+        if _gdelt_available is not None:
+            return _gdelt_available
+        async with _GDELT_SEMAPHORE:
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as client:
+                    resp = await client.get(GDELT_DOC_API + "?" + urlencode({"query": "test", "mode": "artlist", "format": "json", "maxrecords": 1}))
+                    text = await resp.text()
+                    _gdelt_available = not text.lstrip().startswith("<") and resp.status == 200
+                    if not _gdelt_available:
+                        logger.warning("GDELT Doc API unavailable (status=%d)", resp.status)
+                    return _gdelt_available
+            except Exception:
+                _gdelt_available = False
+                logger.warning("GDELT Doc API unreachable")
+                return False
+
+    def _gdelt_cache_key(self, country: str, themes: list[str]) -> str:
+        return f"{country}:{','.join(sorted(themes))}"
+
     async def _query(self, country: str, themes: list[str], days: int) -> pd.DataFrame:
         now = datetime.utcnow()
-        return await self._gdelt.query_events(
-            countries=[country],
-            themes=themes,
-            start_date=now - timedelta(days=days),
-            end_date=now,
-        )
+        cache_key = self._gdelt_cache_key(country, themes) + f":{days}d"
+        if cache_key in _gdelt_session_cache:
+            return _gdelt_session_cache[cache_key]
+        if not await self._gdelt_health_check():
+            return pd.DataFrame()
+        async with _GDELT_SEMAPHORE:
+            await self._gdelt_rate_limit()
+            df = await self._gdelt.query_events(
+                countries=[country],
+                themes=themes,
+                start_date=now - timedelta(days=days),
+                end_date=now,
+            )
+        if not df.empty:
+            _gdelt_session_cache[cache_key] = df
+        return df
 
     async def _gdelt_ml_raw(self, country: str, themes: list[str]) -> pd.DataFrame:
         now = datetime.utcnow()
-        raw = await self._gdelt.query_events(
-            countries=[country],
-            themes=themes,
-            start_date=GDELT_HISTORY_START,
-            end_date=now,
-            normalize=False,
-        )
+        cache_key = self._gdelt_cache_key(country, themes) + ":ml"
+        if cache_key in _gdelt_session_cache:
+            return _gdelt_session_cache[cache_key]
+        if not await self._gdelt_health_check():
+            return pd.DataFrame()
+        async with _GDELT_SEMAPHORE:
+            await self._gdelt_rate_limit()
+            raw = await self._gdelt.query_events(
+                countries=[country],
+                themes=themes,
+                start_date=GDELT_HISTORY_START,
+                end_date=now,
+                normalize=False,
+            )
         if raw.empty:
             return pd.DataFrame()
         raw["date"] = pd.to_datetime(
@@ -50,7 +106,10 @@ class geopolitical_features:
             format="%Y%m%d%H%M%S",
             errors="coerce",
         )
-        return raw.dropna(subset=["date"])
+        result = raw.dropna(subset=["date"])
+        if not result.empty:
+            _gdelt_session_cache[cache_key] = result
+        return result
 
     @staticmethod
     def _monthly_rolling(daily: pd.Series, window: int, how: str = "sum") -> pd.Series:
@@ -135,16 +194,10 @@ class geopolitical_features:
             s = ratio.apply(classify)
             s.name = "conflict_trend"
             return s
-        now = datetime.utcnow()
-        recent = await self._gdelt.query_events(
-            countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now
-        )
-        prior = await self._gdelt.query_events(
-            countries=[country_code],
-            themes=["CONFLICT"],
-            start_date=now - timedelta(days=60),
-            end_date=now - timedelta(days=30),
-        )
+        recent = await self._query(country_code, ["CONFLICT"], 30)
+        prior_all = await self._query(country_code, ["CONFLICT"], 60)
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        prior = prior_all[prior_all.index < cutoff] if not prior_all.empty else prior_all
         ratio = len(recent) / max(len(prior), 1)
         if ratio > 1.2:
             return "escalating"
@@ -195,16 +248,10 @@ class geopolitical_features:
             s = monthly - monthly.shift(1).fillna(0)
             s.name = "goldstein_scale_trend"
             return s
-        now = datetime.utcnow()
-        recent = await self._gdelt.query_events(
-            countries=[country_code], themes=["CONFLICT"], start_date=now - timedelta(days=30), end_date=now
-        )
-        prior = await self._gdelt.query_events(
-            countries=[country_code],
-            themes=["CONFLICT"],
-            start_date=now - timedelta(days=60),
-            end_date=now - timedelta(days=30),
-        )
+        recent = await self._query(country_code, ["CONFLICT"], 30)
+        prior_all = await self._query(country_code, ["CONFLICT"], 60)
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        prior = prior_all[prior_all.index < cutoff] if not prior_all.empty else prior_all
         cur = float(recent["severity"].mean()) if not recent.empty else 0.0
         prv = float(prior["severity"].mean()) if not prior.empty else 0.0
         return cur - prv
@@ -229,14 +276,7 @@ class geopolitical_features:
             s = self._monthly_rolling(daily, 30, "sum")
             s.name = "battle_deaths_30d"
             return s
-        now = datetime.utcnow()
-        raw = await self._gdelt.query_events(
-            countries=[country_code],
-            themes=["ASSAULT", "FIGHT"],
-            start_date=now - timedelta(days=30),
-            end_date=now,
-            normalize=False,
-        )
+        raw = await self._query(country_code, ["ASSAULT", "FIGHT"], 30)
         if raw.empty:
             return 0
         return int(pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").sum())
@@ -261,14 +301,7 @@ class geopolitical_features:
             s = self._monthly_rolling(daily, 90, "sum")
             s.name = "battle_deaths_90d"
             return s
-        now = datetime.utcnow()
-        raw = await self._gdelt.query_events(
-            countries=[country_code],
-            themes=["ASSAULT", "FIGHT"],
-            start_date=now - timedelta(days=90),
-            end_date=now,
-            normalize=False,
-        )
+        raw = await self._query(country_code, ["ASSAULT", "FIGHT"], 90)
         if raw.empty:
             return 0
         return int(pd.to_numeric(raw.get("nummentions", pd.Series([0])), errors="coerce").sum())
@@ -431,7 +464,7 @@ class geopolitical_features:
         deps=["opensanction:us_ofac_sdn"],
         compute="sanctions_count_active from the OpenSanction",
     )
-    async def sanctions_count_active(self, country_code: str) -> int:
+    async def sanctions_count_active(self, country_code: str, mode: str = "F") -> int:
         data = await self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         active_count = 0
         for result in data.get("results", []):
@@ -447,7 +480,7 @@ class geopolitical_features:
         deps=["opensanction:us_ofac_sdn"],
         compute="sanctions_new_30d from the OpenSanction",
     )
-    async def sanctions_new_30d(self, country_code: str) -> int:
+    async def sanctions_new_30d(self, country_code: str, mode: str = "F") -> int:
         from datetime import datetime, timedelta
 
         thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -465,7 +498,7 @@ class geopolitical_features:
         deps=["opensanction:us_ofac_sdn"],
         compute="sanctions_sector_coverage from the OpenSanction",
     )
-    async def sanctions_sector_coverage(self, country_code: str) -> float | pd.Series:
+    async def sanctions_sector_coverage(self, country_code: str, mode: str = "F") -> float | pd.Series:
         data = await self._os.fetch(country=country_code, dataset="us_ofac_sdn", limit=1000)
         sectors = set()
         for result in data.get("results", []):
@@ -526,18 +559,83 @@ class geopolitical_features:
     async def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
         return 0
 
+from typing import Callable, Any
+
+async def _await_group(fns: dict[str, Callable[..., Any]]) -> dict[str, Any]:
+    async def _safe_call(fn):
+        try:
+            return await fn()
+        except Exception as e:
+            logger.warning(f"Feature failed: {e}")
+            return None
+
+    values = await asyncio.gather(*(_safe_call(f) for f in fns.values()))
+    return dict(zip(fns.keys(), values))
 
 if __name__ == "__main__":
     import asyncio
 
     async def main():
-        geo = geopolitical_features(os_api="")
-        print("=" * 60)
-        data = await geo.corruption_perception_index("USA", "F")
-        print(data)
-        print("=" * 60)
-        dataa = await geo.corruption_perception_index("USA", "ML")
-        print(f"The data type {type(dataa)}")
-        print(dataa)
+        geo = geopolitical_features(os_api='af5a744cd01ccf9a6b9b90c599bd5430')
 
+        geopolitical = await _await_group(
+            {
+                "conflict_event_count_30d": lambda: geo.conflict_event_count_30d(
+                    country_code="USA", mode="F"
+                ),  # int
+                "conflict_event_count_90d": lambda: geo.conflict_event_count_90d(
+                    country_code="USA", mode="F"
+                ),  # int
+                "conflict_trend": lambda: geo.conflict_trend(
+                    country_code="USA", mode="F"
+                ),  # string: escalating/stable/de-escalating
+                "goldstein_scale_avg_30d": lambda: geo.goldstein_scale_avg_30d(
+                    country_code="USA", mode="F"
+                ),  # float, -10 to +10
+                "goldstein_scale_trend": lambda: geo.goldstein_scale_trend(
+                    country_code="USA", mode="F"
+                ),  # float, change vs prev period
+                "battle_deaths_30d": lambda: geo.battle_deaths_30d(country_code="USA", mode="F"),  # int
+                "battle_deaths_90d": lambda: geo.battle_deaths_90d(country_code="USA", mode="F"),  # int
+                "protest_event_count_30d": lambda: geo.protest_event_count_30d(
+                    country_code="USA", mode="F"
+                ),  # int
+                "protest_violence_level": lambda: geo.protest_violence_level(
+                    country_code="USA", mode="F"
+                ),  # float, 0-1
+                "diplomatic_event_count_30d": lambda: geo.diplomatic_event_count_30d(
+                    country_code="USA", mode="F"
+                ),  # int
+                "diplomatic_intensity_avg": lambda: geo.diplomatic_intensity_avg(
+                    country_code="USA", mode="F"
+                ),  # float, 0-10 scale
+                "sanctions_count_active": lambda: geo.sanctions_count_active(country_code="USA"),  # int
+                "sanctions_new_30d": lambda: geo.sanctions_new_30d(country_code="USA"),  # int
+                "sanctions_sector_coverage": lambda: geo.sanctions_sector_coverage(
+                    country_code="USA"
+                ),  # float, 0-1
+                "governance_wgi_composite": lambda: geo.governance_wgi_composite(
+                    country_code="USA", mode="F"
+                ),  # float, -2.5 to +2.5
+                "corruption_perception_index": lambda: geo.corruption_perception_index(
+                    country_code="USA", mode="F"
+                ),  # int, 0-100
+                "rule_of_law_score": lambda: geo.rule_of_law_score(
+                    country_code="USA", mode="F"
+                ),  # float, -2.5 to +2.5
+                "regulatory_quality": lambda: geo.regulatory_quality(
+                    country_code="USA", mode="F"
+                ),  # float, -2.5 to +2.5
+                "democracy_index": lambda: geo.democracy_index(country_code="USA", mode="F"),  # float, 0-1
+                "regime_type": lambda: geo.regime_type(
+                    country_code="USA", mode="F"
+                ),  # string: democracy/hybrid/autocracy
+                "press_freedom_score": lambda: geo.press_freedom_score(
+                    country_code="USA", mode="F"
+                ),  # int, 0-100
+            }
+
+        )
+
+        print(geo)
     asyncio.run(main())

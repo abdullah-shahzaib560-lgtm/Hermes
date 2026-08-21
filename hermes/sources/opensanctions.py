@@ -49,7 +49,7 @@ class OpenSanction:
 
         url = f"{self._base_url}/search/{dataset}"
 
-        params = {"countries": country_iso2, "limit": min(limit, 1000)}
+        params = {"countries": country_iso2, "limit": min(limit, 500)}
 
         if changed_since:
             params["changed_since"] = changed_since
@@ -66,11 +66,11 @@ class OpenSanction:
                 try:
                     resp = await client.get(url=url, params=params, headers=self._headers)
                     resp.raise_for_status()
-                    data = resp.json()
+                    data = await resp.json()
                     logger.info(f"Fetched {data.get('total', {}).get('value', 0)} results")
                     return data
 
-                except aiohttp.ClientTimeout:
+                except asyncio.TimeoutError:
                     if attempt == retries - 1:
                         logger.error(f"Timeout after {retries} attempts")
                         raise
@@ -79,13 +79,15 @@ class OpenSanction:
                     await asyncio.sleep(wait_time)
 
                 except aiohttp.ClientResponseError as e:
-                    if e.response.status_code == 404:
+                    if e.status == 404:
                         logger.error(f"Dataset '{dataset}' not found")
                         return {}
+                    if e.status == 422:
+                        logger.error(f"OpenSanctions 422: {e.message} (url={e.request_info.url})")
                     if attempt == retries - 1:
                         raise
                     wait_time = 2**attempt
-                    logger.warning(f"HTTP {e.response.status_code}, retrying in {wait_time}s...")
+                    logger.warning(f"HTTP {e.status}, retrying in {wait_time}s...")
                     await asyncio.sleep(wait_time)
 
                 except Exception as e:
