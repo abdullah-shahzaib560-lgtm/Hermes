@@ -142,7 +142,7 @@ class GDELT:
         logger.debug("GDELT Doc API: %s", url[:300])
 
         resp = None
-        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url)
@@ -166,7 +166,7 @@ class GDELT:
     async def _load_master_list(self, timeout: float = 60.0) -> pd.DataFrame:
         if self._master_df is not None:
             return self._master_df
-        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             resp = await client.get(GDELT_MASTER)
             resp.raise_for_status()
             df = pd.read_csv(
@@ -191,7 +191,7 @@ class GDELT:
 
     async def _download_one(self, url: str, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
         resp = None
-        async with aiohttp.ClientSession(timeout=timeout, follow_redirects=True) as client:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url)

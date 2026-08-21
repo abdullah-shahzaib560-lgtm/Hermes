@@ -39,12 +39,12 @@ class World_bank:
             params["mrv"] = most_recent
 
         r = None
-        async with aiohttp.ClientSession(timeout=timeout) as client:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             for attempt in range(retries):
                 try:
                     resp = await client.get(url=url, params=params)
                     resp.raise_for_status()
-                    r = resp.json()
+                    r = await resp.json()
                     break
                 except aiohttp.ClientTimeout:
                     if attempt == retries - 1:
