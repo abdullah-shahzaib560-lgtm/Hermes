@@ -53,16 +53,14 @@ class SECEDGAR:
 
     async def fetch(
         self,
-        company: str,
-        mode: Literal["full", "imp"] = "imp",
+        symbol: str,
         timeout: float = 30.0,
         retries: int = 3,
         force: bool = False,
     ) -> pd.DataFrame | Dict:
 
         cache_params = {
-            "company": company,
-            "mode": mode,
+            "company": symbol,
         }
 
         return await self._cache.get_or_fetch(
@@ -70,8 +68,7 @@ class SECEDGAR:
             params=cache_params,
             fetch_fn=partial(
                 self._fetch,
-                company=company,
-                mode=mode,
+                symbol=symbol,
                 timeout=timeout,
                 retries=retries,
             ),
