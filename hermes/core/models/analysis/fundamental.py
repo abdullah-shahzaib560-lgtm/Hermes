@@ -1,70 +1,73 @@
-# hermes/core/models/analysis/fundamental.py
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List
 from datetime import date
+from typing import List, Optional
 
 
 @dataclass
 class CompanyFundamental:
-    symbol: str
 
-    # Identity
-    name: Optional[str] = None
-    exchange: Optional[str] = None
-    currency: Optional[str] = None
-    sector: Optional[str] = None
-    industry: Optional[str] = None
-    country: Optional[str] = None
+    ticker: str
+    filing_date: date
+    fiscal_period: str 
+    fiscal_year: int
+    filing_type: str
 
-    # Market data (point-in-time)
-    market_cap: Optional[float] = None
-    shares_outstanding: Optional[float] = None
-    price: Optional[float] = None  
+    revenue: int
+    cost_of_revenue: int
+    gross_profit: int
+    operating_expenses: int
+    operating_income: int
+    interest_expense: Optional[int]
+    pre_tax_income: int
+    income_tax_expense: int
+    net_income: int
+    eps_basic: float
+    eps_diluted: float
 
-    revenue: Optional[float] = None
-    revenue_growth_yoy: Optional[float] = None
-    gross_profit: Optional[float] = None
-    gross_margin: Optional[float] = None
-    operating_income: Optional[float] = None
-    operating_margin: Optional[float] = None
-    net_income: Optional[float] = None
-    net_margin: Optional[float] = None
-    eps_ttm: Optional[float] = None
-    eps_growth_yoy: Optional[float] = None
+    cash: int
+    short_term_investments: Optional[int]
+    accounts_receivable: int
+    inventory: Optional[int]
+    current_assets: int
+    total_assets: int
+    current_liabilities: int
+    short_term_debt: Optional[int]
+    long_term_debt: int
+    total_liabilities: int
+    equity: int
 
-    # Cash flow
-    operating_cash_flow: Optional[float] = None
-    capex: Optional[float] = None
-    free_cash_flow: Optional[float] = None
+    operating_cash_flow: int
+    investing_cash_flow: int
+    financing_cash_flow: int
+    capital_expenditure: int
 
-    # Balance sheet
-    total_debt: Optional[float] = None
-    cash_and_equivalents: Optional[float] = None
-    total_assets: Optional[float] = None
-    total_equity: Optional[float] = None
-    current_assets: Optional[float] = None
-    current_liabilities: Optional[float] = None
-    interest_expense: Optional[float] = None
-    ebit: Optional[float] = None
+    shares_outstanding: int
+    weighted_average_shares: int
+    dividends: Optional[int] = 0
+    buybacks: Optional[int] = 0
 
-    # Derived ratios
-    roe: Optional[float] = None
-    roic: Optional[float] = None
-    roa: Optional[float] = None
-    current_ratio: Optional[float] = None
-    debt_to_equity: Optional[float] = None
-    interest_coverage: Optional[float] = None
+    current_price: float
+    market_cap: int
+    pe_ratio: Optional[float] = field(default=None, metadata={"alias": "P/E"})
+    ps_ratio: Optional[float] = field(default=None, metadata={"alias": "P/S"})
+    pb_ratio: Optional[float] = field(default=None, metadata={"alias": "P/B"})
+    ev_ebitda: Optional[float] = field(default=None, metadata={"alias": "EV/EBITDA"})
+    roe: Optional[float] = field(default=None, metadata={"alias": "ROE"})
+    roa: Optional[float] = field(default=None, metadata={"alias": "ROA"})
+    debt_equity: Optional[float] = field(default=None, metadata={"alias": "Debt/Equity"})
 
-    # Valuation
-    pe_ratio: Optional[float] = None
-    ps_ratio: Optional[float] = None
-    pb_ratio: Optional[float] = None
-    ev_ebitda: Optional[float] = None
-    peg_ratio: Optional[float] = None
-    dividend_yield: Optional[float] = None
-    fcf_yield: Optional[float] = None
+    earnings: float
+    eps_estimates: float
+    revenue_estimates: int
+    ebitda_estimates: int
+    earnings_surprise: float
+    revenue_surprise: float
+    company_peers: List[str] = field(default_factory=list)
 
-    earnings_quality_score: Optional[float] = None
-
-    source_map: Dict[str, List[str]] = field(default_factory=dict)
-    as_of_date: Optional[date] = None
+    macro_gdp: int
+    macro_gdp_growth: float
+    macro_inflation: float
+    macro_interest_rates: float
+    macro_unemployment: float
+    macro_government_debt: float
+    macro_exchange_rates: dict = field(default_factory=dict)
