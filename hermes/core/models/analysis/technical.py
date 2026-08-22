@@ -1,64 +1,45 @@
-# hermes/core/models/analysis/technical.py
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
 from datetime import datetime
-from hermes.core.models.analysis.fundamental import CompanyFundamental
+from typing import Dict, List, Tuple
+
 
 @dataclass
 class TechnicalSnapshot:
-    """
-    Latest technical state for a ticker.
-    """
-    symbol: str
 
-    # Latest bar
-    timestamp: Optional[datetime] = None
-    open: Optional[float] = None
-    high: Optional[float] = None
-    low: Optional[float] = None
-    close: Optional[float] = None
-    volume: Optional[int] = None
+    ticker: str 
+    timestamp: datetime
 
-    # Trend
-    sma_20: Optional[float] = None
-    sma_50: Optional[float] = None
-    sma_200: Optional[float] = None
-    ema_12: Optional[float] = None
-    ema_26: Optional[float] = None
+    current_price: float
+    finnhub_ohlcv: Tuple[float, float, float, float, float]
 
-    # Momentum
-    rsi_14: Optional[float] = None
-    macd_line: Optional[float] = None
-    macd_signal: Optional[float] = None
-    macd_hist: Optional[float] = None
-    stochastic_k: Optional[float] = None
-    stochastic_d: Optional[float] = None
-    momentum_1m: Optional[float] = None
-    momentum_3m: Optional[float] = None
-    momentum_6m: Optional[float] = None
+    historical_ohlcv: Dict[str, List[Tuple[float, float, float, float, float]]] = (
+        field(default_factory=dict)
+    )
 
-    # Volatility
-    atr_14: Optional[float] = None
-    historical_vol_20d: Optional[float] = None
+    binance_ohlcv: Tuple[float, float, float, float, float]
+    high_24h: float
+    low_24h: float
+    volume_24h: float
 
-    # Volume
-    obv: Optional[float] = None
-    vwap: Optional[float] = None
-    avg_volume_20d: Optional[float] = None
-    volume_ratio: Optional[float] = None  # today vs avg
+    best_bid: float
+    best_ask: float
+    bid_quantity: float
+    ask_quantity: float
 
-    # Bands & trend strength
-    bb_upper: Optional[float] = None
-    bb_middle: Optional[float] = None
-    bb_lower: Optional[float] = None
-    adx_14: Optional[float] = None
+    # Order book representation: Lists of (Price, Quantity) tuples for bids and asks
+    # e.g., {'bids': [(100.0, 1.5), (99.9, 2.0)], 'asks': [(100.1, 0.5)]}
+    order_book: Dict[str, List[Tuple[float, float]]] = field(
+        default_factory=dict
+    )
 
-    # Pattern / level flags (you can expand)
-    above_sma_50: Optional[bool] = None
-    above_sma_200: Optional[bool] = None
-    breakout_20d_high: Optional[bool] = None
-    trend_direction: Optional[str] = None  # "Bullish", "Bearish", "Neutral"
-    momentum_state: Optional[str] = None   # "Strong", "Moderate", "Weak"
-    volatility_state: Optional[str] = None # "High", "Moderate", "Low"
-    volume_state: Optional[str] = None     # "Positive", "Neutral", "Negative"
+    # Individual execution feed: (Trade Price, Trade Volume, Trade Timestamp)
+    trades: List[Tuple[float, float, datetime]] = field(default_factory=list)
 
+    # Aggregated trades compress multiple trades at identical prices/times:
+    # (Price, Volume, First Trade ID, Last Trade ID, Timestamp)
+    aggregated_trades: List[Tuple[float, float, int, int, datetime]] = field(
+        default_factory=list
+    )
+
+    funding_rate: float = 0.0
+    open_interest: float = 0.0
