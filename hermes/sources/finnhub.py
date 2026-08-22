@@ -182,31 +182,17 @@ if __name__ == "__main__":
     async def main():
         fin = FINNHUB(api="da45rr9r01qo2j8743egda45rr9r01qo2j8743f0")
 
-        for f in FinnhubEndpoints:
-            print(f"Fetching {f}...")
+        async def finn_eps_estimate(symbol: str):
+            return await fin.fetch(endpoint='eps', symbol=symbol)
 
-            if f == "candles":
-                data = await fin.fetch(
-                    endpoint=f,
-                    symbol="AAPL",
-                    resolution="D",
-                    _from=1769904000,
-                    _to=1777593599,
-                )
-            elif f in ("insider", "news"):
-                data = await fin.fetch(
-                    endpoint=f,
-                    symbol="AAPL",
-                    _from=1704067200,
-                    _to=1735689600,
-                )
-            else:
-                data = await fin.fetch(
-                    endpoint=f,
-                    symbol="AAPL",
-                )
+        async def finn_revenue_estimate(symbol: str):
+            return await fin.fetch(endpoint='revenue', symbol=symbol)
 
-            print(f"{f}: {data}\n")
-            await asyncio.sleep(1)  # be nice to the API
+        async def finn_ebitda_estimate(symbol: str):
+            return await fin.fetch(endpoint='ebitda', symbol=symbol)
+
+        print(await finn_ebitda_estimate('AAPL'))
+        print(await finn_eps_estimate('AAPL'))
+        print(await finn_revenue_estimate('AAPL'))
 
     asyncio.run(main())
