@@ -180,7 +180,7 @@ class FINNHUB:
 
 if __name__ == "__main__":
     async def main():
-        fin = FINNHUB(api="")
+        fin = FINNHUB(api="da45rr9r01qo2j8743egda45rr9r01qo2j8743f0")
 
         for f in FinnhubEndpoints:
             print(f"Fetching {f}...")
@@ -190,8 +190,8 @@ if __name__ == "__main__":
                     endpoint=f,
                     symbol="AAPL",
                     resolution="D",
-                    _from=1704067200,
-                    _to=1735689600,
+                    _from=1769904000,
+                    _to=1777593599,
                 )
             elif f in ("insider", "news"):
                 data = await fin.fetch(
