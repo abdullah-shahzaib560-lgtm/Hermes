@@ -28,6 +28,7 @@ dependencies = [
     "pyreadr>=0.5.6",
     "sdmx>=0.2.10",
     "sec-cik-mapper>=2.1.0",
+    "yfinance>=1.6.0",
 ]
 
 [tool.hatch.build.targets.wheel]
