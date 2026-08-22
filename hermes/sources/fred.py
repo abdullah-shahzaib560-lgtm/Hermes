@@ -96,10 +96,11 @@ class FRED:
                     raise
 
         df = pd.DataFrame(r['observations'])
-        df.drop(columns={'realtime_start', 'realtime_end'})
+        df.drop(columns=['realtime_start', 'realtime_end'], inplace=True)
         df['series_id'] = series_id
         df['unit'] = r['units']
-
+        df = df.set_index('date')
+        df = df.sort_index(ascending=False)
         return df
 
     async def fetch(
@@ -126,3 +127,12 @@ class FRED:
             force=force,
             ttl=timedelta(days=30)
         )
+
+if __name__ == '__main__':
+    async def main():
+        fred = FRED(api='4d7f9486f4661bf733491947199996d1')
+
+        data = await fred._fetch(series_id='GDPC1')
+        print(data)
+
+    asyncio.run(main())
