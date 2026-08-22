@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class SECEDGAR:
 
-    def __init__(self, username: str,email :str, cache: RawCache | None = None):
+    def __init__(self, username: str, email: str, cache: RawCache | None = None):
         self._email = email
         self._username = username
         self._cache = cache or RawCache()
