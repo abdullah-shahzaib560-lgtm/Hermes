@@ -559,7 +559,9 @@ class geopolitical_features:
     async def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
         return 0
 
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
+
 
 async def _await_group(fns: dict[str, Callable[..., Any]]) -> dict[str, Any]:
     async def _safe_call(fn):

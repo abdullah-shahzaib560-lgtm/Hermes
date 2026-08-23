@@ -169,7 +169,7 @@ async def main():
             dates = panel.index.get_level_values('date')
             print(f"  Date range: {dates.min()} -> {dates.max()}")
         except TypeError:
-            print(f"  Date range: mixed types in index")
+            print("  Date range: mixed types in index")
         print(f"  Columns: {list(panel.columns)}")
     else:
         print("  Empty panel")

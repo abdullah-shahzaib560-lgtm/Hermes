@@ -1,11 +1,41 @@
 from __future__ import annotations
 
+import json
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiohttp
 import pandas as pd
-import respx
+import pytest
 
 from hermes.sources.gdelt import CANONICAL_COLUMNS, FIPS_TO_ISO3, GDELT, _classify_themes
+from hermes.sources.lib.gdlet_help import GDELT_DOC_API
 
-GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
+
+def _mock_aiohttp_response(json_data, status=200):
+    """Create a mock aiohttp response."""
+    mock_resp = AsyncMock()
+    mock_resp.status = status
+    mock_resp.json = AsyncMock(return_value=json_data)
+    mock_resp.text = AsyncMock(return_value=json.dumps(json_data))
+    mock_resp.content_type = "application/json"
+    mock_resp.raise_for_status = MagicMock()
+
+    if status >= 400:
+        mock_resp.raise_for_status.side_effect = aiohttp.ClientResponseError(
+            request_info=MagicMock(),
+            history=(),
+            status=status,
+        )
+    return mock_resp
+
+
+def _mock_session(mock_resp):
+    """Create a mock aiohttp ClientSession that returns the given response."""
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_resp)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    return mock_session
 
 
 class TestClassifyThemes:
@@ -95,23 +125,27 @@ class TestToCanonical:
 
 
 class TestGDELTQuery:
-    @respx.mock
     async def test_query_events_cache_hit(self, tmp_cache):
         gdelt = GDELT(cache=tmp_cache)
-        respx.get(GDELT_DOC_API).respond(
-            status_code=200,
-            json={"articles": [{"url": "http://x", "seendate": "20240301000000", "themes": ["PROTEST"]}]},
-        )
-        df1 = await gdelt.query_events(themes=["PROTEST"])
-        df2 = await gdelt.query_events(themes=["PROTEST"])
-        assert len(respx.calls) == 1
+        mock_response = {
+            "articles": [
+                {"url": "http://x", "seendate": "20240301000000", "themes": ["PROTEST"]}
+            ]
+        }
+        mock_resp = _mock_aiohttp_response(mock_response)
+        mock_session = _mock_session(mock_resp)
 
-    @respx.mock
+        with patch("hermes.sources.gdelt.aiohttp.ClientSession", return_value=mock_session):
+            df1 = await gdelt.query_events(themes=["PROTEST"])
+            df2 = await gdelt.query_events(themes=["PROTEST"])
+            assert mock_session.get.call_count == 1
+
     async def test_query_events_no_articles(self, tmp_cache):
         gdelt = GDELT(cache=tmp_cache)
-        respx.get(GDELT_DOC_API).respond(
-            status_code=200,
-            json={"articles": []},
-        )
-        df = await gdelt.query_events(themes=["PROTEST"])
-        assert df.empty
+        mock_response = {"articles": []}
+        mock_resp = _mock_aiohttp_response(mock_response)
+        mock_session = _mock_session(mock_resp)
+
+        with patch("hermes.sources.gdelt.aiohttp.ClientSession", return_value=mock_session):
+            df = await gdelt.query_events(themes=["PROTEST"])
+            assert df.empty

@@ -81,6 +81,7 @@ class Yfinance:
 if __name__ == "__main__":
     import asyncio
     import json
+
     import pandas as pd
 
     # Custom function to safely turn Pandas objects into clean text/numbers
@@ -97,16 +98,16 @@ if __name__ == "__main__":
 
     async def main():
         yf_source = Yfinance()
-        
+
         for endpoint in YfinanceEndpoints:
             data = await yf_source.fetch(endpoint=endpoint, symbol='AAPL')
-            
+
             # Use .name or .value to get a clean string for the filename
             filename = f"{endpoint}.json"
-            
+
             with open(filename, "w") as json_file:
                 # Clean the entire data structure before saving
                 serializable_data = clean_json(data)
                 json.dump(serializable_data, json_file, indent=4)
-                
+
     asyncio.run(main())

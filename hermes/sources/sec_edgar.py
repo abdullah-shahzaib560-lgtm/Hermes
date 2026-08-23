@@ -1,15 +1,14 @@
 import asyncio
 import logging
-from typing import Literal, Dict
-
 from datetime import timedelta
 from functools import partial
 
 import aiohttp
 import pandas as pd
 
-from hermes.core.helper import get_CIK
 from hermes.core.cache import RawCache
+from hermes.core.helper import get_CIK
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,13 +37,13 @@ class SECEDGAR:
                     resp.raise_for_status()
                     r = await resp.json()
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
                 except aiohttp.ClientResponseError as e:
                     if e.status == 404:
-                        logger.warning(f"404")
+                        logger.warning("404")
                         return r
                     logger.error(f"HTTP error: {e.status}")
                     raise
@@ -57,7 +56,7 @@ class SECEDGAR:
         timeout: float = 30.0,
         retries: int = 3,
         force: bool = False,
-    ) -> pd.DataFrame | Dict:
+    ) -> pd.DataFrame | dict:
 
         cache_params = {
             "company": symbol,
@@ -75,7 +74,7 @@ class SECEDGAR:
             force=force,
             ttl=timedelta(days=7),
         )
-    
+
 if __name__ == "__main__":
 
     async def main():
