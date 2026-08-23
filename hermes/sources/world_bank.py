@@ -46,7 +46,7 @@ class World_bank:
                     resp.raise_for_status()
                     r = await resp.json()
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)

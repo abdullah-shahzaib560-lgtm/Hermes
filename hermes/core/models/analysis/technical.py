@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class TechnicalSnapshot:
     symbol: str
-    timestamp_ms: int 
+    timestamp_ms: int
 
     open: float
     high: float
@@ -22,27 +23,27 @@ class TechnicalSnapshot:
     hl_range: float
     body_range: float
 
-    dist_sma_20: float  
+    dist_sma_20: float
     dist_sma_50: float
     dist_sma_200: float
 
     ema_diff_9_21: float
     ema_diff_21_50: float
 
-    vol_20: float  
+    vol_20: float
     vol_60: float
-    atr_14_norm: float  
+    atr_14_norm: float
 
-    volume_rel_20: float  
-    taker_buy_vol_ratio: float 
+    volume_rel_20: float
+    taker_buy_vol_ratio: float
 
     trade_window_count: int
     trade_window_vol_base: float
     trade_window_vol_quote: float
-    trade_buy_vol_ratio: float  
+    trade_buy_vol_ratio: float
     avg_trade_size: float
     median_trade_size: float
-    large_trade_vol_ratio: float  
+    large_trade_vol_ratio: float
 
     bid_price: float
     ask_price: float
@@ -51,24 +52,24 @@ class TechnicalSnapshot:
 
     spread_abs: float
     spread_bps: float
-    top_book_imbalance: float 
+    top_book_imbalance: float
 
-    depth_bid_total: float  
+    depth_bid_total: float
     depth_ask_total: float
     depth_imbalance: float
 
     high_24h: float
     low_24h: float
     last_price_24h: float
-    range_24h: float  
+    range_24h: float
     pct_change_24h: float
-    pos_in_24h_range: float  
+    pos_in_24h_range: float
     volume_24h: float
     quote_volume_24h: float
 
     funding_rate: float
     funding_rate_lag_3: float
-    funding_rate_change: float 
+    funding_rate_change: float
     funding_rate_zscore: float
 
     time_to_next_funding_min: float
@@ -76,7 +77,7 @@ class TechnicalSnapshot:
     open_interest: float
     oi_change_1h: float
     oi_change_24h: float
-    oi_to_volume_24h: float  
+    oi_to_volume_24h: float
 
     trend_score: float
     mean_reversion_score: float

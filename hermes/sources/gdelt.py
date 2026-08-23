@@ -157,7 +157,7 @@ class GDELT:
                         continue
                     data = json.loads(text)
                     break
-                except (aiohttp.ClientResponseError, asyncio.TimeoutError) as e:
+                except (TimeoutError, aiohttp.ClientResponseError) as e:
                     if isinstance(e, aiohttp.ClientResponseError) and e.status != 429:
                         raise
                     if attempt == retries - 1:
@@ -212,7 +212,7 @@ class GDELT:
                     resp = await client.get(url)
                     resp.raise_for_status()
                     break
-                except (aiohttp.ClientResponseError, asyncio.TimeoutError) as e:
+                except (TimeoutError, aiohttp.ClientResponseError) as e:
                     if isinstance(e, aiohttp.ClientResponseError):
                         if e.status == 404:
                             logger.warning("404 for %s", url)

@@ -1,11 +1,11 @@
 import logging
 from typing import Literal
+
 import pandas as pd
-import asyncio
 
 from hermes.core.feature_decorator import feature
-from hermes.sources.public_data import PUBLIC_DATASET
 from hermes.core.helper import adjust_year_range
+from hermes.sources.public_data import PUBLIC_DATASET
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class security_features:
     async def military_spending_gdp(self, country_code: str, mode: Literal["F", "ML"] = "F") -> float:
         data = await self._data.fetch_sipri(country=country_code)
         data["year"] = pd.to_datetime(data["year"]).dt.year
-        
+
         if mode == "F":
             data = data.sort_values("year", ascending=False)
             return data["value"].iloc[0]
@@ -41,8 +41,8 @@ class security_features:
     async def military_spending_growth_yoy(
         self, country_code: str, mode: Literal["F", "ML"] = "F"
     ) -> float | pd.Series:
-        
-        data = await self._data.fetch_sipri(country=country_code) 
+
+        data = await self._data.fetch_sipri(country=country_code)
         data = data.copy()
 
         data["year"] = pd.to_datetime(data["year"], format="%Y").dt.year

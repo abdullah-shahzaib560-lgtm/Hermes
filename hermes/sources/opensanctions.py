@@ -70,7 +70,7 @@ class OpenSanction:
                     logger.info(f"Fetched {data.get('total', {}).get('value', 0)} results")
                     return data
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if attempt == retries - 1:
                         logger.error(f"Timeout after {retries} attempts")
                         raise
