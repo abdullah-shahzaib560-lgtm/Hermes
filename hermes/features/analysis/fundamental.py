@@ -8,7 +8,7 @@ from hermes.sources.sec_edgar import SECEDGAR
 from hermes.sources.yf import Yfinance
 
 
-class fundamenatals:
+class FAfeatures:
 
     def __init__(
             self,
@@ -112,7 +112,7 @@ class fundamenatals:
         }
 
 async def get_fundamentels(symbol: str):
-    fund = fundamenatals(finnhub_api='da45rr9r01qo2j8743egda45rr9r01qo2j8743f0',fred_api='4d7f9486f4661bf733491947199996d1' , sec_email='haiderali.dev95@gmail.com',sec_username='Sentinel')
+    fund = FAfeatures(finnhub_api='da45rr9r01qo2j8743egda45rr9r01qo2j8743f0',fred_api='4d7f9486f4661bf733491947199996d1' , sec_email='haiderali.dev95@gmail.com',sec_username='Sentinel')
     raw_sec = await fund.sec.fetch(symbol=symbol)
     sec_funds = fund.extract_funds_sec(data=raw_sec)
     filing_meta = fund.extract_filing_meta(data=raw_sec)

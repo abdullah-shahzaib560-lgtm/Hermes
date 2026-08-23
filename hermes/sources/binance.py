@@ -21,6 +21,7 @@ class Binance:
         ('spot', 'order_book'):         ('api/v3/depth',            ('limit',)),
         ('spot', 'best_bid_ask'):       ('api/v3/ticker/bookTicker', ()),
         ('spot', '24hr'):               ('api/v3/ticker/24hr',      ()),
+        ('spot', 'exchangeInfo'): ('api/v3/exchangeInfo', ()),
 
         ('future', 'ohlcv'):             ('fapi/v1/klines',           ('interval', 'limit')),
         ('future', 'trades'):            ('fapi/v1/trades',           ('limit',)),
@@ -30,6 +31,11 @@ class Binance:
         ('future', '24hr'):              ('fapi/v1/ticker/24hr',      ()),
         ('future', 'fundingRate'):       ('fapi/v1/fundingRate',      ('limit',)),
         ('future', 'openInterest'):      ('fapi/v1/openInterest',     ()),
+        ('future', 'premiumIndex'):      ('fapi/v1/premiumIndex', ()),
+        ('future', 'openInterestHist'):  ('futures/data/openInterestHist', ('period', 'limit')),
+        ('future', 'longShortRatio'): ('futures/data/globalLongShortAccountRatio', ('period', 'limit')),
+        ('future', 'topLongShortAccountRatio'): ('futures/data/topLongShortAccountRatio', ('period', 'limit')),
+        ('future', 'topLongShortPositionRatio'): ('futures/data/topLongShortPositionRatio', ('period', 'limit')),
     }
 
     def _build_url(
@@ -39,6 +45,7 @@ class Binance:
         symbol: str,
         interval: str | None = None,
         limit: str | None = None,
+        period: str | None = None,
     ):
         try:
             path, required = self._ENDPOINTS[(mode, endpoint)]
@@ -48,7 +55,7 @@ class Binance:
         base_url = self._spot_url if mode == 'spot' else self._future_url
         params = {'symbol': symbol}
 
-        provided = {'interval': interval, 'limit': limit}
+        provided = {'interval': interval, 'limit': limit, 'period': period}
         for name in required:
             if provided[name] is None:
                 raise ValueError(f'{mode}/{endpoint} requires {name!r}')
@@ -63,6 +70,7 @@ class Binance:
         symbol: str,
         interval: str | None = None,
         limit: int | None = None,
+        period: str | None = None,
         retries: int = 3,
         timeout: float = 30.0
     ):
@@ -71,7 +79,8 @@ class Binance:
             endpoint=endpoint,
             symbol=symbol,
             interval=interval,
-            limit=limit
+            limit=limit,
+            period=period
         )
 
         r = None
@@ -104,6 +113,7 @@ class Binance:
         symbol: str,
         interval: str | None = None,
         limit: int | None = None,
+        period: str | None = None,
         retries: int = 3,
         timeout: float = 30.0,
         force: bool = False
@@ -123,6 +133,7 @@ class Binance:
                 symbol=symbol,
                 interval=interval,
                 limit=limit,
+                period=period,
                 mode=mode,
                 timeout=timeout,
                 retries=retries,
