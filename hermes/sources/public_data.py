@@ -16,7 +16,7 @@ SIPRI_PATH = CURRENT_DIR / "lib" / "datasets" / "sipri.csv"
 
 
 class PUBLIC_DATASET:
-    
+
     async def fetch_hrs(self, country: str) -> pd.DataFrame:
         df = await asyncio.to_thread(pd.read_csv, HRS_PATH)
         data = df[df["country"] == country]

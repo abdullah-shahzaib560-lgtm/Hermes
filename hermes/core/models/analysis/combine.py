@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from hermes.core.models.analysis.fundamental import CompanyFundamental
 from hermes.core.models.analysis.technical import TechnicalSnapshot
 
+
 @dataclass
 class TechnicalScore:
     symbol: str

@@ -1,8 +1,10 @@
 import asyncio
-import aiohttp
 import logging
-from functools import partial
 from datetime import timedelta
+from functools import partial
+
+import aiohttp
+
 from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
@@ -91,13 +93,13 @@ class Binance:
                     resp.raise_for_status()
                     r = await resp.json()
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
                 except aiohttp.ClientResponseError as e:
                     if e.status == 404:
-                        logger.warning(f"404")
+                        logger.warning("404")
                         return r
                     if e.status == 403:
                         logger.error('error 403')

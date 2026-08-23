@@ -1,12 +1,12 @@
 import logging
 from typing import Literal
+
 import pandas as pd
 
-from hermes.core.helper import adjust_year_range, check_empty
 from hermes.core.feature_decorator import feature
-
-from hermes.sources.world_bank import World_bank
+from hermes.core.helper import adjust_year_range, check_empty
 from hermes.sources.public_data import PUBLIC_DATASET
+from hermes.sources.world_bank import World_bank
 
 logger = logging.getLogger(__name__)
 
