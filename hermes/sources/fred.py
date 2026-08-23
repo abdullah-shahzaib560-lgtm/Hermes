@@ -1,11 +1,10 @@
 import asyncio
-import pandas as pd
-from aiohttp import ClientSession, ClientTimeout
-import aiohttp
 import logging
-
 from datetime import timedelta
 from functools import partial
+
+import aiohttp
+import pandas as pd
 
 from hermes.core.cache import RawCache
 
@@ -84,13 +83,13 @@ class FRED:
                     resp.raise_for_status()
                     r = await resp.json()
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
                 except aiohttp.ClientResponseError as e:
                     if e.status == 404:
-                        logger.warning(f"404")
+                        logger.warning("404")
                         return r
                     logger.error(f"HTTP error: {e.status}")
                     raise

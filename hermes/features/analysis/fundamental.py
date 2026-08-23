@@ -1,4 +1,3 @@
-import asyncio
 
 from hermes.core.models.analysis.fundamental import CompanyFundamental
 from hermes.sources.finnhub import FINNHUB
@@ -17,6 +16,9 @@ class FAfeatures:
             sec_username: str,
             fred_api: str,
         ):
+        self.finn_api = finnhub_api
+        self.sec_email = sec_email
+        self.sec_username = sec_username
         self.finn: FINNHUB = FINNHUB(api=finnhub_api)
         self.sec: SECEDGAR = SECEDGAR(username=sec_username, email=sec_email)
         self.fred: FRED = FRED(api=fred_api)
@@ -111,88 +113,79 @@ class FAfeatures:
             "macro_exchange_rates": float(macro_exchange_rates['value'].iloc[0]),
         }
 
-async def get_fundamentels(symbol: str):
-    fund = FAfeatures(finnhub_api='da45rr9r01qo2j8743egda45rr9r01qo2j8743f0',fred_api='4d7f9486f4661bf733491947199996d1' , sec_email='haiderali.dev95@gmail.com',sec_username='Sentinel')
-    raw_sec = await fund.sec.fetch(symbol=symbol)
-    sec_funds = fund.extract_funds_sec(data=raw_sec)
-    filing_meta = fund.extract_filing_meta(data=raw_sec)
-    metric = await fund.finn_metrics(symbol=symbol)
-    macro = await fund.macro()
-    yf_data = await fund._yf_data(symbol=symbol)
+    async def get_fundamentels(self, symbol: str):
 
-    return CompanyFundamental(
+        raw_sec = await self.sec.fetch(symbol=symbol)
+        sec_funds = self.extract_funds_sec(data=raw_sec)
+        filing_meta = self.extract_filing_meta(data=raw_sec)
+        metric = await self.finn_metrics(symbol=symbol)
+        macro = await self.macro()
+        yf_data = await self._yf_data(symbol=symbol)
 
-        symbol= symbol,
-        filing_date= filing_meta['filing_date'],
-        fiscal_period= filing_meta['fiscal_period'],
-        fiscal_year= filing_meta['fiscal_year'],
-        filing_type= filing_meta['filing_type'],
+        return CompanyFundamental(
 
-        pre_tax_income= sec_funds['pretax_income'],
-        revenue= sec_funds['revenue'],
-        cost_of_revenue= sec_funds['cost_of_revenue'],
-        gross_profit= sec_funds['gross_profit'],
-        operating_expenses= sec_funds['operating_expenses'],
-        operating_income= sec_funds['operating_income'],
-        interest_expense= sec_funds['interest_expense'],
-        income_tax_expense= sec_funds['income_tax_expense'],
-        net_income= sec_funds['net_income'],
-        eps_basic= sec_funds['eps_basic'],
-        eps_diluted= sec_funds['eps_diluted'],
+            symbol= symbol,
+            filing_date= filing_meta['filing_date'],
+            fiscal_period= filing_meta['fiscal_period'],
+            fiscal_year= filing_meta['fiscal_year'],
+            filing_type= filing_meta['filing_type'],
 
-        cash= sec_funds['cash'],
-        short_term_investments= sec_funds['short_term_investments'],
-        accounts_receivable= sec_funds['accounts_receivable'],
-        inventory= sec_funds['inventory'],
-        current_assets= sec_funds['current_assets'],
-        total_assets= sec_funds['total_assets'],
-        current_liabilities= sec_funds['current_liabilities'],
-        short_term_debt= sec_funds['short_term_debt'],
-        long_term_debt= sec_funds['long_term_debt'],
-        total_liabilities= sec_funds['total_liabilities'],
-        equity= sec_funds['equity'],
+            pre_tax_income= sec_funds['pretax_income'],
+            revenue= sec_funds['revenue'],
+            cost_of_revenue= sec_funds['cost_of_revenue'],
+            gross_profit= sec_funds['gross_profit'],
+            operating_expenses= sec_funds['operating_expenses'],
+            operating_income= sec_funds['operating_income'],
+            interest_expense= sec_funds['interest_expense'],
+            income_tax_expense= sec_funds['income_tax_expense'],
+            net_income= sec_funds['net_income'],
+            eps_basic= sec_funds['eps_basic'],
+            eps_diluted= sec_funds['eps_diluted'],
 
-        operating_cash_flow= sec_funds['operating_cash_flow'],
-        investing_cash_flow= sec_funds['investing_cash_flow'],
-        financing_cash_flow= sec_funds['financing_cash_flow'],
-        capital_expenditure= sec_funds['capital_expenditure'],
+            cash= sec_funds['cash'],
+            short_term_investments= sec_funds['short_term_investments'],
+            accounts_receivable= sec_funds['accounts_receivable'],
+            inventory= sec_funds['inventory'],
+            current_assets= sec_funds['current_assets'],
+            total_assets= sec_funds['total_assets'],
+            current_liabilities= sec_funds['current_liabilities'],
+            short_term_debt= sec_funds['short_term_debt'],
+            long_term_debt= sec_funds['long_term_debt'],
+            total_liabilities= sec_funds['total_liabilities'],
+            equity= sec_funds['equity'],
 
-        shares_outstanding= sec_funds['shares_outstanding'],
-        weighted_average_shares= sec_funds['weighted_average_shares_basic'],
-        dividends =  sec_funds['dividends'],
-        buybacks =  sec_funds['buybacks'],
+            operating_cash_flow= sec_funds['operating_cash_flow'],
+            investing_cash_flow= sec_funds['investing_cash_flow'],
+            financing_cash_flow= sec_funds['financing_cash_flow'],
+            capital_expenditure= sec_funds['capital_expenditure'],
 
-        current_price = await fund.finn_qoute(symbol=symbol),
-        market_cap= metric["marketCapitalization"],
-        pe_ratio =  metric['peTTM'],
-        ps_ratio =  metric['psTTM'],
-        pb_ratio =  metric['pb'],
-        ev_ebitda = metric['evEbitdaTTM'],
-        roe =  metric['roeRfy'],
-        roa =  metric['roaRfy'],
-        debt_equity =  metric.get('totalDebt/totalEquityAnnual'),
+            shares_outstanding= sec_funds['shares_outstanding'],
+            weighted_average_shares= sec_funds['weighted_average_shares_basic'],
+            dividends =  sec_funds['dividends'],
+            buybacks =  sec_funds['buybacks'],
 
-        earnings= metric['peTTM'],
-        eps_estimates= yf_data['eps_estimate'],
-        revenue_estimates= yf_data['revenue_estimate'],
-        earnings_surprise= yf_data['earnings_surprise'],
-        revenue_surprise= (sec_funds['revenue'] - yf_data["revenue_estimate"]) / yf_data["revenue_estimate"],
-        company_peers =  await fund.company_peers(symbol=symbol),
+            current_price = await self.finn_qoute(symbol=symbol),
+            market_cap= metric["marketCapitalization"],
+            pe_ratio =  metric['peTTM'],
+            ps_ratio =  metric['psTTM'],
+            pb_ratio =  metric['pb'],
+            ev_ebitda = metric['evEbitdaTTM'],
+            roe =  metric['roeRfy'],
+            roa =  metric['roaRfy'],
+            debt_equity =  metric.get('totalDebt/totalEquityAnnual'),
 
-        macro_gdp= macro['macro_gdp'],
-        macro_gdp_growth= macro['macro_gdp_growth'],
-        macro_inflation= macro['macro_inflation'],
-        macro_interest_rates= macro['macro_interest_rates'],
-        macro_unemployment= macro['macro_unemployment'],
-        macro_government_debt= macro['macro_government_debt'],
-        macro_exchange_rates =  macro['macro_exchange_rates'],
-    )
+            earnings= metric['peTTM'],
+            eps_estimates= yf_data['eps_estimate'],
+            revenue_estimates= yf_data['revenue_estimate'],
+            earnings_surprise= yf_data['earnings_surprise'],
+            revenue_surprise= (sec_funds['revenue'] - yf_data["revenue_estimate"]) / yf_data["revenue_estimate"],
+            company_peers =  await self.company_peers(symbol=symbol),
 
-
-if __name__ == '__main__':
-    async def main():
-        fund = await get_fundamentels(symbol='AAPL')
-        import json
-        with open("data.json", "w") as json_file:
-            json.dump(fund.__dict__, json_file, indent=4, default=str)
-    asyncio.run(main())
+            macro_gdp= macro['macro_gdp'],
+            macro_gdp_growth= macro['macro_gdp_growth'],
+            macro_inflation= macro['macro_inflation'],
+            macro_interest_rates= macro['macro_interest_rates'],
+            macro_unemployment= macro['macro_unemployment'],
+            macro_government_debt= macro['macro_government_debt'],
+            macro_exchange_rates =  macro['macro_exchange_rates'],
+        )

@@ -1,6 +1,5 @@
-import asyncio
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
@@ -535,7 +534,7 @@ class TAfeatures:
         )
 
         now = int(
-            datetime.now(timezone.utc).timestamp() * 1000
+            datetime.now(UTC).timestamp() * 1000
         )
 
         return {
@@ -684,25 +683,16 @@ class TAfeatures:
         )
 
 
-async def get_technical(
-    symbol: str,
-    market: str = "future",
-    interval: str = "1h",
-):
-
-    ta = TAfeatures()
-
-    return await ta.build_snapshot(
-        symbol=symbol,
-        market=market,
-        interval=interval,
-    )
+    async def get_technical(
+        self,
+        symbol: str,
+        market: str = "future",
+        interval: str = "1h",
+    ):
 
 
-if __name__ == '__main__':
-    async def main():
-        fund = await get_technical(symbol='BTCUSDT')
-        import json
-        with open("data.json", "w") as json_file:
-            json.dump(fund.__dict__, json_file, indent=4, default=str)
-    asyncio.run(main())
+        return await self.build_snapshot(
+            symbol=symbol,
+            market=market,
+            interval=interval,
+        )

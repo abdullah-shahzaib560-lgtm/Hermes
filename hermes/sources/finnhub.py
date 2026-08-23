@@ -5,14 +5,13 @@ from functools import partial
 from typing import Literal
 
 import aiohttp
-import pandas as pd
 
 from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
 
 FinnhubEndpoint = Literal[
-    "candles", 
+    "candles",
     "quote",
     "profile",
     "metric",
@@ -26,7 +25,7 @@ FinnhubEndpoint = Literal[
     "symbol",
 ]
 FinnhubEndpoints = [
-    "candles", 
+    "candles",
     "quote",
     "profile",
     "metric",
@@ -117,7 +116,7 @@ class FINNHUB:
             params['to'] = _to
 
         r = None
-        
+
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
             for attempt in range(retries):
                 try:
@@ -125,13 +124,13 @@ class FINNHUB:
                     resp.raise_for_status()
                     r = await resp.json()
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if attempt == retries - 1:
                         raise
                     await asyncio.sleep(2**attempt)
                 except aiohttp.ClientResponseError as e:
                     if e.status == 404:
-                        logger.warning(f"404")
+                        logger.warning("404")
                         return r
                     if e.status == 403:
                         logger.error('error 403')
@@ -139,7 +138,7 @@ class FINNHUB:
                     logger.error(f"HTTP error: {e.status}")
                     raise
         return r
-    
+
     async def fetch(
         self,
         endpoint: str,

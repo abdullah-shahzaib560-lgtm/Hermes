@@ -1,13 +1,37 @@
 from __future__ import annotations
 
-import httpx
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiohttp
 import pytest
-import respx
 
 from hermes.core.helper import iso3_to_iso2
 from hermes.sources.imf import IMF
 
-IMF_URL = "https://api.imf.org/external/sdmx/3.0/data/dataflow"
+
+def _mock_aiohttp_response(json_data, status=200):
+    """Create a mock aiohttp response."""
+    mock_resp = AsyncMock()
+    mock_resp.status = status
+    mock_resp.json = AsyncMock(return_value=json_data)
+    mock_resp.raise_for_status = MagicMock()
+
+    if status >= 400:
+        mock_resp.raise_for_status.side_effect = aiohttp.ClientResponseError(
+            request_info=MagicMock(),
+            history=(),
+            status=status,
+        )
+    return mock_resp
+
+
+def _mock_session(mock_resp):
+    """Create a mock aiohttp ClientSession that returns the given response."""
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(return_value=mock_resp)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    return mock_session
 
 
 @pytest.fixture
@@ -59,52 +83,54 @@ class TestIso3ToIso2:
 
 
 class TestIMF:
-    @respx.mock
-    async def test_fetch_success(self, tmp_path, sample_sdmx_response):
+    async def test_fetch_success(self, sample_sdmx_response):
         imf = IMF(cache=None)
-        url = f"{IMF_URL}/IMF.STA/PPI/~/USA.PPI.IX.A"
-        respx.get(url).respond(status_code=200, json=sample_sdmx_response)
-        df = await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
-        assert not df.empty
-        assert df["value"].iloc[0] == 110.5
-        assert df["country"].iloc[0] == "USA"
-        assert df["source"].iloc[0] == "IMF"
+        mock_resp = _mock_aiohttp_response(sample_sdmx_response)
+        mock_session = _mock_session(mock_resp)
 
-    @respx.mock
-    async def test_fetch_no_series(self, tmp_path):
+        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+            df = await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
+            assert not df.empty
+            assert df["value"].iloc[0] == 110.5
+            assert df["country"].iloc[0] == "USA"
+            assert df["source"].iloc[0] == "IMF"
+
+    async def test_fetch_no_series(self):
         imf = IMF(cache=None)
-        url = f"{IMF_URL}/IMF.STA/PPI/~/USA.PPI.IX.A"
-        respx.get(url).respond(
-            status_code=200,
-            json={
-                "data": {
-                    "structures": [
-                        {
-                            "dimensions": {
-                                "series": [],
-                                "observation": [{"id": "TIME_PERIOD", "values": []}],
-                            }
+        mock_response = {
+            "data": {
+                "structures": [
+                    {
+                        "dimensions": {
+                            "series": [],
+                            "observation": [{"id": "TIME_PERIOD", "values": []}],
                         }
-                    ],
-                    "dataSets": [{}],
-                }
-            },
-        )
-        df = await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
-        assert df.empty
+                    }
+                ],
+                "dataSets": [{}],
+            }
+        }
+        mock_resp = _mock_aiohttp_response(mock_response)
+        mock_session = _mock_session(mock_resp)
 
-    @respx.mock
-    async def test_fetch_404(self, tmp_path):
-        imf = IMF(cache=None)
-        url = f"{IMF_URL}/IMF.STA/BAD/~/USA.X"
-        respx.get(url).respond(status_code=404)
-        df = await imf._fetch("USA", "IMF.STA", "BAD", "X")
-        assert df.empty
+        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+            df = await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
+            assert df.empty
 
-    @respx.mock
-    async def test_fetch_http_error(self, tmp_path):
+    async def test_fetch_404(self):
         imf = IMF(cache=None)
-        url = f"{IMF_URL}/IMF.STA/PPI/~/USA.PPI.IX.A"
-        respx.get(url).respond(status_code=500)
-        with pytest.raises(httpx.HTTPStatusError):
-            await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
+        mock_resp = _mock_aiohttp_response({}, status=404)
+        mock_session = _mock_session(mock_resp)
+
+        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+            df = await imf._fetch("USA", "IMF.STA", "BAD", "X")
+            assert df.empty
+
+    async def test_fetch_http_error(self):
+        imf = IMF(cache=None)
+        mock_resp = _mock_aiohttp_response({}, status=500)
+        mock_session = _mock_session(mock_resp)
+
+        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+            with pytest.raises(aiohttp.ClientResponseError):
+                await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
