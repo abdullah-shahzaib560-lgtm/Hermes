@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
-from datetime import date
+# Fundamental Analysis Data
 
+## Current Data Format
 
-@dataclass
+```python
 class CompanyFundamental:
     ticker: str
     filing_date: date
@@ -69,3 +69,6 @@ class CompanyFundamental:
     roe: float | None = field(default=None, metadata={"alias": "ROE"})
     roa: float | None = field(default=None, metadata={"alias": "ROA"})
     debt_equity: float | None = field(default=None, metadata={"alias": "Debt/Equity"})
+```
+
+> For now it is basically a snapshot, means a single row or a point in time. In the future, we will add a time series of fundamentals for each company, so that we can analyze trends over time.

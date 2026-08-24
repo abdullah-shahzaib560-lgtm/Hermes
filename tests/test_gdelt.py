@@ -127,11 +127,7 @@ class TestToCanonical:
 class TestGDELTQuery:
     async def test_query_events_cache_hit(self, tmp_cache):
         gdelt = GDELT(cache=tmp_cache)
-        mock_response = {
-            "articles": [
-                {"url": "http://x", "seendate": "20240301000000", "themes": ["PROTEST"]}
-            ]
-        }
+        mock_response = {"articles": [{"url": "http://x", "seendate": "20240301000000", "themes": ["PROTEST"]}]}
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
