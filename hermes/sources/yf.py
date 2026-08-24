@@ -7,6 +7,7 @@ from typing import Literal
 import pandas as pd
 import yfinance as yf
 
+from hermes.constants import YFINANCE_INTERVAL_MAP
 from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,58 @@ class Yfinance:
             force=force,
             ttl=timedelta(days=1),
         )
+
+    async def fetch_history(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        years: int = 2,
+    ) -> pd.DataFrame:
+        yf_interval = YFINANCE_INTERVAL_MAP.get(interval)
+        if yf_interval is None:
+            raise ValueError(
+                f"Interval {interval!r} not supported for stocks. "
+                f"Supported: {list(YFINANCE_INTERVAL_MAP.keys())}"
+            )
+
+        def _sync_history():
+            ticker = yf.Ticker(symbol)
+            return ticker.history(period=f"{years}y", interval=yf_interval)
+
+        df = await asyncio.get_event_loop().run_in_executor(None, _sync_history)
+
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        df = df.reset_index()
+        rename = {}
+        for col in df.columns:
+            lc = col.lower()
+            if lc == "date" or lc == "datetime":
+                rename[col] = "timestamp_ms"
+            elif lc in ("open", "high", "low", "close", "volume"):
+                rename[col] = lc
+            elif lc == "adj close":
+                rename[col] = "adj_close"
+        df = df.rename(columns=rename)
+
+        if "timestamp_ms" in df.columns:
+            df["timestamp_ms"] = (
+                pd.to_datetime(df["timestamp_ms"])
+                .astype("int64") // 10**6
+            )
+
+        keep = [c for c in ["timestamp_ms", "open", "high", "low", "close", "volume", "adj_close"] if c in df.columns]
+        df = df[keep].copy()
+
+        for col in ["open", "high", "low", "close", "volume"]:
+            if col in df.columns:
+                df[col] = df[col].astype(float)
+
+        df = df.drop_duplicates(subset=["timestamp_ms"], keep="first")
+        df = df.sort_values("timestamp_ms").reset_index(drop=True)
+
+        return df
 
 
 if __name__ == "__main__":
