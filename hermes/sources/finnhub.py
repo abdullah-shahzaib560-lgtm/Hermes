@@ -1,11 +1,13 @@
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import Literal
 
 import aiohttp
+import pandas as pd
 
+from hermes.constants import FINNHUB_MAX_DAYS
 from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
@@ -100,14 +102,16 @@ class FINNHUB:
         _url = self.build_url(endpoint=endpoint)
 
         if endpoint == 'candles':
-            if None in (resolution, _from, _to): raise ValueError('this endpoint requires resolution, _from and _to arguments')
+            if None in (resolution, _from, _to):
+                raise ValueError('this endpoint requires resolution, _from and _to arguments')
             params['resolution'] = resolution
             params['from'] = _from
             params['to'] = _to
         elif endpoint == 'metric':
             params['metric'] = 'all'
         elif endpoint == 'insider':
-            if None in (_from, _to): raise ValueError('this endpoint requires _from and _to arguments')
+            if None in (_from, _to):
+                raise ValueError('this endpoint requires _from and _to arguments')
             params['from'] = _from
             params['to'] = _to
         elif endpoint == 'news':
@@ -174,6 +178,54 @@ class FINNHUB:
             force=force,
             ttl=timedelta(days=7)
         )
+
+    async def fetch_candles_history(
+        self,
+        symbol: str,
+        resolution: str = "D",
+        years: int = 2,
+    ) -> pd.DataFrame:
+        max_days = FINNHUB_MAX_DAYS.get(resolution, 365)
+        now = int(datetime.now(UTC).timestamp())
+        start = now - (years * 365 * 86_400)
+        chunk_seconds = max_days * 86_400
+
+        all_candles = []
+        chunk_start = start
+
+        while chunk_start < now:
+            chunk_end = min(chunk_start + chunk_seconds, now)
+            data = await self.fetch(
+                endpoint="candles",
+                symbol=symbol,
+                resolution=resolution,
+                _from=chunk_start,
+                _to=chunk_end,
+                force=True,
+            )
+            if data and data.get("s") == "ok":
+                candles = list(zip(
+                    data["t"], data["o"], data["h"],
+                    data["l"], data["c"], data["v"],
+                ))
+                all_candles.extend(candles)
+            chunk_start = chunk_end + 1
+
+        if not all_candles:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(
+            all_candles,
+            columns=["open_time", "open", "high", "low", "close", "volume"],
+        )
+
+        for col in ["open", "high", "low", "close", "volume"]:
+            df[col] = df[col].astype(float)
+
+        df = df.drop_duplicates(subset=["open_time"], keep="first")
+        df = df.sort_values("open_time").reset_index(drop=True)
+
+        return df
 
 
 
