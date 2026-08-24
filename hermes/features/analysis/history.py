@@ -394,6 +394,24 @@ def _extract_funds_per_period(facts: dict, periods: list[dict], symbol: str) -> 
                 if period_facts[field] is not None:
                     break
 
+        r = period_facts.get("revenue")
+        cor = period_facts.get("cost_of_revenue")
+        oi = period_facts.get("operating_income")
+        gp = period_facts.get("gross_profit")
+
+        if gp is None and r is not None and cor is not None:
+            try:
+                period_facts["gross_profit"] = float(r) - float(cor)
+            except (TypeError, ValueError):
+                pass
+
+        gp = period_facts.get("gross_profit")
+        if period_facts.get("operating_expenses") is None and gp is not None and oi is not None:
+            try:
+                period_facts["operating_expenses"] = float(gp) - float(oi)
+            except (TypeError, ValueError):
+                pass
+
         result_rows.append(
             {
                 "ticker": symbol,
