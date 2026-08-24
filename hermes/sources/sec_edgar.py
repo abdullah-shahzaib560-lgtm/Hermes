@@ -22,7 +22,6 @@ class SECEDGAR:
 
     async def _fetch(self, symbol: str, retries: int = 3, timeout: float = 30.0):
         cik = get_CIK(ticker=symbol)
-        print(cik)
         url = f'{self._url}/{cik}.json'
 
         headers = {
@@ -75,20 +74,3 @@ class SECEDGAR:
             ttl=timedelta(days=7),
         )
 
-if __name__ == "__main__":
-
-    async def main():
-
-        sec = SECEDGAR(
-            email="ha%ra%li.de%v9#^^m",
-            username="S3e@l"
-        )
-
-        df = await sec._fetch(
-            symbol="AAPL"
-        )
-        import json
-        with open("data.json", "w") as json_file:
-            json.dump(df, json_file, indent=4)
-
-    asyncio.run(main())

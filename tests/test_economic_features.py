@@ -98,9 +98,7 @@ class TestEconomicFeatures:
     async def test_gdp_growth_yoy_ML(self, eco):
         eco.wb = MagicMock()
         eco.wb.fetch = AsyncMock(
-            return_value=pd.DataFrame(
-                {"date": ["2021", "2022", "2023"], "value": [5.8, 1.9, 2.5]}
-            )
+            return_value=pd.DataFrame({"date": ["2021", "2022", "2023"], "value": [5.8, 1.9, 2.5]})
         )
         result = await eco.gdp_growth_yoy("USA", mode="ML")
         assert isinstance(result, pd.Series)

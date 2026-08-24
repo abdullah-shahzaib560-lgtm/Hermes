@@ -286,6 +286,28 @@ uv run pytest --cov=hermes    # run with coverage
 
 Coverage is collected from the `hermes` package (`tests/` omitted); `asyncio_mode = "auto"` means async tests need no explicit markers.
 
+### Test files
+
+| File | Covers |
+|---|---|
+| `test_cache.py` | `RawCache` put/get, TTL expiry, corruption, stats, clear |
+| `test_feature_decorator.py` | `@feature` decorator, `LineageGraph`, `TieredPlan` |
+| `test_economic_features.py` | All 18 economic features + `core.helper` utilities |
+| `test_gdelt.py` | GDELT connector, theme classification, FIPS mapping, canonical schema |
+| `test_imf.py` | IMF SDMX connector, ISO3→ISO2 mapping |
+| `test_opensanctions.py` | OpenSanctions connector |
+| `test_world_bank.py` | World Bank connector, cache integration |
+| `test_fred.py` | FRED connector, cache integration |
+| `test_binance.py` | Binance connector, URL building, cache integration |
+| `test_finnhub.py` | Finnhub connector, endpoint validation, cache integration |
+| `test_sec_edgar.py` | SEC EDGAR connector, User-Agent header, cache integration |
+| `test_yfinance.py` | Yahoo Finance connector, endpoint validation, cache integration |
+| `test_pipeline.py` | Country risk pipeline, `get_country_risk_features`, `build_training_panel` |
+| `test_technical_features.py` | `TAfeatures` static helpers, price features, snapshot with mocked Binance |
+| `test_fundamental_features.py` | `FAfeatures` SEC extraction, filing metadata |
+| `test_scheduler.py` | Cron parsing, job scheduling, execution, retries, lifecycle |
+| `test_hermes.py` | `Hermes` facade initialization, cache stats, listings |
+
 ## CI
 
 GitHub Actions (`.github/workflows/publish.yml`) runs on push/PR to `main` and on releases:
