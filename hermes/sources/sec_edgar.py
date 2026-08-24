@@ -7,13 +7,12 @@ import aiohttp
 import pandas as pd
 
 from hermes.core.cache import RawCache
-from hermes.core.helper import get_CIK
+from hermes.core.helper import get_cik
 
 logger = logging.getLogger(__name__)
 
 
 class SECEDGAR:
-
     def __init__(self, username: str, email: str, cache: RawCache | None = None):
         self._email = email
         self._username = username
@@ -21,12 +20,10 @@ class SECEDGAR:
         self._url = "https://data.sec.gov/api/xbrl/companyfacts"
 
     async def _fetch(self, symbol: str, retries: int = 3, timeout: float = 30.0):
-        cik = get_CIK(ticker=symbol)
-        url = f'{self._url}/{cik}.json'
+        cik = get_cik(ticker=symbol)
+        url = f"{self._url}/{cik}.json"
 
-        headers = {
-            "User-Agent": f"{self._username} {self._email}"
-        }
+        headers = {"User-Agent": f"{self._username} {self._email}"}
 
         r = None
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
@@ -73,4 +70,3 @@ class SECEDGAR:
             force=force,
             ttl=timedelta(days=7),
         )
-

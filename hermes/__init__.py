@@ -28,7 +28,7 @@ class Hermes:
         fred_api: str,
         sec_username: str,
         sec_email: str,
-        finnhub_api : str,
+        finnhub_api: str,
         cache_dir: str | None = None,
         use_cache: bool = True,
     ):
@@ -46,7 +46,7 @@ class Hermes:
         self.world_bank = World_bank()
         self.fred = FRED(api=fred_api)
         self.binance = Binance()
-        self.sec_edger = SECEDGAR(username=sec_username,email=sec_email)
+        self.sec_edger = SECEDGAR(username=sec_username, email=sec_email)
         self.finnhub = FINNHUB(api=finnhub_api)
         self.yfin = Yfinance()
         self.datasets = PUBLIC_DATASET()
