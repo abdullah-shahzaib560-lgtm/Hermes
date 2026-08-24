@@ -54,7 +54,7 @@ class World_bank:
                     logger.error(f"HTTP error: {e.status}")
                     raise
         if len(r) < 2 or not r[1]:
-            logger.warning(f"No data: country={country_code}, indicator={indicator_code}")
+            logger.info(f"No data: country={country_code}, indicator={indicator_code}")
             return pd.DataFrame(columns=["date", "indicator_id", "indicator_name", "country", "value", "source"])
 
         _, records = r[0], r[1]
@@ -76,15 +76,6 @@ class World_bank:
 
         data.set_index("date", inplace=True)
         data.sort_index(ascending=False, inplace=True)
-
-        req = ["date", "indicator_id", "indicator_name", "country", "value", "source"]
-        issues = 0
-        for d in data:
-            for r in req:
-                if r not in d:
-                    issues += 1
-
-        logger.info(f"There is are total {issues} in the data")
 
         data = data.reset_index()
         return data
@@ -127,6 +118,3 @@ class World_bank:
             force=force,
             ttl=timedelta(days=7),  # WB data updates weekly
         )
-
-
-

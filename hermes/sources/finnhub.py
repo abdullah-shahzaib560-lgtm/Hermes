@@ -41,8 +41,8 @@ FinnhubEndpoints = [
     "symbol",
 ]
 
-class FINNHUB:
 
+class FINNHUB:
     BASE_URL = "https://finnhub.io/api/v1"
 
     ENDPOINTS = {
@@ -77,9 +77,7 @@ class FINNHUB:
         try:
             path = self.ENDPOINTS[endpoint]
         except KeyError:
-            raise ValueError(
-                f"Unsupported endpoint: {endpoint}"
-            )
+            raise ValueError(f"Unsupported endpoint: {endpoint}")
 
         return f"{self._url}/{path}"
 
@@ -91,33 +89,31 @@ class FINNHUB:
         timeout: float = 30.0,
         retries: int = 3,
         _from: int | None = None,
-        _to: int | None = None
+        _to: int | None = None,
     ):
 
-        params = {
-            "token": self._api,
-            "symbol": symbol
-        }
+        params = {"token": self._api, "symbol": symbol}
 
         _url = self.build_url(endpoint=endpoint)
 
-        if endpoint == 'candles':
+        if endpoint == "candles":
             if None in (resolution, _from, _to):
-                raise ValueError('this endpoint requires resolution, _from and _to arguments')
-            params['resolution'] = resolution
-            params['from'] = _from
-            params['to'] = _to
-        elif endpoint == 'metric':
-            params['metric'] = 'all'
-        elif endpoint == 'insider':
+                raise ValueError("this endpoint requires resolution, _from and _to arguments")
+            params["resolution"] = resolution
+            params["from"] = _from
+            params["to"] = _to
+        elif endpoint == "metric":
+            params["metric"] = "all"
+        elif endpoint == "insider":
             if None in (_from, _to):
-                raise ValueError('this endpoint requires _from and _to arguments')
-            params['from'] = _from
-            params['to'] = _to
-        elif endpoint == 'news':
-            if None in (_from, _to): raise ValueError('this endpoint requires _from and _to arguments')
-            params['from'] = _from
-            params['to'] = _to
+                raise ValueError("this endpoint requires _from and _to arguments")
+            params["from"] = _from
+            params["to"] = _to
+        elif endpoint == "news":
+            if None in (_from, _to):
+                raise ValueError("this endpoint requires _from and _to arguments")
+            params["from"] = _from
+            params["to"] = _to
 
         r = None
 
@@ -137,7 +133,7 @@ class FINNHUB:
                         logger.warning("404")
                         return r
                     if e.status == 403:
-                        logger.error('error 403')
+                        logger.error("error 403")
                         continue
                     logger.error(f"HTTP error: {e.status}")
                     raise
@@ -149,21 +145,21 @@ class FINNHUB:
         symbol: str,
         resolution: str | None = None,
         _from: int | None = None,
-        _to : int | None = None,
+        _to: int | None = None,
         timeout: float = 30.0,
         retries: int = 3,
-        force: bool = False
+        force: bool = False,
     ):
         cached_params = {
-            'endpoint': endpoint,
-            'symbol': symbol,
-            'resolution': resolution,
-            '_to': _to,
-            '_from': _from,
+            "endpoint": endpoint,
+            "symbol": symbol,
+            "resolution": resolution,
+            "_to": _to,
+            "_from": _from,
         }
 
         return await self._cache.get_or_fetch(
-            source='finnhub',
+            source="finnhub",
             params=cached_params,
             fetch_fn=partial(
                 self._fetch,
@@ -176,7 +172,7 @@ class FINNHUB:
                 retries=retries,
             ),
             force=force,
-            ttl=timedelta(days=7)
+            ttl=timedelta(days=7),
         )
 
     async def fetch_candles_history(
@@ -204,10 +200,16 @@ class FINNHUB:
                 force=True,
             )
             if data and data.get("s") == "ok":
-                candles = list(zip(
-                    data["t"], data["o"], data["h"],
-                    data["l"], data["c"], data["v"],
-                ))
+                candles = list(
+                    zip(
+                        data["t"],
+                        data["o"],
+                        data["h"],
+                        data["l"],
+                        data["c"],
+                        data["v"],
+                    )
+                )
                 all_candles.extend(candles)
             chunk_start = chunk_end + 1
 
@@ -226,6 +228,3 @@ class FINNHUB:
         df = df.sort_values("open_time").reset_index(drop=True)
 
         return df
-
-
-
