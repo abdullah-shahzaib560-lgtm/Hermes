@@ -177,21 +177,3 @@ class FINNHUB:
 
 
 
-if __name__ == "__main__":
-    async def main():
-        fin = FINNHUB(api="da45rr9r01qo2j8743egda45rr9r01qo2j8743f0")
-
-        async def finn_eps_estimate(symbol: str):
-            return await fin.fetch(endpoint='eps', symbol=symbol)
-
-        async def finn_revenue_estimate(symbol: str):
-            return await fin.fetch(endpoint='revenue', symbol=symbol)
-
-        async def finn_ebitda_estimate(symbol: str):
-            return await fin.fetch(endpoint='ebitda', symbol=symbol)
-
-        print(await finn_ebitda_estimate('AAPL'))
-        print(await finn_eps_estimate('AAPL'))
-        print(await finn_revenue_estimate('AAPL'))
-
-    asyncio.run(main())

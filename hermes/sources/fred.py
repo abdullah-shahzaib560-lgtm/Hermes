@@ -127,11 +127,3 @@ class FRED:
             ttl=timedelta(days=30)
         )
 
-if __name__ == '__main__':
-    async def main():
-        fred = FRED(api='4d7f9486f4661bf733491947199996d1')
-
-        data = await fred._fetch(series_id='GDPC1')
-        print(data)
-
-    asyncio.run(main())

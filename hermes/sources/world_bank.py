@@ -129,15 +129,4 @@ class World_bank:
         )
 
 
-if __name__ == "__main__":
-    import asyncio
 
-    async def main():
-        wb = World_bank()
-        df = await wb.fetch(
-            country_code="USA",
-            indicator_code="NY.GDP.MKTP.KD.ZG",
-        )
-        print(df)
-
-    asyncio.run(main())
