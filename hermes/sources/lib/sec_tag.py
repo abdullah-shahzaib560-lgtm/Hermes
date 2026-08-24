@@ -12,14 +12,11 @@ SEC_TAG_MAP = {
     "operating_expenses": ["OperatingExpenses"],
     "operating_income": ["OperatingIncomeLoss"],
     "interest_expense": ["InterestExpenseNonOperating"],
-    "pretax_income": [
-        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"
-    ],
+    "pretax_income": ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"],
     "income_tax_expense": ["IncomeTaxExpenseBenefit"],
     "net_income": ["NetIncomeLoss"],
     "eps_basic": ["EarningsPerShareBasic"],
     "eps_diluted": ["EarningsPerShareDiluted"],
-
     "cash": ["CashAndCashEquivalentsAtCarryingValue"],
     "short_term_investments": ["ShortTermInvestments", "MarketableSecuritiesCurrent"],
     "accounts_receivable": ["AccountsReceivableNetCurrent"],
@@ -31,12 +28,10 @@ SEC_TAG_MAP = {
     "long_term_debt": ["LongTermDebtNoncurrent", "LongTermDebt"],
     "total_liabilities": ["Liabilities"],
     "equity": ["StockholdersEquity"],
-
     "operating_cash_flow": ["NetCashProvidedByUsedInOperatingActivities"],
     "investing_cash_flow": ["NetCashProvidedByUsedInInvestingActivities"],
     "financing_cash_flow": ["NetCashProvidedByUsedInFinancingActivities"],
     "capital_expenditure": ["PaymentsToAcquirePropertyPlantAndEquipment"],
-
     "shares_outstanding": ["EntityCommonStockSharesOutstanding"],
     "weighted_average_shares_basic": ["WeightedAverageNumberOfSharesOutstandingBasic"],
     "weighted_average_shares_diluted": ["WeightedAverageNumberOfDilutedSharesOutstanding"],
