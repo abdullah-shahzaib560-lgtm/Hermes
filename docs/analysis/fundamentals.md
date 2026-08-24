@@ -1,74 +1,52 @@
 # Fundamental Analysis Data
 
-## Current Data Format
+## Snapshot Mode
+
+Single-point-in-time dataclass with SEC filings, Finnhub metrics, Yahoo Finance estimates, and FRED macro data.
 
 ```python
 class CompanyFundamental:
     ticker: str
     filing_date: date
-    fiscal_period: str
-    fiscal_year: int
-    filing_type: str
-
-    revenue: int
-    cost_of_revenue: int
-    gross_profit: int
-    operating_expenses: int
-    operating_income: int
-    interest_expense: int | None
-    pre_tax_income: int
-    income_tax_expense: int
-    net_income: int
-    eps_basic: float
-    eps_diluted: float
-
-    cash: int
-    short_term_investments: int | None
-    accounts_receivable: int
-    inventory: int | None
-    current_assets: int
-    total_assets: int
-    current_liabilities: int
-    short_term_debt: int | None
-    long_term_debt: int
-    total_liabilities: int
-    equity: int
-
-    operating_cash_flow: int
-    investing_cash_flow: int
-    financing_cash_flow: int
-    capital_expenditure: int
-
-    shares_outstanding: int
-    weighted_average_shares: int
-
-    current_price: float
-    market_cap: int
-
-    earnings: float
-    eps_estimates: float
-    revenue_estimates: int
-    earnings_surprise: float
-    revenue_surprise: float
-
-    macro_gdp: int
-    macro_gdp_growth: float
-    macro_inflation: float
-    macro_interest_rates: float
-    macro_unemployment: float
-    macro_government_debt: float
-
-    macro_exchange_rates: dict[str, float] = field(default_factory=dict)
-    company_peers: list[str] = field(default_factory=list)
-    dividends: int | None = 0
-    buybacks: int | None = 0
-    pe_ratio: float | None = field(default=None, metadata={"alias": "P/E"})
-    ps_ratio: float | None = field(default=None, metadata={"alias": "P/S"})
-    pb_ratio: float | None = field(default=None, metadata={"alias": "P/B"})
-    ev_ebitda: float | None = field(default=None, metadata={"alias": "EV/EBITDA"})
-    roe: float | None = field(default=None, metadata={"alias": "ROE"})
-    roa: float | None = field(default=None, metadata={"alias": "ROA"})
-    debt_equity: float | None = field(default=None, metadata={"alias": "Debt/Equity"})
+    # ... (see hermes/core/models/analysis/fundamental.py)
 ```
 
-> For now it is basically a snapshot, means a single row or a point in time. In the future, we will add a time series of fundamentals for each company, so that we can analyze trends over time.
+> Snapshot mode returns a single row. Use `fa_features.get_fundamentels(symbol)`.
+
+## History Mode
+
+### Candle History (Stock OHLCV)
+
+```python
+df = await hermes.fa_history.get_candle_history(
+    symbol="AAPL",
+    interval="1d",  # 1m, 5m, 15m, 30m, 1h, 1d, 1w, 1M
+    years=2,
+)
+```
+
+#### Supported Intervals
+
+| Canonical | Finnhub | yfinance | Notes |
+|-----------|---------|----------|-------|
+| `1m` | `1` | `1m` | Finnhub: 7 days max |
+| `5m` | `5` | `5m` | Finnhub: 7 days max |
+| `15m` | `15` | `15m` | Finnhub: 30 days max |
+| `30m` | `30` | `30m` | Finnhub: 30 days max |
+| `1h` | `60` | `1h` | Finnhub: 30 days max |
+| `1d` | `D` | `1d` | Finnhub: 365 days |
+| `1w` | `W` | `1wk` | Finnhub: 365 days |
+| `1M` | `M` | `1mo` | Finnhub: 365 days |
+
+> Automatically falls back to yfinance if Finnhub data is insufficient (>1yr needed).
+
+### Filing History (SEC Financials)
+
+```python
+df = await hermes.fa_history.get_filing_history(
+    symbol="AAPL",
+    quarters=8,  # number of historical quarters to fetch
+)
+```
+
+Returns a DataFrame with one row per fiscal quarter, including all SEC XBRL fields (revenue, net income, EPS, assets, liabilities, cash flows, etc.).
