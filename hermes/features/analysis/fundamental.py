@@ -124,7 +124,7 @@ class FAfeatures:
 
         return CompanyFundamental(
 
-            symbol= symbol,
+            ticker= symbol,
             filing_date= filing_meta['filing_date'],
             fiscal_period= filing_meta['fiscal_period'],
             fiscal_year= filing_meta['fiscal_year'],

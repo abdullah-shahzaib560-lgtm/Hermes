@@ -144,15 +144,3 @@ class Binance:
             ttl=timedelta(days=1)
         )
 
-if __name__ == '__main__':
-    async def main():
-        binance = Binance()
-        url, params = await binance._fetch(
-            mode='spot',
-            endpoint='ohlcv',
-            symbol='BTCUSDT',
-            interval='1m',
-            limit=100
-        )
-        print(url, params)
-    asyncio.run(main())
