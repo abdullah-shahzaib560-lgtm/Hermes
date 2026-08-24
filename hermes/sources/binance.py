@@ -1,10 +1,13 @@
 import asyncio
 import logging
-from datetime import timedelta
+import math
+from datetime import UTC, datetime, timedelta
 from functools import partial
 
 import aiohttp
+import pandas as pd
 
+from hermes.constants import BINANCE_INTERVAL_MS
 from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
@@ -48,6 +51,8 @@ class Binance:
         interval: str | None = None,
         limit: str | None = None,
         period: str | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
     ):
         try:
             path, required = self._ENDPOINTS[(mode, endpoint)]
@@ -63,6 +68,11 @@ class Binance:
                 raise ValueError(f'{mode}/{endpoint} requires {name!r}')
             params[name] = provided[name]
 
+        if start_time is not None:
+            params['startTime'] = start_time
+        if end_time is not None:
+            params['endTime'] = end_time
+
         return f'{base_url.rstrip("/")}/{path}', params
 
     async def _fetch(
@@ -73,6 +83,8 @@ class Binance:
         interval: str | None = None,
         limit: int | None = None,
         period: str | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
         retries: int = 3,
         timeout: float = 30.0
     ):
@@ -82,7 +94,9 @@ class Binance:
             symbol=symbol,
             interval=interval,
             limit=limit,
-            period=period
+            period=period,
+            start_time=start_time,
+            end_time=end_time,
         )
 
         r = None
@@ -116,6 +130,8 @@ class Binance:
         interval: str | None = None,
         limit: int | None = None,
         period: str | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
         retries: int = 3,
         timeout: float = 30.0,
         force: bool = False
@@ -123,11 +139,13 @@ class Binance:
         cached_params = {
             'symbol': symbol,
             'mode': mode,
-            'endpoint': endpoint
+            'endpoint': endpoint,
+            'start_time': start_time,
+            'end_time': end_time,
         }
 
         return await self._cache.get_or_fetch(
-            source='finnhub',
+            source='binance',
             params=cached_params,
             fetch_fn=partial(
                 self._fetch,
@@ -137,10 +155,83 @@ class Binance:
                 limit=limit,
                 period=period,
                 mode=mode,
+                start_time=start_time,
+                end_time=end_time,
                 timeout=timeout,
                 retries=retries,
             ),
             force=force,
             ttl=timedelta(days=1)
         )
+
+    async def fetch_history(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        market: str = "future",
+        years: int = 2,
+        max_concurrent: int = 10,
+    ) -> pd.DataFrame:
+        interval_ms = BINANCE_INTERVAL_MS.get(interval)
+        if interval_ms is None:
+            raise ValueError(f"Unsupported interval: {interval!r}")
+
+        now_ms = int(datetime.now(UTC).timestamp() * 1000)
+        start_ms = now_ms - (years * 365 * 86_400_000)
+        per_request_ms = 1000 * interval_ms
+
+        num_requests = math.ceil((now_ms - start_ms) / per_request_ms)
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def _fetch_window(window_start: int, window_end: int) -> list:
+            async with semaphore:
+                data = await self.fetch(
+                    mode=market,
+                    endpoint="ohlcv",
+                    symbol=symbol,
+                    interval=interval,
+                    limit=1000,
+                    start_time=window_start,
+                    end_time=window_end,
+                    force=True,
+                )
+                return data if data else []
+
+        tasks = []
+        for i in range(num_requests):
+            window_start = start_ms + (i * per_request_ms)
+            window_end = min(window_start + per_request_ms, now_ms)
+            tasks.append(_fetch_window(window_start, window_end))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        all_candles = []
+        for r in results:
+            if isinstance(r, list):
+                all_candles.extend(r)
+            else:
+                logger.warning(f"History fetch error: {r}")
+
+        if not all_candles:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(
+            all_candles,
+            columns=[
+                "open_time", "open", "high", "low", "close", "volume",
+                "close_time", "quote_volume", "trades_count",
+                "taker_buy_volume", "taker_buy_quote_volume", "ignore",
+            ],
+        )
+
+        for col in ["open", "high", "low", "close", "volume", "quote_volume",
+                     "taker_buy_volume", "taker_buy_quote_volume"]:
+            df[col] = df[col].astype(float)
+
+        df["trades_count"] = df["trades_count"].astype(int)
+        df = df.drop(columns=["ignore"])
+        df = df.drop_duplicates(subset=["open_time"], keep="first")
+        df = df.sort_values("open_time").reset_index(drop=True)
+
+        return df
 

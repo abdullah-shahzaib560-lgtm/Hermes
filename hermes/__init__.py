@@ -1,8 +1,12 @@
+from hermes.constants import CANONICAL_FREQS as CANONICAL_FREQS
+from hermes.constants import SYMBOLS as SYMBOLS
+from hermes.constants import TICKERS as TICKERS
 from hermes.core.cache import RawCache
 from hermes.core.countries import countries
 from hermes.core.features import features
 from hermes.features import pipeline as features_pipeline
 from hermes.features.analysis.fundamental import FAfeatures
+from hermes.features.analysis.history import FAHistory, TAHistory
 from hermes.features.analysis.technical import TAfeatures
 from hermes.sources.binance import Binance
 from hermes.sources.finnhub import FINNHUB
@@ -49,7 +53,19 @@ class Hermes:
 
         self.country_features = features_pipeline(os_api=opensanction_api)
         self.ta_feature = TAfeatures()
-        self.fa_features = FAfeatures(finnhub_api=finnhub_api, fred_api=fred_api, sec_username=sec_username, sec_email=sec_email)
+        self.fa_features = FAfeatures(
+            finnhub_api=finnhub_api,
+            fred_api=fred_api,
+            sec_username=sec_username,
+            sec_email=sec_email,
+        )
+        self.ta_history = TAHistory()
+        self.fa_history = FAHistory(
+            finnhub_api=finnhub_api,
+            sec_email=sec_email,
+            sec_username=sec_username,
+            fred_api=fred_api,
+        )
 
     def clear_cache(self, older_than: str | None = None):
         if self._cache:
