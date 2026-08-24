@@ -9,7 +9,6 @@ from hermes.sources.binance import Binance
 
 
 class TAfeatures:
-
     def __init__(self):
         self.binance = Binance()
 
@@ -52,8 +51,7 @@ class TAfeatures:
 
         return float((values[-1] - np.mean(values)) / std)
 
-    async def ohlcv(self, symbol: str, market: str = "future",
-                    interval: str = "1h", limit: int = 250):
+    async def ohlcv(self, symbol: str, market: str = "future", interval: str = "1h", limit: int = 250):
 
         data = await self.binance.fetch(
             mode=market,
@@ -85,10 +83,7 @@ class TAfeatures:
         ret_10b = self._safe_div(current_close, closes[-11]) - 1
         ret_60b = self._safe_div(current_close, closes[-61]) - 1
 
-        ret_open_to_close = (
-            self._safe_div(current_close, current_open) - 1
-        )
-
+        ret_open_to_close = self._safe_div(current_close, current_open) - 1
 
         hl_range = self._safe_div(
             current_high - current_low,
@@ -119,7 +114,6 @@ class TAfeatures:
             sma200,
         )
 
-
         ema9 = self._ema(closes, 9)
         ema21 = self._ema(closes, 21)
         ema50 = self._ema(closes, 50)
@@ -136,17 +130,9 @@ class TAfeatures:
 
         log_returns = self._returns(closes)
 
-        vol_20 = (
-            float(np.std(log_returns[-20:], ddof=1))
-            if len(log_returns) >= 20
-            else float("nan")
-        )
+        vol_20 = float(np.std(log_returns[-20:], ddof=1)) if len(log_returns) >= 20 else float("nan")
 
-        vol_60 = (
-            float(np.std(log_returns[-60:], ddof=1))
-            if len(log_returns) >= 60
-            else float("nan")
-        )
+        vol_60 = float(np.std(log_returns[-60:], ddof=1)) if len(log_returns) >= 60 else float("nan")
 
         previous_close = closes[:-1]
 
@@ -158,31 +144,21 @@ class TAfeatures:
             ),
         )
 
-        atr14 = (
-            float(np.mean(tr[-14:]))
-            if len(tr) >= 14
-            else float("nan")
-        )
+        atr14 = float(np.mean(tr[-14:])) if len(tr) >= 14 else float("nan")
 
         atr_14_norm = self._safe_div(
             atr14,
             current_close,
         )
 
-        avg_volume_20 = (
-            np.mean(volumes[-20:])
-            if len(volumes) >= 20
-            else float("nan")
-        )
+        avg_volume_20 = np.mean(volumes[-20:]) if len(volumes) >= 20 else float("nan")
 
         volume_rel_20 = self._safe_div(
             current_volume,
             avg_volume_20,
         )
 
-        taker_buy_volumes = np.array(
-            [float(x[9]) for x in candles]
-        )
+        taker_buy_volumes = np.array([float(x[9]) for x in candles])
 
         taker_buy_volume = taker_buy_volumes[-1]
 
@@ -198,27 +174,21 @@ class TAfeatures:
             "close": current_close,
             "volume": current_volume,
             "quote_volume": quote_volumes[-1],
-
             "ret_1b": ret_1b,
             "ret_5b": ret_5b,
             "ret_10b": ret_10b,
             "ret_60b": ret_60b,
             "ret_open_to_close": ret_open_to_close,
-
             "hl_range": hl_range,
             "body_range": body_range,
-
             "dist_sma_20": dist_sma_20,
             "dist_sma_50": dist_sma_50,
             "dist_sma_200": dist_sma_200,
-
             "ema_diff_9_21": ema_diff_9_21,
             "ema_diff_21_50": ema_diff_21_50,
-
             "vol_20": vol_20,
             "vol_60": vol_60,
             "atr_14_norm": atr_14_norm,
-
             "volume_rel_20": volume_rel_20,
             "taker_buy_vol_ratio": taker_buy_vol_ratio,
         }
@@ -240,13 +210,9 @@ class TAfeatures:
         if not trades:
             return {}
 
-        quantities = np.array(
-            [float(t["qty"]) for t in trades]
-        )
+        quantities = np.array([float(t["qty"]) for t in trades])
 
-        prices = np.array(
-            [float(t["price"]) for t in trades]
-        )
+        prices = np.array([float(t["price"]) for t in trades])
 
         quote_values = prices * quantities
 
@@ -254,9 +220,7 @@ class TAfeatures:
         # isBuyerMaker=True  -> seller initiated
         # isBuyerMaker=False -> buyer initiated
 
-        buy_mask = np.array(
-            [not t["isBuyerMaker"] for t in trades]
-        )
+        buy_mask = np.array([not t["isBuyerMaker"] for t in trades])
 
         buy_volume = quantities[buy_mask].sum()
         total_volume = quantities.sum()
@@ -266,37 +230,23 @@ class TAfeatures:
             95,
         )
 
-        large_volume = quantities[
-            quantities >= threshold
-        ].sum()
+        large_volume = quantities[quantities >= threshold].sum()
 
         return {
             "trades_count": len(trades),
             "trade_window_count": len(trades),
-
-            "trade_window_vol_base":
-                float(quantities.sum()),
-
-            "trade_window_vol_quote":
-                float(quote_values.sum()),
-
-            "trade_buy_vol_ratio":
-                self._safe_div(
-                    buy_volume,
-                    total_volume,
-                ),
-
-            "avg_trade_size":
-                float(np.mean(quantities)),
-
-            "median_trade_size":
-                float(np.median(quantities)),
-
-            "large_trade_vol_ratio":
-                self._safe_div(
-                    large_volume,
-                    total_volume,
-                ),
+            "trade_window_vol_base": float(quantities.sum()),
+            "trade_window_vol_quote": float(quote_values.sum()),
+            "trade_buy_vol_ratio": self._safe_div(
+                buy_volume,
+                total_volume,
+            ),
+            "avg_trade_size": float(np.mean(quantities)),
+            "median_trade_size": float(np.median(quantities)),
+            "large_trade_vol_ratio": self._safe_div(
+                large_volume,
+                total_volume,
+            ),
         }
 
     async def orderbook_features(
@@ -326,23 +276,22 @@ class TAfeatures:
 
         mid = (ask_price + bid_price) / 2
 
-        spread_bps = self._safe_div(
-            spread_abs,
-            mid,
-        ) * 10_000
+        spread_bps = (
+            self._safe_div(
+                spread_abs,
+                mid,
+            )
+            * 10_000
+        )
 
         top_book_imbalance = self._safe_div(
             bid_qty - ask_qty,
             bid_qty + ask_qty,
         )
 
-        depth_bid_total = sum(
-            float(x[1]) for x in bids
-        )
+        depth_bid_total = sum(float(x[1]) for x in bids)
 
-        depth_ask_total = sum(
-            float(x[1]) for x in asks
-        )
+        depth_ask_total = sum(float(x[1]) for x in asks)
 
         depth_imbalance = self._safe_div(
             depth_bid_total - depth_ask_total,
@@ -354,20 +303,12 @@ class TAfeatures:
             "ask_price": ask_price,
             "bid_qty": bid_qty,
             "ask_qty": ask_qty,
-
             "spread_abs": spread_abs,
             "spread_bps": spread_bps,
-            "top_book_imbalance":
-                top_book_imbalance,
-
-            "depth_bid_total":
-                depth_bid_total,
-
-            "depth_ask_total":
-                depth_ask_total,
-
-            "depth_imbalance":
-                depth_imbalance,
+            "top_book_imbalance": top_book_imbalance,
+            "depth_bid_total": depth_bid_total,
+            "depth_ask_total": depth_ask_total,
+            "depth_imbalance": depth_imbalance,
         }
 
     async def day_features(
@@ -400,20 +341,11 @@ class TAfeatures:
             "high_24h": high,
             "low_24h": low,
             "last_price_24h": last,
-
             "range_24h": range_24h,
-
-            "pct_change_24h":
-                float(data["priceChangePercent"]) / 100,
-
-            "pos_in_24h_range":
-                pos_in_range,
-
-            "volume_24h":
-                float(data["volume"]),
-
-            "quote_volume_24h":
-                float(data["quoteVolume"]),
+            "pct_change_24h": float(data["priceChangePercent"]) / 100,
+            "pos_in_24h_range": pos_in_range,
+            "volume_24h": float(data["volume"]),
+            "quote_volume_24h": float(data["quoteVolume"]),
         }
 
     async def funding_features(
@@ -433,29 +365,15 @@ class TAfeatures:
         if not data:
             return {}
 
-        rates = np.array(
-            [float(x["fundingRate"]) for x in data]
-        )
+        rates = np.array([float(x["fundingRate"]) for x in data])
 
         current = rates[-1]
 
-        lag_3 = (
-            rates[-4]
-            if len(rates) >= 4
-            else float("nan")
-        )
+        lag_3 = rates[-4] if len(rates) >= 4 else float("nan")
 
-        previous = (
-            rates[-2]
-            if len(rates) >= 2
-            else float("nan")
-        )
+        previous = rates[-2] if len(rates) >= 2 else float("nan")
 
-        change = (
-            current - previous
-            if not math.isnan(previous)
-            else float("nan")
-        )
+        change = current - previous if not math.isnan(previous) else float("nan")
 
         zscore = self._zscore(rates)
 
@@ -493,24 +411,14 @@ class TAfeatures:
                 "open_interest": oi,
             }
 
-        values = np.array(
-            [float(x["sumOpenInterest"]) for x in history]
-        )
+        values = np.array([float(x["sumOpenInterest"]) for x in history])
 
         oi_1h = values[-2] if len(values) >= 2 else float("nan")
         oi_24h = values[0] if len(values) >= 25 else float("nan")
 
-        oi_change_1h = (
-            self._safe_div(oi - oi_1h, oi_1h)
-            if not math.isnan(oi_1h)
-            else float("nan")
-        )
+        oi_change_1h = self._safe_div(oi - oi_1h, oi_1h) if not math.isnan(oi_1h) else float("nan")
 
-        oi_change_24h = (
-            self._safe_div(oi - oi_24h, oi_24h)
-            if not math.isnan(oi_24h)
-            else float("nan")
-        )
+        oi_change_24h = self._safe_div(oi - oi_24h, oi_24h) if not math.isnan(oi_24h) else float("nan")
 
         return {
             "open_interest": oi,
@@ -529,18 +437,11 @@ class TAfeatures:
             symbol=symbol,
         )
 
-        next_funding = int(
-            data["nextFundingTime"]
-        )
+        next_funding = int(data["nextFundingTime"])
 
-        now = int(
-            datetime.now(UTC).timestamp() * 1000
-        )
+        now = int(datetime.now(UTC).timestamp() * 1000)
 
-        return {
-            "time_to_next_funding_min":
-                max(0, (next_funding - now) / 60_000)
-        }
+        return {"time_to_next_funding_min": max(0, (next_funding - now) / 60_000)}
 
     async def positioning_features(
         self,
@@ -573,42 +474,28 @@ class TAfeatures:
             limit=limit,
         )
 
-        ls_ratio = (
-            float(long_short[-1]["longShortRatio"])
-            if long_short else float("nan")
-        )
+        ls_ratio = float(long_short[-1]["longShortRatio"]) if long_short else float("nan")
 
-        top_acct_ratio = (
-            float(top_accounts[-1]["longShortRatio"])
-            if top_accounts else float("nan")
-        )
+        top_acct_ratio = float(top_accounts[-1]["longShortRatio"]) if top_accounts else float("nan")
 
-        top_pos_ratio = (
-            float(top_positions[-1]["longShortRatio"])
-            if top_positions else float("nan")
-        )
+        top_pos_ratio = float(top_positions[-1]["longShortRatio"]) if top_positions else float("nan")
 
         return {
             "trend_score": ls_ratio - 1.0,
-
-            "mean_reversion_score": (
-                1.0 - abs(ls_ratio - 1.0)
-            ),
-
+            "mean_reversion_score": (1.0 - abs(ls_ratio - 1.0)),
             "liquidity_score": self._safe_div(
                 1.0,
                 1.0 + abs(top_pos_ratio - 1.0),
             ),
-
             "order_flow_score": self._safe_div(
                 top_pos_ratio - 1.0,
                 1.0,
             ),
-
             "sentiment_score": self._safe_div(
                 ls_ratio + top_acct_ratio + top_pos_ratio,
                 3.0,
-            ) - 1.0,
+            )
+            - 1.0,
         }
 
     async def build_snapshot(
@@ -662,11 +549,7 @@ class TAfeatures:
 
         return TechnicalSnapshot(
             symbol=symbol,
-
-            timestamp_ms=int(
-                candles[-1][0]
-            ),
-
+            timestamp_ms=int(candles[-1][0]),
             **price,
             **trades,
             **orderbook,
@@ -675,13 +558,11 @@ class TAfeatures:
             **oi,
             **funding_time,
             **positioning,
-
             oi_to_volume_24h=self._safe_div(
                 oi.get("open_interest", 0.0),
                 day.get("quote_volume_24h", 0.0),
             ),
         )
-
 
     async def get_technical(
         self,
@@ -689,7 +570,6 @@ class TAfeatures:
         market: str = "future",
         interval: str = "1h",
     ):
-
 
         return await self.build_snapshot(
             symbol=symbol,

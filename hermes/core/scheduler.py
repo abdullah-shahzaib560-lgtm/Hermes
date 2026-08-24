@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +20,8 @@ def _cron_field(pattern: str, low: int, high: int) -> set[int]:
         part = part.strip()
 
         if "/" in part:
-            base, step = part.split("/", 1)
-            step = int(step)
+            base, step_str = part.split("/", 1)
+            step = int(step_str)
 
             if step <= 0:
                 raise ValueError("cron step must be > 0")
@@ -34,11 +35,7 @@ def _cron_field(pattern: str, low: int, high: int) -> set[int]:
                 start = int(base)
                 values = range(start, high + 1)
 
-            result.update(
-                value
-                for index, value in enumerate(values)
-                if index % step == 0
-            )
+            result.update(value for index, value in enumerate(values) if index % step == 0)
 
         elif "-" in part:
             start, end = map(int, part.split("-", 1))
@@ -52,9 +49,7 @@ def _cron_field(pattern: str, low: int, high: int) -> set[int]:
 
     invalid = result - set(range(low, high + 1))
     if invalid:
-        raise ValueError(
-            f"cron values {invalid} outside range {low}-{high}"
-        )
+        raise ValueError(f"cron values {invalid} outside range {low}-{high}")
 
     return result
 
@@ -65,9 +60,7 @@ def _parse_cron(
     parts = expr.split()
 
     if len(parts) != 5:
-        raise ValueError(
-            f"cron must have 5 fields, got {len(parts)}: {expr!r}"
-        )
+        raise ValueError(f"cron must have 5 fields, got {len(parts)}: {expr!r}")
 
     return (
         _cron_field(parts[0], 0, 59),
@@ -86,11 +79,7 @@ def _cron_matches(
     cron_weekday = (dt.weekday() + 1) % 7
 
     return (
-        dt.minute in minutes
-        and dt.hour in hours
-        and dt.day in days
-        and dt.month in months
-        and cron_weekday in weekdays
+        dt.minute in minutes and dt.hour in hours and dt.day in days and dt.month in months and cron_weekday in weekdays
     )
 
 
@@ -168,9 +157,7 @@ class _Job:
 
         if self.interval is None:
             if not _is_cron(self.spec):
-                raise ValueError(
-                    f"Unsupported schedule spec: {self.spec!r}"
-                )
+                raise ValueError(f"Unsupported schedule spec: {self.spec!r}")
             self.cron = _parse_cron(self.spec)
 
     def calculate_next_run(self, now: datetime) -> datetime:
@@ -209,9 +196,7 @@ def schedule(
         job_name = name or fn.__name__
 
         if job_name in _registry:
-            raise ValueError(
-                f"Job {job_name!r} already registered"
-            )
+            raise ValueError(f"Job {job_name!r} already registered")
 
         _registry[job_name] = _Job(
             name=job_name,
@@ -289,11 +274,7 @@ async def _loop() -> None:
         due = [
             job
             for job in _registry.values()
-            if (
-                job.next_run_at is not None
-                and job.next_run_at <= now
-                and job.last_status != "running"
-            )
+            if (job.next_run_at is not None and job.next_run_at <= now and job.last_status != "running")
         ]
 
         if due:
@@ -303,11 +284,7 @@ async def _loop() -> None:
             )
             continue
 
-        next_times = [
-            job.next_run_at
-            for job in _registry.values()
-            if job.next_run_at is not None
-        ]
+        next_times = [job.next_run_at for job in _registry.values() if job.next_run_at is not None]
 
         if not next_times:
             await asyncio.sleep(1)
@@ -315,10 +292,7 @@ async def _loop() -> None:
 
         delay = max(
             0.1,
-            min(
-                (next_time - now).total_seconds()
-                for next_time in next_times
-            ),
+            min((next_time - now).total_seconds() for next_time in next_times),
         )
 
         await asyncio.sleep(min(delay, 60))
@@ -374,16 +348,8 @@ def list_jobs() -> list[dict[str, Any]]:
         {
             "name": job.name,
             "schedule": job.spec,
-            "next_run": (
-                job.next_run_at.isoformat()
-                if job.next_run_at
-                else None
-            ),
-            "last_run": (
-                job.last_run.isoformat()
-                if job.last_run
-                else None
-            ),
+            "next_run": (job.next_run_at.isoformat() if job.next_run_at else None),
+            "last_run": (job.last_run.isoformat() if job.last_run else None),
             "last_status": job.last_status,
             "runs": job.runs,
             "failures": job.failures,

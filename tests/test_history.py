@@ -53,16 +53,18 @@ def _make_ohlcv_df(n: int = 250, start_price: float = 100.0) -> pd.DataFrame:
     np.random.seed(42)
     prices = start_price + np.cumsum(np.random.randn(n) * 0.5)
     prices = np.maximum(prices, 1.0)
-    return pd.DataFrame({
-        "open_time": np.arange(n) * 86_400_000,
-        "open": prices * 0.99,
-        "high": prices * 1.02,
-        "low": prices * 0.98,
-        "close": prices,
-        "volume": np.random.uniform(1000, 5000, n),
-        "quote_volume": np.random.uniform(100000, 500000, n),
-        "taker_buy_volume": np.random.uniform(500, 2500, n),
-    })
+    return pd.DataFrame(
+        {
+            "open_time": np.arange(n) * 86_400_000,
+            "open": prices * 0.99,
+            "high": prices * 1.02,
+            "low": prices * 0.98,
+            "close": prices,
+            "volume": np.random.uniform(1000, 5000, n),
+            "quote_volume": np.random.uniform(100000, 500000, n),
+            "taker_buy_volume": np.random.uniform(500, 2500, n),
+        }
+    )
 
 
 class TestTAHistoryFeatures:
@@ -73,15 +75,34 @@ class TestTAHistoryFeatures:
         result = TAHistory._compute_features(df)
 
         expected_cols = [
-            "ret_1b", "ret_open_to_close", "hl_range", "body_range",
-            "dist_sma_20", "dist_sma_50", "dist_sma_200",
-            "ema_diff_9_21", "ema_diff_21_50",
-            "vol_20", "vol_60", "atr_14_norm",
-            "volume_sma_20", "volume_rel_20", "taker_buy_vol_ratio",
-            "rsi_14", "macd", "macd_signal", "macd_hist",
-            "bb_upper", "bb_lower", "bb_width", "bb_pct",
-            "obv", "returns_skew_20", "returns_kurt_20",
-            "drawdown", "amihud_illiquidity",
+            "ret_1b",
+            "ret_open_to_close",
+            "hl_range",
+            "body_range",
+            "dist_sma_20",
+            "dist_sma_50",
+            "dist_sma_200",
+            "ema_diff_9_21",
+            "ema_diff_21_50",
+            "vol_20",
+            "vol_60",
+            "atr_14_norm",
+            "volume_sma_20",
+            "volume_rel_20",
+            "taker_buy_vol_ratio",
+            "rsi_14",
+            "macd",
+            "macd_signal",
+            "macd_hist",
+            "bb_upper",
+            "bb_lower",
+            "bb_width",
+            "bb_pct",
+            "obv",
+            "returns_skew_20",
+            "returns_kurt_20",
+            "drawdown",
+            "amihud_illiquidity",
         ]
         for col in expected_cols:
             assert col in result.columns, f"Missing column: {col}"
@@ -166,11 +187,16 @@ class TestTAHistoryAsync:
 class TestBinanceBuildUrlWithTime:
     def test_ohlcv_with_start_end_time(self):
         from hermes.sources.binance import Binance
+
         b = Binance(cache=None)
         url, params = b._build_url(
-            "spot", "ohlcv", "BTCUSDT",
-            interval="1d", limit="1000",
-            start_time=1700000000000, end_time=1700100000000,
+            "spot",
+            "ohlcv",
+            "BTCUSDT",
+            interval="1d",
+            limit="1000",
+            start_time=1700000000000,
+            end_time=1700100000000,
         )
         assert params["startTime"] == 1700000000000
         assert params["endTime"] == 1700100000000
@@ -178,10 +204,14 @@ class TestBinanceBuildUrlWithTime:
 
     def test_ohlcv_without_time_params(self):
         from hermes.sources.binance import Binance
+
         b = Binance(cache=None)
         url, params = b._build_url(
-            "spot", "ohlcv", "BTCUSDT",
-            interval="1d", limit="100",
+            "spot",
+            "ohlcv",
+            "BTCUSDT",
+            interval="1d",
+            limit="100",
         )
         assert "startTime" not in params
         assert "endTime" not in params

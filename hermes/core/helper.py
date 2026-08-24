@@ -59,9 +59,10 @@ def adjust_year_range(df, year_col, start_year, end_year, fill_method="null", fi
 
     return adjusted_df
 
-def get_CIK(ticker: str) -> str:
+
+def get_cik(ticker: str) -> str:
     mapper = StockMapper()
-    ticker_to_cik_dict = mapper.ticker_to_cik
+    ticker_to_cik_dict = mapper.ticker_to_cik  # type: ignore[operator]
 
     cik = ticker_to_cik_dict.get(ticker.upper())
     return f"CIK{cik}" if cik else "Not Found"

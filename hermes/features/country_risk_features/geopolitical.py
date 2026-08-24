@@ -26,6 +26,8 @@ _GDELT_LAST_CALL = 0.0
 _GDELT_MIN_INTERVAL = 5.0
 _gdelt_session_cache: dict[str, pd.DataFrame] = {}
 _gdelt_available: bool | None = None
+_gdelt_last_health_check = 0.0
+_GDELT_HEALTH_CHECK_COOLDOWN = 60.0
 
 
 class geopolitical_features:
@@ -44,13 +46,21 @@ class geopolitical_features:
         _GDELT_LAST_CALL = time.monotonic()
 
     async def _gdelt_health_check(self) -> bool:
-        global _gdelt_available
+        global _gdelt_available, _gdelt_last_health_check
         if _gdelt_available is not None:
             return _gdelt_available
+        now = time.monotonic()
+        if now - _gdelt_last_health_check < _GDELT_HEALTH_CHECK_COOLDOWN:
+            return False
+        _gdelt_last_health_check = now
         async with _GDELT_SEMAPHORE:
             try:
                 async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as client:
-                    resp = await client.get(GDELT_DOC_API + "?" + urlencode({"query": "test", "mode": "artlist", "format": "json", "maxrecords": 1}))
+                    resp = await client.get(
+                        GDELT_DOC_API
+                        + "?"
+                        + urlencode({"query": "test", "mode": "artlist", "format": "json", "maxrecords": 1})
+                    )
                     text = await resp.text()
                     _gdelt_available = not text.lstrip().startswith("<") and resp.status == 200
                     if not _gdelt_available:
@@ -58,7 +68,7 @@ class geopolitical_features:
                     return _gdelt_available
             except Exception:
                 _gdelt_available = False
-                logger.warning("GDELT Doc API unreachable")
+                logger.info("GDELT Doc API unreachable - features will return empty results")
                 return False
 
     def _gdelt_cache_key(self, country: str, themes: list[str]) -> str:
@@ -559,6 +569,7 @@ class geopolitical_features:
     async def press_freedom_score(self, country_code: str, mode: str = "F") -> int:
         return 0
 
+
 from collections.abc import Callable
 from typing import Any
 
@@ -574,70 +585,52 @@ async def _await_group(fns: dict[str, Callable[..., Any]]) -> dict[str, Any]:
     values = await asyncio.gather(*(_safe_call(f) for f in fns.values()))
     return dict(zip(fns.keys(), values))
 
+
 if __name__ == "__main__":
     import asyncio
 
     async def main():
-        geo = geopolitical_features(os_api='af5a744cd01ccf9a6b9b90c599bd5430')
+        geo = geopolitical_features(os_api="af5a744cd01ccf9a6b9b90c599bd5430")
 
-        geopolitical = await _await_group(
+        results = await _await_group(
             {
-                "conflict_event_count_30d": lambda: geo.conflict_event_count_30d(
-                    country_code="USA", mode="F"
-                ),  # int
-                "conflict_event_count_90d": lambda: geo.conflict_event_count_90d(
-                    country_code="USA", mode="F"
-                ),  # int
-                "conflict_trend": lambda: geo.conflict_trend(
-                    country_code="USA", mode="F"
-                ),  # string: escalating/stable/de-escalating
-                "goldstein_scale_avg_30d": lambda: geo.goldstein_scale_avg_30d(
-                    country_code="USA", mode="F"
-                ),  # float, -10 to +10
-                "goldstein_scale_trend": lambda: geo.goldstein_scale_trend(
-                    country_code="USA", mode="F"
-                ),  # float, change vs prev period
-                "battle_deaths_30d": lambda: geo.battle_deaths_30d(country_code="USA", mode="F"),  # int
-                "battle_deaths_90d": lambda: geo.battle_deaths_90d(country_code="USA", mode="F"),  # int
-                "protest_event_count_30d": lambda: geo.protest_event_count_30d(
-                    country_code="USA", mode="F"
-                ),  # int
-                "protest_violence_level": lambda: geo.protest_violence_level(
-                    country_code="USA", mode="F"
-                ),  # float, 0-1
-                "diplomatic_event_count_30d": lambda: geo.diplomatic_event_count_30d(
-                    country_code="USA", mode="F"
-                ),  # int
-                "diplomatic_intensity_avg": lambda: geo.diplomatic_intensity_avg(
-                    country_code="USA", mode="F"
-                ),  # float, 0-10 scale
-                "sanctions_count_active": lambda: geo.sanctions_count_active(country_code="USA"),  # int
-                "sanctions_new_30d": lambda: geo.sanctions_new_30d(country_code="USA"),  # int
-                "sanctions_sector_coverage": lambda: geo.sanctions_sector_coverage(
-                    country_code="USA"
-                ),  # float, 0-1
-                "governance_wgi_composite": lambda: geo.governance_wgi_composite(
-                    country_code="USA", mode="F"
-                ),  # float, -2.5 to +2.5
-                "corruption_perception_index": lambda: geo.corruption_perception_index(
-                    country_code="USA", mode="F"
-                ),  # int, 0-100
-                "rule_of_law_score": lambda: geo.rule_of_law_score(
-                    country_code="USA", mode="F"
-                ),  # float, -2.5 to +2.5
-                "regulatory_quality": lambda: geo.regulatory_quality(
-                    country_code="USA", mode="F"
-                ),  # float, -2.5 to +2.5
-                "democracy_index": lambda: geo.democracy_index(country_code="USA", mode="F"),  # float, 0-1
-                "regime_type": lambda: geo.regime_type(
-                    country_code="USA", mode="F"
-                ),  # string: democracy/hybrid/autocracy
-                "press_freedom_score": lambda: geo.press_freedom_score(
-                    country_code="USA", mode="F"
-                ),  # int, 0-100
+                "conflict_event_count_30d": lambda: geo.conflict_event_count_30d(country_code="USA", mode="F"),
+                "conflict_event_count_90d": lambda: geo.conflict_event_count_90d(country_code="USA", mode="F"),
+                "conflict_trend": lambda: geo.conflict_trend(country_code="USA", mode="F"),
+                "goldstein_scale_avg_30d": lambda: geo.goldstein_scale_avg_30d(country_code="USA", mode="F"),
+                "goldstein_scale_trend": lambda: geo.goldstein_scale_trend(country_code="USA", mode="F"),
+                "battle_deaths_30d": lambda: geo.battle_deaths_30d(country_code="USA", mode="F"),
+                "battle_deaths_90d": lambda: geo.battle_deaths_90d(country_code="USA", mode="F"),
+                "protest_event_count_30d": lambda: geo.protest_event_count_30d(country_code="USA", mode="F"),
+                "protest_violence_level": lambda: geo.protest_violence_level(country_code="USA", mode="F"),
+                "diplomatic_event_count_30d": lambda: geo.diplomatic_event_count_30d(country_code="USA", mode="F"),
+                "diplomatic_intensity_avg": lambda: geo.diplomatic_intensity_avg(country_code="USA", mode="F"),
+                "sanctions_count_active": lambda: geo.sanctions_count_active(country_code="USA"),
+                "sanctions_new_30d": lambda: geo.sanctions_new_30d(country_code="USA"),
+                "sanctions_sector_coverage": lambda: geo.sanctions_sector_coverage(country_code="USA"),
+                "governance_wgi_composite": lambda: geo.governance_wgi_composite(country_code="USA", mode="F"),
+                "corruption_perception_index": lambda: geo.corruption_perception_index(country_code="USA", mode="F"),
+                "rule_of_law_score": lambda: geo.rule_of_law_score(country_code="USA", mode="F"),
+                "regulatory_quality": lambda: geo.regulatory_quality(country_code="USA", mode="F"),
+                "democracy_index": lambda: geo.democracy_index(country_code="USA", mode="F"),
+                "regime_type": lambda: geo.regime_type(country_code="USA", mode="F"),
+                "press_freedom_score": lambda: geo.press_freedom_score(country_code="USA", mode="F"),
             }
-
         )
 
-        print(geo)
+        print("\n=== Geopolitical Features for USA ===\n")
+        for name, value in results.items():
+            status = "OK" if value is not None else "FAILED"
+            print(f"  {name}: {value} [{status}]")
+
+        print("\n=== Source Availability ===\n")
+        sources = {
+            "GDELT Doc API": "Available" if _gdelt_available else "Unreachable",
+            "World Bank": "Available",
+            "OpenSanctions": "Available",
+            "Public Data (CPI)": "Available",
+        }
+        for source, status in sources.items():
+            print(f"  {source}: {status}")
+
     asyncio.run(main())

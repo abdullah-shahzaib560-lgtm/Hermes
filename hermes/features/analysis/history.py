@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class TAHistory:
-
     def __init__(self):
         self.binance = Binance()
 
@@ -92,9 +91,7 @@ class TAHistory:
         df["atr_14_norm"] = np.where(c > 0, atr14 / c, np.nan)
 
         df["volume_sma_20"] = pd.Series(v).rolling(20).mean()
-        df["volume_rel_20"] = np.where(
-            df["volume_sma_20"] > 0, v / df["volume_sma_20"], np.nan
-        )
+        df["volume_rel_20"] = np.where(df["volume_sma_20"] > 0, v / df["volume_sma_20"], np.nan)
         df["taker_buy_vol_ratio"] = np.where(v > 0, tbv / v, np.nan)
 
         df["rsi_14"] = _rsi(c, 14)
@@ -108,13 +105,9 @@ class TAHistory:
         bb_std = pd.Series(c).rolling(20).std()
         df["bb_upper"] = bb_mid + 2 * bb_std
         df["bb_lower"] = bb_mid - 2 * bb_std
-        df["bb_width"] = np.where(
-            bb_mid > 0, (df["bb_upper"] - df["bb_lower"]) / bb_mid, np.nan
-        )
+        df["bb_width"] = np.where(bb_mid > 0, (df["bb_upper"] - df["bb_lower"]) / bb_mid, np.nan)
         bb_range = df["bb_upper"] - df["bb_lower"]
-        df["bb_pct"] = np.where(
-            bb_range > 0, (c - df["bb_lower"]) / bb_range, np.nan
-        )
+        df["bb_pct"] = np.where(bb_range > 0, (c - df["bb_lower"]) / bb_range, np.nan)
 
         df["obv"] = _obv(c, v)
 
@@ -176,7 +169,6 @@ def _obv(closes: np.ndarray, volumes: np.ndarray) -> np.ndarray:
 
 
 class FAHistory:
-
     def __init__(
         self,
         finnhub_api: str,
@@ -197,10 +189,7 @@ class FAHistory:
         from hermes.constants import FINNHUB_RESOLUTION_MAP, SUPPORTED_STOCK_FREQS
 
         if interval not in SUPPORTED_STOCK_FREQS:
-            raise ValueError(
-                f"Interval {interval!r} not supported for stocks. "
-                f"Supported: {SUPPORTED_STOCK_FREQS}"
-            )
+            raise ValueError(f"Interval {interval!r} not supported for stocks. Supported: {SUPPORTED_STOCK_FREQS}")
 
         resolution = FINNHUB_RESOLUTION_MAP[interval]
 
@@ -215,10 +204,7 @@ class FAHistory:
             df_finn["interval"] = interval
             return df_finn
 
-        logger.info(
-            f"Finnhub returned {len(df_finn)} rows for {symbol}, "
-            f"falling back to yfinance"
-        )
+        logger.info(f"Finnhub returned {len(df_finn)} rows for {symbol}, falling back to yfinance")
 
         df_yf = await self.yf.fetch_history(
             symbol=symbol,
@@ -259,12 +245,14 @@ class FAHistory:
                         if period_key in seen_periods:
                             continue
                         seen_periods.add(period_key)
-                        rows.append({
-                            "fiscal_year": fy,
-                            "fiscal_period": fp,
-                            "filing_date": entry.get("filed"),
-                            "filing_type": entry.get("form"),
-                        })
+                        rows.append(
+                            {
+                                "fiscal_year": fy,
+                                "fiscal_period": fp,
+                                "filing_date": entry.get("filed"),
+                                "filing_type": entry.get("form"),
+                            }
+                        )
                     break
                 if rows:
                     break
@@ -289,10 +277,7 @@ class FAHistory:
                     units = tag_data.get("units", {})
                     for unit_type, entries in units.items():
                         for entry in entries:
-                            if (
-                                entry.get("fy") == row["fiscal_year"]
-                                and entry.get("fp") == row["fiscal_period"]
-                            ):
+                            if entry.get("fy") == row["fiscal_year"] and entry.get("fp") == row["fiscal_period"]:
                                 period_facts[field] = entry.get("val")
                                 break
                         if period_facts[field] is not None:
@@ -300,13 +285,15 @@ class FAHistory:
                     if period_facts[field] is not None:
                         break
 
-            result_rows.append({
-                "ticker": symbol,
-                "filing_date": row["filing_date"],
-                "fiscal_period": row["fiscal_period"],
-                "fiscal_year": row["fiscal_year"],
-                "filing_type": row["filing_type"],
-                **period_facts,
-            })
+            result_rows.append(
+                {
+                    "ticker": symbol,
+                    "filing_date": row["filing_date"],
+                    "fiscal_period": row["fiscal_period"],
+                    "fiscal_year": row["fiscal_year"],
+                    "filing_type": row["filing_type"],
+                    **period_facts,
+                }
+            )
 
         return pd.DataFrame(result_rows)

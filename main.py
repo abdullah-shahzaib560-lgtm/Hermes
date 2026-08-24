@@ -19,11 +19,17 @@ COUNTRIES_ML = ["USA", "GBR", "DEU"]
 os_api = os.getenv("OPEN_SANCTIONS_API", "")
 
 GDELT_FEATURES = {
-    "conflict_event_count_30d", "conflict_event_count_90d", "conflict_trend",
-    "goldstein_scale_avg_30d", "goldstein_scale_trend",
-    "battle_deaths_30d", "battle_deaths_90d",
-    "protest_event_count_30d", "protest_violence_level",
-    "diplomatic_event_count_30d", "diplomatic_intensity_avg",
+    "conflict_event_count_30d",
+    "conflict_event_count_90d",
+    "conflict_trend",
+    "goldstein_scale_avg_30d",
+    "goldstein_scale_trend",
+    "battle_deaths_30d",
+    "battle_deaths_90d",
+    "protest_event_count_30d",
+    "protest_violence_level",
+    "diplomatic_event_count_30d",
+    "diplomatic_intensity_avg",
 }
 
 
@@ -59,12 +65,9 @@ async def main():
         print(f"    {grp}: {len(fns)} features")
 
     section("Source Connectors — single country F mode")
-    await profile_async("World Bank",
-                        hr.world_bank.fetch, country_code=COUNTRY, indicator_code="NY.GDP.MKTP.KD.ZG")
-    await profile_async("IMF",
-                        hr.imf.fetch, country=COUNTRY, agency="IMF.STA", dataflow_id="PPI", key="PPI.IX.A")
-    await profile_async("OpenSanctions",
-                        hr.opensanction.fetch, country=COUNTRY, dataset="us_ofac_sdn", limit=100)
+    await profile_async("World Bank", hr.world_bank.fetch, country_code=COUNTRY, indicator_code="NY.GDP.MKTP.KD.ZG")
+    await profile_async("IMF", hr.imf.fetch, country=COUNTRY, agency="IMF.STA", dataflow_id="PPI", key="PPI.IX.A")
+    await profile_async("OpenSanctions", hr.opensanction.fetch, country=COUNTRY, dataset="us_ofac_sdn", limit=100)
 
     section("Economic Features — F mode")
     eco = hr.features.eco
@@ -121,7 +124,9 @@ async def main():
     section("Security Features — F mode")
     sec = hr.features.sec
     await profile_async("military_spending_gdp", sec.military_spending_gdp, country_code=COUNTRY, mode="F")
-    await profile_async("military_spending_growth_yoy", sec.military_spending_growth_yoy, country_code=COUNTRY, mode="F")
+    await profile_async(
+        "military_spending_growth_yoy", sec.military_spending_growth_yoy, country_code=COUNTRY, mode="F"
+    )
     await profile_async("nato_member", sec.nato_member, country_code=COUNTRY, mode="F")
 
     section("Social Features — F mode")
@@ -166,7 +171,7 @@ async def main():
         print(f"  Shape: {panel.shape}")
         print(f"  Countries: {panel.index.get_level_values('country_iso3').nunique()}")
         try:
-            dates = panel.index.get_level_values('date')
+            dates = panel.index.get_level_values("date")
             print(f"  Date range: {dates.min()} -> {dates.max()}")
         except TypeError:
             print("  Date range: mixed types in index")

@@ -26,7 +26,6 @@ YfinanceEndpoints = [
 
 
 class Yfinance:
-
     def __init__(
         self,
         cache: RawCache | None = None,
@@ -87,8 +86,7 @@ class Yfinance:
         yf_interval = YFINANCE_INTERVAL_MAP.get(interval)
         if yf_interval is None:
             raise ValueError(
-                f"Interval {interval!r} not supported for stocks. "
-                f"Supported: {list(YFINANCE_INTERVAL_MAP.keys())}"
+                f"Interval {interval!r} not supported for stocks. Supported: {list(YFINANCE_INTERVAL_MAP.keys())}"
             )
 
         def _sync_history():
@@ -113,10 +111,7 @@ class Yfinance:
         df = df.rename(columns=rename)
 
         if "timestamp_ms" in df.columns:
-            df["timestamp_ms"] = (
-                pd.to_datetime(df["timestamp_ms"])
-                .astype("int64") // 10**6
-            )
+            df["timestamp_ms"] = pd.to_datetime(df["timestamp_ms"]).astype("int64") // 10**6
 
         keep = [c for c in ["timestamp_ms", "open", "high", "low", "close", "volume", "adj_close"] if c in df.columns]
         df = df[keep].copy()
@@ -153,7 +148,7 @@ if __name__ == "__main__":
         yf_source = Yfinance()
 
         for endpoint in YfinanceEndpoints:
-            data = await yf_source.fetch(endpoint=endpoint, symbol='AAPL')
+            data = await yf_source.fetch(endpoint=endpoint, symbol="AAPL")
 
             # Use .name or .value to get a clean string for the filename
             filename = f"{endpoint}.json"
