@@ -11,8 +11,14 @@ SEC_TAG_MAP = {
     "gross_profit": ["GrossProfit"],
     "operating_expenses": ["OperatingExpenses"],
     "operating_income": ["OperatingIncomeLoss"],
-    "interest_expense": ["InterestExpenseNonOperating"],
-    "pretax_income": ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"],
+    "interest_expense": [
+        "InterestExpenseNonOperating",
+        "InterestExpenseNonoperating",
+        "InterestExpense",
+    ],
+    "pretax_income": [
+        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+    ],
     "income_tax_expense": ["IncomeTaxExpenseBenefit"],
     "net_income": ["NetIncomeLoss"],
     "eps_basic": ["EarningsPerShareBasic"],
@@ -32,7 +38,10 @@ SEC_TAG_MAP = {
     "investing_cash_flow": ["NetCashProvidedByUsedInInvestingActivities"],
     "financing_cash_flow": ["NetCashProvidedByUsedInFinancingActivities"],
     "capital_expenditure": ["PaymentsToAcquirePropertyPlantAndEquipment"],
-    "shares_outstanding": ["EntityCommonStockSharesOutstanding"],
+    "shares_outstanding": [
+        "EntityCommonStockSharesOutstanding",
+        "CommonStockSharesOutstanding",
+    ],
     "weighted_average_shares_basic": ["WeightedAverageNumberOfSharesOutstandingBasic"],
     "weighted_average_shares_diluted": ["WeightedAverageNumberOfDilutedSharesOutstanding"],
     "dividends": ["PaymentsOfDividends"],
