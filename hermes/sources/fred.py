@@ -54,7 +54,7 @@ class FRED:
         self._url = "https://api.stlouisfed.org/fred/series/observations"
         self._api = api
 
-    async def _fetch(self, series_id: str | None = None, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
+    async def _fetch(self, series_id: str, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
 
         params = {"series_id": series_id, "api_key": self._api, "file_type": "json"}
 
@@ -101,3 +101,5 @@ class FRED:
             force=force,
             ttl=timedelta(days=30),
         )
+
+
