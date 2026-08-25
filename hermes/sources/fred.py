@@ -101,5 +101,3 @@ class FRED:
             force=force,
             ttl=timedelta(days=30),
         )
-
-
