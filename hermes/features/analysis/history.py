@@ -334,6 +334,10 @@ def _rolling_slope(series: pd.Series, window: int) -> np.ndarray:
     return result
 
 
+def _to_float(value: object) -> float:
+    return float(value)  # type: ignore
+
+
 def _extract_periods(facts: dict, quarters: int) -> list[dict]:
     seen_periods: set[tuple[int, str]] = set()
     rows: list[dict] = []
@@ -401,14 +405,14 @@ def _extract_funds_per_period(facts: dict, periods: list[dict], symbol: str) -> 
 
         if gp is None and r is not None and cor is not None:
             try:
-                period_facts["gross_profit"] = float(r) - float(cor)
+                period_facts["gross_profit"] = _to_float(r) - _to_float(cor)
             except (TypeError, ValueError):
                 pass
 
         gp = period_facts.get("gross_profit")
         if period_facts.get("operating_expenses") is None and gp is not None and oi is not None:
             try:
-                period_facts["operating_expenses"] = float(gp) - float(oi)
+                period_facts["operating_expenses"] = _to_float(gp) - _to_float(oi)
             except (TypeError, ValueError):
                 pass
 
