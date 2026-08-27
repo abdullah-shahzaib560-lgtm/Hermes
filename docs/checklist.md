@@ -771,3 +771,310 @@ Every feature added to Hermes should answer at least one of these:
 
 > **Can Hermes serve the data efficiently to downstream systems?**
 
+
+
+Hermes/
+├── .github/
+│   └── workflows/
+│       ├── publish.yml
+│       └── tests.yml
+│
+├── docs/
+│   ├── architecture/
+│   │   ├── overview.md
+│   │   ├── connectors.md
+│   │   ├── schemas.md
+│   │   ├── parsing.md
+│   │   ├── normalization.md
+│   │   ├── validation.md
+│   │   ├── metadata.md
+│   │   ├── provenance.md
+│   │   ├── storage.md
+│   │   ├── querying.md
+│   │   ├── versioning.md
+│   │   └── entities.md
+│   │
+│   ├── connectors/
+│   │   ├── binance.md
+│   │   ├── finnhub.md
+│   │   ├── fred.md
+│   │   ├── gdelt.md
+│   │   ├── imf.md
+│   │   ├── opensanctions.md
+│   │   ├── sec.md
+│   │   ├── world_bank.md
+│   │   └── yfinance.md
+│   │
+│   ├── analysis/
+│   │   ├── fundamentals.md
+│   │   └── technical.md
+│   │
+│   └── checklist.md
+│
+├── hermes/
+│   ├── __init__.py
+│   ├── constants.py
+│   │
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── acquire.py
+│   │   ├── data.py
+│   │   ├── datasets.py
+│   │   ├── entities.py
+│   │   ├── schemas.py
+│   │   └── storage.py
+│   │
+│   ├── acquisition/
+│   │   ├── __init__.py
+│   │   ├── client.py
+│   │   ├── cache.py
+│   │   ├── pagination.py
+│   │   ├── retry.py
+│   │   ├── rate_limit.py
+│   │   └── sync.py
+│   │
+│   ├── connectors/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── registry.py
+│   │   │
+│   │   ├── binance/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   └── mappings.py
+│   │   │
+│   │   ├── finnhub/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   └── mappings.py
+│   │   │
+│   │   ├── fred/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   └── mappings.py
+│   │   │
+│   │   ├── gdelt/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   ├── mappings.py
+│   │   │   └── helpers.py
+│   │   │
+│   │   ├── imf/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   └── mappings.py
+│   │   │
+│   │   ├── opensanctions/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   └── mappings.py
+│   │   │
+│   │   ├── sec/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   ├── mappings.py
+│   │   │   └── tags.py
+│   │   │
+│   │   ├── world_bank/
+│   │   │   ├── __init__.py
+│   │   │   ├── connector.py
+│   │   │   ├── parser.py
+│   │   │   ├── normalizer.py
+│   │   │   └── mappings.py
+│   │   │
+│   │   └── yfinance/
+│   │       ├── __init__.py
+│   │       ├── connector.py
+│   │       ├── parser.py
+│   │       ├── normalizer.py
+│   │       └── mappings.py
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── dataset.py
+│   │   ├── result.py
+│   │   ├── metadata.py
+│   │   ├── provenance.py
+│   │   ├── lineage.py
+│   │   └── versioning.py
+│   │
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── registry.py
+│   │   ├── entity.py
+│   │   ├── document.py
+│   │   ├── economic.py
+│   │   ├── financial.py
+│   │   ├── market.py
+│   │   ├── geopolitical.py
+│   │   └── security.py
+│   │
+│   ├── parsing/
+│   │   ├── __init__.py
+│   │   ├── engine.py
+│   │   ├── records.py
+│   │   └── errors.py
+│   │
+│   ├── normalization/
+│   │   ├── __init__.py
+│   │   ├── engine.py
+│   │   ├── mapping.py
+│   │   ├── rules.py
+│   │   └── errors.py
+│   │
+│   ├── validation/
+│   │   ├── __init__.py
+│   │   ├── engine.py
+│   │   ├── checks.py
+│   │   ├── contracts.py
+│   │   ├── reports.py
+│   │   └── errors.py
+│   │
+│   ├── metadata/
+│   │   ├── __init__.py
+│   │   ├── extractor.py
+│   │   ├── models.py
+│   │   └── registry.py
+│   │
+│   ├── entities/
+│   │   ├── __init__.py
+│   │   ├── registry.py
+│   │   ├── resolver.py
+│   │   ├── models.py
+│   │   ├── aliases.py
+│   │   ├── countries.py
+│   │   └── companies.py
+│   │
+│   ├── datasets/
+│   │   ├── __init__.py
+│   │   ├── registry.py
+│   │   ├── catalog.py
+│   │   └── models.py
+│   │
+│   ├── storage/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── filesystem.py
+│   │   ├── parquet.py
+│   │   └── duckdb.py
+│   │
+│   ├── query/
+│   │   ├── __init__.py
+│   │   ├── engine.py
+│   │   ├── filters.py
+│   │   └── expressions.py
+│   │
+│   ├── export/
+│   │   ├── __init__.py
+│   │   ├── csv.py
+│   │   ├── json.py
+│   │   ├── parquet.py
+│   │   └── arrow.py
+│   │
+│   └── features/
+│       ├── __init__.py
+│       ├── registry.py
+│       ├── decorator.py
+│       │
+│       ├── financial/
+│       │   ├── __init__.py
+│       │   ├── crypto.py
+│       │   ├── fundamental.py
+│       │   ├── stocks.py
+│       │   ├── technical.py
+│       │   └── filing.py
+│       │
+│       └── country_risk/
+│           ├── __init__.py
+│           ├── economic.py
+│           ├── environmental.py
+│           ├── geopolitical.py
+│           ├── security.py
+│           ├── social.py
+│           └── pipeline.py
+│
+├── data/
+│   └── datasets/
+│       ├── crs.csv
+│       ├── cvs.csv
+│       ├── fsi.csv
+│       ├── global_cpi_all.csv
+│       ├── hdi1.csv
+│       ├── hrs.csv
+│       ├── nato.csv
+│       └── sipri.csv
+│
+├── scripts/
+│   ├── sync.py
+│   ├── validate.py
+│   └── profile.py
+│
+├── tests/
+│   ├── conftest.py
+│   │
+│   ├── unit/
+│   │   ├── acquisition/
+│   │   │   ├── test_cache.py
+│   │   │   ├── test_retry.py
+│   │   │   ├── test_pagination.py
+│   │   │   └── test_sync.py
+│   │   ├── parsing/
+│   │   ├── normalization/
+│   │   ├── validation/
+│   │   ├── metadata/
+│   │   ├── entities/
+│   │   ├── schemas/
+│   │   ├── storage/
+│   │   └── query/
+│   │
+│   ├── connectors/
+│   │   ├── test_binance.py
+│   │   ├── test_finnhub.py
+│   │   ├── test_fred.py
+│   │   ├── test_gdelt.py
+│   │   ├── test_imf.py
+│   │   ├── test_opensanctions.py
+│   │   ├── test_sec.py
+│   │   ├── test_world_bank.py
+│   │   └── test_yfinance.py
+│   │
+│   ├── features/
+│   │   ├── test_economic.py
+│   │   ├── test_environmental.py
+│   │   ├── test_financial.py
+│   │   ├── test_fundamental.py
+│   │   ├── test_geopolitical.py
+│   │   ├── test_security.py
+│   │   ├── test_social.py
+│   │   ├── test_technical.py
+│   │   └── test_pipeline.py
+│   │
+│   └── integration/
+│       ├── test_pipeline.py
+│       ├── test_storage.py
+│       └── test_end_to_end.py
+│
+├── .env.example
+├── .gitignore
+├── .python-version
+├── LICENSE.md
+├── README.md
+├── cmd.sh
+├── main.py
+├── pyproject.toml
+└── uv.lock
