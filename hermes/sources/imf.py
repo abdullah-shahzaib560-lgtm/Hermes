@@ -50,7 +50,8 @@ class IMF:
                         return empty
                     logger.error(f"HTTP error: {e.status}")
                     raise
-
+        return r
+        """
         data = r["data"]
         structure = data["structures"][0]
 
@@ -104,6 +105,7 @@ class IMF:
 
         df = df.reset_index()
         return df
+    """
 
     async def fetch(
         self,
@@ -138,3 +140,18 @@ class IMF:
             force=force,
             ttl=timedelta(days=7),
         )
+
+async def main():
+    import json
+    imf = IMF()
+    data = await imf._fetch(country='USA', agency="IMF.RES", dataflow_id="WEO", key="GGXWDG_NGDP")
+    with open('data/imf.json', 'w') as file:
+        json.dump(data, file, indent=4)
+    print('Done')
+
+# 2. Use asyncio.run to execute the coroutine
+if __name__ == '__main__':
+    import os
+    os.makedirs('data', exist_ok=True)
+    asyncio.run(main())
+
