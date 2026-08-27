@@ -1,5 +1,3 @@
-Absolutely. I'd make it an **internal engineering checklist**, not an explanation. Something contributors can open and work through.
-
 # Hermes Data Platform — Internal Engineering Checklist
 
 > **Goal:** Hermes must acquire external data, preserve the source truth, transform it into stable Hermes representations, validate it, track its provenance, and make it reliably available to downstream systems.
