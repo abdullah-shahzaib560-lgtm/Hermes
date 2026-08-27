@@ -50,62 +50,53 @@ class IMF:
                         return empty
                     logger.error(f"HTTP error: {e.status}")
                     raise
-        return r
-        """
-        data = r["data"]
-        structure = data["structures"][0]
+        return r['data']
 
-        series_dims = structure["dimensions"]["series"]
-        obs_dim = structure["dimensions"]["observation"][0]
-        time_values = [v["value"] for v in obs_dim["values"]]
 
-        dataset = data["dataSets"][0]
-        if "series" not in dataset:
-            logger.warning(f"No data: country={country}, dataflow={dataflow_id}, key={key}")
-            return empty
+    async def normalize(self, data):
+        _obs = data['dataSets']['series']['0:0:0']['observations']
+        obs = []
+        for key, value in _obs.items():
+            obs.append(str(value))
 
-        INDICATOR_DIM_CANDIDATES = ["INDICATOR", "INDEX_TYPE"]
+        _freq = data['structures'][0]['dimensions']['series']
 
-        rows = []
-        for series_key, series_obj in dataset["series"].items():
-            indices = [int(i) for i in series_key.split(":")]
-            dim_values = {dim["id"]: dim["values"][idx]["id"] for dim, idx in zip(series_dims, indices)}
+        for idx, _fr in enumerate(_freq):
 
-            indicator_id = next(
-                (dim_values[c] for c in INDICATOR_DIM_CANDIDATES if c in dim_values),
-                key,
-            )
-            country_val = dim_values.get("COUNTRY", country)
+            if _fr['id'].value() == "FREQUENCY":
+                logger.info('frequency is found')
+                freq_idx = idx
 
-            for obs_idx, obs_val in series_obj["observations"].items():
-                raw_val = obs_val[0]
-                if raw_val is None:
-                    continue
-                row = {
-                    "date": time_values[int(obs_idx)],
-                    "indicator_id": indicator_id,
-                    "country": country_val,
-                    "value": float(raw_val),
-                    "source": "IMF",
-                }
+            else:
+                logger.info('frequency is not found')
 
-                for dim_id, dim_val in dim_values.items():
-                    row.setdefault(dim_id, dim_val)
-                rows.append(row)
+        freq_values = len(_freq['values'])
+        if freq_values > 1: logger.info('There are multiple freq taking the first value')
 
-        df = pd.DataFrame(rows)
+        freq = _freq['values'][freq_idx]
+        ind =  data['structures'][0]['dimensions']['series']
 
-        df.set_index("date", inplace=True)
-        df.sort_index(ascending=False, inplace=True)
+        for idx, i in enumerate(ind):
+            if i['id'].value() == 'INDICATOR':
+                logger.info('INDICATOR is found')
+                ind_idx = idx
 
-        req = ["indicator_id", "country", "value", "source"]
-        missing = [c for c in req if c not in df.columns]
-        if missing:
-            logger.warning(f"Missing expected columns {missing} for {dataflow_id}/{key}")
+            else:
+                logger.info('INDICATOR is not found')
 
-        df = df.reset_index()
-        return df
-    """
+        _time = data['structures'][0]['dimensions']['observation'][0]
+        time = []
+        if _time['id'] != 'TIME_PERIOD':
+            logger.warning('The Dates are not in the places')
+
+        for key, value in _time['values'].items():
+            time.append(int(value))
+
+        observation = pd.Series(obs)
+        frequency = pd.Series(freq)
+        Time = pd.Series(time)
+        df = pd.concat([observation, frequency, Time], axis=1)
+        df['indicator'] = f'{data}'
 
     async def fetch(
         self,
