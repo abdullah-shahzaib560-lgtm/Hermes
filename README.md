@@ -317,7 +317,7 @@ GitHub Actions (`.github/workflows/publish.yml`) runs on push/PR to `main` and o
 
 ## License
 
-MIT — see [LICENSE.md](LICENSE.md).
+Hermes Non-Commercial License — free for individuals and small-scale internal use; large-scale use (e.g. big organizations or big-data pipelines) and any paid/managed-cloud offering to third parties require a separate paid commercial license. See [LICENSE.md](LICENSE.md).
 
 ## Roadmap
 

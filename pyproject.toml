@@ -4,14 +4,14 @@ version = "0.2.13"
 description = "Foundational intelligence data platform for acquiring, validating, normalizing, storing, and serving intelligence datasets"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { text = "Hermes Non-Commercial License" }
 authors = [
     { name = "Haider Ali" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
