@@ -10,11 +10,6 @@ from hermes.sources.yf import Yfinance
 
 logger = logging.getLogger(__name__)
 
-
-
-
-
-
 def _to_float(value: object) -> float:
     return float(value)  # type: ignore
 
@@ -110,7 +105,7 @@ def _extract_funds_per_period(facts: dict, periods: list[dict], symbol: str) -> 
 
     return result_rows
 
-class FAHistory:
+class CompanyFiling:
     def __init__(
         self,
         finnhub_api: str,
@@ -191,7 +186,7 @@ class FAHistory:
             rows = _extract_funds_per_period(facts, periods, symbol)
             if rows:
                 df_sym = pd.DataFrame(rows)
-                df_sym = FAHistory._compute_fundamental_features(df_sym)
+                df_sym = CompanyFiling._compute_fundamental_features(df_sym)
                 all_dfs.append(df_sym)
 
         if not all_dfs:

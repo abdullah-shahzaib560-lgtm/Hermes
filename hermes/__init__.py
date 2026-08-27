@@ -5,9 +5,10 @@ from hermes.core.cache import RawCache
 from hermes.core.countries import countries
 from hermes.core.features import features
 from hermes.features import pipeline as features_pipeline
-from hermes.features.analysis.fundamental import FAfeatures
-from hermes.features.analysis.history import FAHistory, TAHistory
-from hermes.features.analysis.technical import TAfeatures
+from hermes.features.financial.crpto import CryptoHistory
+from hermes.features.financial.filling import CompanyFiling
+from hermes.features.financial.fundamental import FAfeatures
+from hermes.features.financial.technical import TAfeatures
 from hermes.sources.binance import Binance
 from hermes.sources.finnhub import FINNHUB
 from hermes.sources.fred import FRED
@@ -59,8 +60,8 @@ class Hermes:
             sec_username=sec_username,
             sec_email=sec_email,
         )
-        self.ta_history = TAHistory()
-        self.fa_history = FAHistory(
+        self.crypto_history = CryptoHistory()
+        self.filling_history = CompanyFiling(
             finnhub_api=finnhub_api,
             sec_email=sec_email,
             sec_username=sec_username,
