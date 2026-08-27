@@ -1,4 +1,4 @@
-from hermes.core.models.analysis.fundamental import CompanyFundamental
+from hermes.core.models.finance.fundamental import CompanyFundamental
 from hermes.sources.finnhub import FINNHUB
 from hermes.sources.fred import FRED
 from hermes.sources.lib.sec_tag import SEC_TAG_MAP
