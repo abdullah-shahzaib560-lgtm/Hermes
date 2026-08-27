@@ -9,7 +9,7 @@ from hermes.sources.lib.sec_tag import SEC_TAG_MAP
 logger = logging.getLogger(__name__)
 
 
-class TAHistory:
+class CryptoHistory:
     def __init__(self):
         self.binance = Binance()
 
