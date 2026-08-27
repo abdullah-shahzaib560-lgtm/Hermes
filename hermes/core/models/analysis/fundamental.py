@@ -4,7 +4,7 @@ from datetime import date
 
 @dataclass
 class CompanyFundamental:
-    ticker: str
+    symbol: str
     filing_date: date
     fiscal_period: str
     fiscal_year: int
