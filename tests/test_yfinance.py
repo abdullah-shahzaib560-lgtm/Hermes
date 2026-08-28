@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from hermes.sources.yf import Yfinance
+from hermes.connectors.yfinance import Yfinance
 
 
 class TestYfinance:
@@ -15,7 +15,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.earnings_estimate = mock_df
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             result = await yf._fetch(endpoint="eps_estimate", symbol="AAPL")
             assert result is not None
             assert "avg" in result
@@ -26,7 +26,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.revenue_estimate = mock_df
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             result = await yf._fetch(endpoint="revenue_estimate", symbol="AAPL")
             assert result is not None
             assert "avg" in result
@@ -37,7 +37,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.earnings_history = mock_df
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             result = await yf._fetch(endpoint="earnings_history", symbol="AAPL")
             assert result is not None
             assert "surprisePercent" in result
@@ -47,7 +47,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.info = {}
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             with pytest.raises(ValueError, match="Unsupported endpoint"):
                 await yf._fetch(endpoint="bad_endpoint", symbol="AAPL")
 
@@ -56,7 +56,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.earnings_estimate = None
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             result = await yf._fetch(endpoint="eps_estimate", symbol="AAPL")
             assert result is None
 
@@ -66,7 +66,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.earnings_estimate = mock_df
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             result = await yf._fetch(endpoint="eps_estimate", symbol="AAPL")
             assert result is None
 
@@ -76,7 +76,7 @@ class TestYfinance:
         mock_ticker = MagicMock()
         mock_ticker.earnings_estimate = mock_df
 
-        with patch("hermes.sources.yf.yf.Ticker", return_value=mock_ticker):
+        with patch("hermes.connectors.yfinance.connector.yf.Ticker", return_value=mock_ticker):
             r1 = await yf.fetch(endpoint="eps_estimate", symbol="AAPL")
             r2 = await yf.fetch(endpoint="eps_estimate", symbol="AAPL")
             assert mock_ticker.earnings_estimate is not None

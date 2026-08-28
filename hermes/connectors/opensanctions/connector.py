@@ -5,8 +5,8 @@ from functools import partial
 
 import aiohttp
 
-from hermes.core.cache import RawCache
-from hermes.core.helper import iso3_to_iso2
+from hermes.acquisition.cache import RawCache
+from hermes.entities.countries import iso3_to_iso2
 
 logger = logging.getLogger(__name__)
 

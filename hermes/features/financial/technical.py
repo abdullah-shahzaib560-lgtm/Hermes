@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 import numpy as np
 import pandas as pd
 
-from hermes.core.models.finance.technical import TechnicalSnapshot
-from hermes.sources.binance import Binance
+from hermes.connectors.binance import Binance
+from hermes.features.financial.models.technical import TechnicalSnapshot
 
 
 class TAfeatures:

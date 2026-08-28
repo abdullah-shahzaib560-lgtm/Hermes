@@ -1,27 +1,24 @@
+from hermes.acquisition.cache import RawCache
+from hermes.connectors.binance import Binance
+from hermes.connectors.finnhub import FINNHUB
+from hermes.connectors.fred import FRED
+from hermes.connectors.gdelt import GDELT
+from hermes.connectors.imf import IMF
+from hermes.connectors.opensanctions import OpenSanction
+from hermes.connectors.public_data import PUBLIC_DATASET
+from hermes.connectors.sec import SECEDGAR
+from hermes.connectors.world_bank import World_bank
+from hermes.connectors.yfinance import Yfinance
 from hermes.constants import CANONICAL_FREQS as CANONICAL_FREQS
 from hermes.constants import SYMBOLS as SYMBOLS
 from hermes.constants import TICKERS as TICKERS
-
-from hermes.core.cache import RawCache
 from hermes.entities.countries import countries
-from hermes.core.features import features
-
 from hermes.features import pipeline as features_pipeline
 from hermes.features.financial.crpto import CryptoHistory
 from hermes.features.financial.filling import CompanyFiling
 from hermes.features.financial.fundamental import FAfeatures
 from hermes.features.financial.technical import TAfeatures
-
-from hermes.sources.binance import Binance
-from hermes.sources.finnhub import FINNHUB
-from hermes.sources.fred import FRED
-from hermes.sources.gdelt import GDELT
-from hermes.sources.imf import IMF
-from hermes.sources.opensanctions import OpenSanction
-from hermes.sources.public_data import PUBLIC_DATASET
-from hermes.sources.sec_edgar import SECEDGAR
-from hermes.sources.world_bank import World_bank
-from hermes.sources.yf import Yfinance
+from hermes.features.registry import features
 
 
 class Hermes:

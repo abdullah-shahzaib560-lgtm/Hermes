@@ -3,10 +3,10 @@ from typing import Literal
 
 import pandas as pd
 
-from hermes.core.feature_decorator import feature
-from hermes.core.helper import adjust_year_range, check_empty
-from hermes.sources.imf import IMF
-from hermes.sources.world_bank import World_bank
+from hermes.connectors.imf import IMF
+from hermes.connectors.world_bank import World_bank
+from hermes.features.country_risk_features.utils import adjust_year_range, check_empty
+from hermes.features.decorator import feature
 
 logger = logging.getLogger(__name__)
 

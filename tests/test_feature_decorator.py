@@ -3,7 +3,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from hermes.core.feature_decorator import LineageGraph, TieredPlan, feature, lineagegraph
+from hermes.features.decorator import LineageGraph, TieredPlan, feature, lineagegraph
 
 
 class TestTieredPlan:

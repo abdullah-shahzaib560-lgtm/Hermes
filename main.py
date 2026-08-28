@@ -9,7 +9,7 @@ from io import StringIO
 from dotenv import load_dotenv
 
 from hermes import Hermes
-from hermes.core.feature_decorator import lineagegraph
+from hermes.features.decorator import lineagegraph
 
 load_dotenv()
 

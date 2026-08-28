@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from hermes.core.helper import iso3_to_iso2
-from hermes.sources.imf import IMF
+from hermes.connectors.imf import IMF
+from hermes.entities.countries import iso3_to_iso2
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -88,7 +88,7 @@ class TestIMF:
         mock_resp = _mock_aiohttp_response(sample_sdmx_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.imf.connector.aiohttp.ClientSession", return_value=mock_session):
             df = await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
             assert not df.empty
             assert df["value"].iloc[0] == 110.5
@@ -113,7 +113,7 @@ class TestIMF:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.imf.connector.aiohttp.ClientSession", return_value=mock_session):
             df = await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")
             assert df.empty
 
@@ -122,7 +122,7 @@ class TestIMF:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.imf.connector.aiohttp.ClientSession", return_value=mock_session):
             df = await imf._fetch("USA", "IMF.STA", "BAD", "X")
             assert df.empty
 
@@ -131,6 +131,6 @@ class TestIMF:
         mock_resp = _mock_aiohttp_response({}, status=500)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.imf.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.imf.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await imf._fetch("USA", "IMF.STA", "PPI", "PPI.IX.A")

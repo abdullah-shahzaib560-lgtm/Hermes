@@ -90,5 +90,5 @@ module = "hermes.features.country_risk_features.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "hermes.sources.*"
+module = "hermes.connectors.*"
 ignore_errors = true

@@ -14,9 +14,10 @@ from hermes.constants import (
     FINNHUB_RESOLUTION_MAP,
     YFINANCE_INTERVAL_MAP,
 )
-from hermes.features.analysis.history import (
-    FAHistory,
-    TAHistory,
+from hermes.features.financial.crpto import (
+    CryptoHistory as TAHistory,
+)
+from hermes.features.financial.crpto import (
     _extract_funds_per_period,
     _extract_periods,
     _macd,
@@ -24,6 +25,7 @@ from hermes.features.analysis.history import (
     _rolling_slope,
     _rsi,
 )
+from hermes.features.financial.filling import CompanyFiling as FAHistory
 
 
 class TestFreqMappings:
@@ -650,7 +652,7 @@ class TestFAHistoryAsync:
 
 class TestBinanceBuildUrlWithTime:
     def test_ohlcv_with_start_end_time(self):
-        from hermes.sources.binance import Binance
+        from hermes.connectors.binance import Binance
 
         b = Binance(cache=None)
         url, params = b._build_url(
@@ -667,7 +669,7 @@ class TestBinanceBuildUrlWithTime:
         assert params["symbol"] == "BTCUSDT"
 
     def test_ohlcv_without_time_params(self):
-        from hermes.sources.binance import Binance
+        from hermes.connectors.binance import Binance
 
         b = Binance(cache=None)
         url, params = b._build_url(

@@ -8,7 +8,7 @@ Single-point-in-time dataclass with ~50 features including orderbook, trades, fu
 class TechnicalSnapshot:
     symbol: str
     timestamp_ms: int
-    # ... (see hermes/core/models/analysis/technical.py)
+    # ... (see hermes/features/financial/models/technical.py)
 ```
 
 > Snapshot mode returns a single row. Use `ta_feature.get_technical(symbol)`.

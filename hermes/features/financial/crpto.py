@@ -3,8 +3,8 @@ import logging
 import numpy as np
 import pandas as pd
 
-from hermes.sources.binance import Binance
-from hermes.sources.lib.sec_tag import SEC_TAG_MAP
+from hermes.connectors.binance import Binance
+from hermes.connectors.sec.tags import SEC_TAG_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -425,5 +425,3 @@ def _extract_funds_per_period(facts: dict, periods: list[dict], symbol: str) -> 
         )
 
     return result_rows
-
-

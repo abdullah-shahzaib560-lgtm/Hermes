@@ -6,7 +6,10 @@ from functools import partial
 import aiohttp
 import pandas as pd
 
-from hermes.core.cache import RawCache
+from hermes.acquisition.cache import RawCache
+from hermes.connectors.imf.mappings import IMF_BASE_URL
+from hermes.connectors.imf.normalizer import normalize_sdmx
+from hermes.connectors.imf.parser import empty_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +17,7 @@ logger = logging.getLogger(__name__)
 class IMF:
     def __init__(self, cache: RawCache | None = None):
         self._cache = cache or RawCache()
-        self.url: str = "https://api.imf.org/external/sdmx/3.0/data/dataflow/"
+        self.url: str = IMF_BASE_URL
 
     async def _fetch(
         self,
@@ -26,11 +29,10 @@ class IMF:
         timeout: float = 30.0,
         retries: int = 3,
     ) -> pd.DataFrame:
-
         url = f"{self.url}{agency}/{dataflow_id}/{version}/{country}.{key}"
         headers = {"Accept": "application/json"}
 
-        empty = pd.DataFrame(columns=["date", "indicator_id", "country", "value", "source"])
+        empty = empty_dataframe()
 
         r = None
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as client:
@@ -50,53 +52,10 @@ class IMF:
                         return empty
                     logger.error(f"HTTP error: {e.status}")
                     raise
-        return r['data']
-
+        return r["data"]
 
     async def normalize(self, data):
-        _obs = data['dataSets']['series']['0:0:0']['observations']
-        obs = []
-        for key, value in _obs.items():
-            obs.append(str(value))
-
-        _freq = data['structures'][0]['dimensions']['series']
-
-        for idx, _fr in enumerate(_freq):
-
-            if _fr['id'].value() == "FREQUENCY":
-                logger.info('frequency is found')
-                freq_idx = idx
-
-            else:
-                logger.info('frequency is not found')
-
-        freq_values = len(_freq['values'])
-        if freq_values > 1: logger.info('There are multiple freq taking the first value')
-
-        freq = _freq['values'][freq_idx]
-        ind =  data['structures'][0]['dimensions']['series']
-
-        for idx, i in enumerate(ind):
-            if i['id'].value() == 'INDICATOR':
-                logger.info('INDICATOR is found')
-                ind_idx = idx
-
-            else:
-                logger.info('INDICATOR is not found')
-
-        _time = data['structures'][0]['dimensions']['observation'][0]
-        time = []
-        if _time['id'] != 'TIME_PERIOD':
-            logger.warning('The Dates are not in the places')
-
-        for key, value in _time['values'].items():
-            time.append(int(value))
-
-        observation = pd.Series(obs)
-        frequency = pd.Series(freq)
-        Time = pd.Series(time)
-        df = pd.concat([observation, frequency, Time], axis=1)
-        df['indicator'] = f'{data}'
+        return normalize_sdmx(data)
 
     async def fetch(
         self,
@@ -108,7 +67,6 @@ class IMF:
         retries: int = 3,
         force: bool = False,
     ) -> pd.DataFrame:
-
         cache_params = {
             "country": country,
             "key": key,
@@ -131,18 +89,3 @@ class IMF:
             force=force,
             ttl=timedelta(days=7),
         )
-
-async def main():
-    import json
-    imf = IMF()
-    data = await imf._fetch(country='USA', agency="IMF.RES", dataflow_id="WEO", key="GGXWDG_NGDP")
-    with open('data/imf.json', 'w') as file:
-        json.dump(data, file, indent=4)
-    print('Done')
-
-# 2. Use asyncio.run to execute the coroutine
-if __name__ == '__main__':
-    import os
-    os.makedirs('data', exist_ok=True)
-    asyncio.run(main())
-

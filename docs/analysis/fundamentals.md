@@ -8,7 +8,7 @@ Single-point-in-time dataclass with SEC filings, Finnhub metrics, Yahoo Finance 
 class CompanyFundamental:
     ticker: str
     filing_date: date
-    # ... (see hermes/core/models/analysis/fundamental.py)
+    # ... (see hermes/features/financial/models/fundamental.py)
 ```
 
 > Snapshot mode returns a single row. Use `fa_features.get_fundamentels(symbol)`.

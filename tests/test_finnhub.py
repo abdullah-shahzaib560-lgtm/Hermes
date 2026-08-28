@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from hermes.sources.finnhub import FINNHUB
+from hermes.connectors.finnhub import FINNHUB
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -69,7 +69,7 @@ class TestFinnhubFetch:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.finnhub.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.finnhub.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await finn._fetch(endpoint="quote", symbol="AAPL")
             assert result["c"] == 150.0
 
@@ -79,7 +79,7 @@ class TestFinnhubFetch:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.finnhub.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.finnhub.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await finn._fetch(endpoint="profile", symbol="AAPL")
             assert result["ticker"] == "AAPL"
 
@@ -93,7 +93,7 @@ class TestFinnhubFetch:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.finnhub.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.finnhub.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await finn._fetch(endpoint="quote", symbol="BAD")
             assert result is None
 
@@ -102,7 +102,7 @@ class TestFinnhubFetch:
         mock_resp = _mock_aiohttp_response({}, status=500)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.finnhub.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.finnhub.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await finn._fetch(endpoint="quote", symbol="AAPL")
 
@@ -112,6 +112,6 @@ class TestFinnhubFetch:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.finnhub.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.finnhub.connector.aiohttp.ClientSession", return_value=mock_session):
             r1 = await finn.fetch(endpoint="quote", symbol="AAPL")
             assert r1 == mock_response

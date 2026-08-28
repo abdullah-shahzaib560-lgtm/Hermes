@@ -39,35 +39,40 @@ Hermes exists to hide that complexity behind one facade, so analysts and enginee
         │                        │
         ▼                        ▼
 ┌────────────────┐      ┌───────────────────────────────┐
-│ sources/       │      │ features/                     │
-│ connectors     │      │ country_risk_features         │
-│                │      │ pipeline + 5 feature groups   │
-│ world_bank     │◄────►│ (eco · geo · sec · soc · env) │
-│ imf            │      │ @feature decorator → lineage  │
-│ gdelt          │      └───────────────────────────────┘
-│ opensanctions  │      │ features/analysis             │
-│ public_data    │      │ technical · fundamental       │
+│ connectors/    │      │ features/                     │
+│ per-source     │      │ country_risk_features         │
+│ packages       │      │ pipeline + 5 feature groups   │
+│                │      │ (eco · geo · sec · soc · env) │
+│ world_bank     │◄────►│ @feature decorator → lineage  │
+│ imf            │      └───────────┬───────────────────┘
+│ gdelt          │      │ financial                     │
+│ opensanctions  │      │ technical · fundamental       │
+│ public_data    │      │ models · history              │
 │ fred           │      └───────────────────────────────┘
 │ binance        │
 │ finnhub        │
-│ sec_edgar      │
+│ sec            │
 │ yfinance       │
 └───────┬────────┘
         ▼
-┌────────────────┐
-│ core/          │
-│ cache (RawCache│ parquet + meta.json, TTLs, stats
-│ countries      │ ISO3 listing + validation
-│ export         │ csv / json / parquet
-│ feature_decorator │ lineage graph, tiered plans
-│ helper         │ iso3↔iso2, empty-result guards
-│ models         │ pydantic models for analysis features
+┌────────────────┐      ┌────────────────┐
+│ acquisition/   │      │ entities/      │
+│ cache (RawCache│      │ countries (iso3│
+│ parquet+meta   │      │  ↔ iso2, check)│
+│ TTLs, stats)   │      │ companies (cik)│
+└────────────────┘      └────────────────┘
+          ┌──────────────┴───────────────┐
+          ▼                              ▼
+┌────────────────┐             ┌────────────────┐
+│ export/        │             │ core/          │
+│ csv / json /   │             │ scheduler      │
+│ parquet        │             └────────────────┘
 └────────────────┘
 ```
 
 - **Facade** — `Hermes` bundles connectors, the feature pipeline, analysis features, and cache controls into one object.
-- **Connectors** — one class per source family (`sources/`), each exposing an async `fetch(...)` backed by `RawCache`.
-- **Feature layer** — five group modules (`economic`, `geopolitical`, `security`, `social`, `environmental`). Every feature is registered via the `@feature(name, group, deps, compute)` decorator, which populates a lineage graph (`core/feature_decorator.py`) used to resolve dependency tiers for a group.
+- **Connectors** — one package per source family (`connectors/<source>/`: `connector.py`, `parser.py`, `normalizer.py`, `mappings.py`), each exposing an async `fetch(...)` backed by `RawCache`.
+- **Feature layer** — five group modules (`economic`, `geopolitical`, `security`, `social`, `environmental`). Every feature is registered via the `@feature(name, group, deps, compute)` decorator, which populates a lineage graph (`features/decorator.py`) used to resolve dependency tiers for a group.
 - **Analysis features** — `TAfeatures` (technical analysis from Binance data) and `FAfeatures` (fundamental analysis from Finnhub, SEC EDGAR, FRED, Yahoo Finance).
 - **Pipeline** — `get_country_risk_features()` computes all features of a group concurrently via `asyncio.gather`; `build_training_panel()` assembles multi-country monthly panels.
 - **Cache** — `RawCache` stores normalized raw responses as Parquet files with sidecar `.meta.json` (params, cached_at, row/column stats), per-source TTLs, expiry-based eviction, and hit/miss statistics.
@@ -190,7 +195,7 @@ ta_snapshot = await hr.ta_feature.snapshot("BTCUSDT")
 fa_snapshot = await hr.fa_feature.snapshot("AAPL")
 
 # Export anything to csv / json / parquet
-from hermes.core.export import export
+from hermes.export import export
 
 export(data=panel, filetype="parquet", name="training_panel")
 ```
@@ -260,7 +265,7 @@ Every feature is `async fn(country_code: str, mode: "F" | "ML")`:
 | [Finnhub](https://finnhub.io/) | stock market data (quotes, candles, fundamentals, insider trades, ...) | API key | varies |
 | [SEC EDGAR](https://www.sec.gov/edgar) | company financial facts (XBRL filings) | User-Agent required | 7 days |
 | [Yahoo Finance](https://finance.yahoo.com/) | earnings estimates, revenue estimates, earnings history | none | 7 days |
-| Bundled datasets (`sources/lib/datasets/`) | HDX CPI, Human Development Index, Fragile State Index, Human Rights Score, NATO membership, climate vulnerability/readiness, crisis risk | none | static |
+| Bundled datasets (`connectors/lib/datasets/`) | HDX CPI, Human Development Index, Fragile State Index, Human Rights Score, NATO membership, climate vulnerability/readiness, crisis risk | none | static |
 
 ### Feature groups (~58 features)
 
@@ -292,8 +297,7 @@ Coverage is collected from the `hermes` package (`tests/` omitted); `asyncio_mod
 |---|---|
 | `test_cache.py` | `RawCache` put/get, TTL expiry, corruption, stats, clear |
 | `test_feature_decorator.py` | `@feature` decorator, `LineageGraph`, `TieredPlan` |
-| `test_economic_features.py` | All 18 economic features + `core.helper` utilities |
-| `test_gdelt.py` | GDELT connector, theme classification, FIPS mapping, canonical schema |
+| `test_economic_features.py` | All 18 economic features + country/shared utilities |
 | `test_imf.py` | IMF SDMX connector, ISO3→ISO2 mapping |
 | `test_opensanctions.py` | OpenSanctions connector |
 | `test_world_bank.py` | World Bank connector, cache integration |
