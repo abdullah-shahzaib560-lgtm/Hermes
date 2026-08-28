@@ -1,14 +1,17 @@
 from hermes.constants import CANONICAL_FREQS as CANONICAL_FREQS
 from hermes.constants import SYMBOLS as SYMBOLS
 from hermes.constants import TICKERS as TICKERS
+
 from hermes.core.cache import RawCache
-from hermes.core.countries import countries
+from hermes.entities.countries import countries
 from hermes.core.features import features
+
 from hermes.features import pipeline as features_pipeline
 from hermes.features.financial.crpto import CryptoHistory
 from hermes.features.financial.filling import CompanyFiling
 from hermes.features.financial.fundamental import FAfeatures
 from hermes.features.financial.technical import TAfeatures
+
 from hermes.sources.binance import Binance
 from hermes.sources.finnhub import FINNHUB
 from hermes.sources.fred import FRED
@@ -41,7 +44,7 @@ class Hermes:
         self.lf = features(os_api=opensanction_api)
         self.list_features = self.lf.list_features()
 
-        self.gdelt = GDELT(cache=self._cache)
+        self.gdelt = GDELT()
         self.imf = IMF(cache=self._cache)
         self.opensanction = OpenSanction(api_key=opensanction_api, cache=self._cache)
         self.world_bank = World_bank(cache=self._cache)
