@@ -45,18 +45,18 @@ External Source
 
 # 1. Repository Refactor
 
-* [ ] Refactor current repository toward the new architecture.
-* [ ] Rename `hermes/sources/` → `hermes/connectors/`.
-* [ ] Reduce the responsibility of `hermes/core/`.
-* [ ] Move acquisition infrastructure out of `core/`.
-* [ ] Move country/entity functionality into `entities/`.
-* [ ] Move feature infrastructure into `features/`.
-* [ ] Remove `core/helper.py`.
-* [ ] Move functionality from `helper.py` into the appropriate subsystem.
-* [ ] Separate data infrastructure from feature engineering.
-* [ ] Create architecture documentation.
-* [ ] Preserve existing public API behavior where possible.
-* [ ] Run the existing test suite before and after each major refactor.
+* [x] Refactor current repository toward the new architecture.
+* [x] Rename `hermes/sources/` → `hermes/connectors/`.
+* [x] Reduce the responsibility of `hermes/core/`.
+* [x] Move acquisition infrastructure out of `core/`.
+* [x] Move country/entity functionality into `entities/`.
+* [x] Move feature infrastructure into `features/`.
+* [x] Remove `core/helper.py`.
+* [x] Move functionality from `helper.py` into the appropriate subsystem.
+* [x] Separate data infrastructure from feature engineering.
+* [x] Create architecture documentation.
+* [x] Preserve existing public API behavior where possible.
+* [x] Run the existing test suite before and after each major refactor.
 
 ---
 
@@ -76,12 +76,12 @@ hermes/core/
 
 ### Tasks
 
-* [ ] Create `Dataset` abstraction.
-* [ ] Define dataset identity.
-* [ ] Define dataset name.
-* [ ] Define dataset ID.
+* [x] Create `Dataset` abstraction.
+* [x] Define dataset identity.
+* [x] Define dataset name.
+* [x] Define dataset ID.
 * [ ] Define dataset schema reference.
-* [ ] Define dataset version.
+* [x] Define dataset version.
 * [ ] Define dataset metadata reference.
 * [ ] Define provenance reference.
 * [ ] Define lineage reference.
@@ -380,7 +380,7 @@ hermes/acquisition/
 
 ### Tasks
 
-* [ ] Move current cache implementation.
+* [x] Move current cache implementation.
 * [ ] Move retry logic.
 * [ ] Move pagination logic.
 * [ ] Create common HTTP client.
@@ -830,8 +830,8 @@ hermes/features/
 
 ### Tasks
 
-* [ ] Move feature registry.
-* [ ] Move feature decorator.
+* [x] Move feature registry.
+* [x] Move feature decorator.
 * [ ] Refactor financial features.
 * [ ] Refactor country-risk features.
 * [ ] Make features consume canonical Hermes datasets.
