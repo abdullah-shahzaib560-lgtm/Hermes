@@ -1,1080 +1,1080 @@
-# Hermes Data Platform — Internal Engineering Checklist
+# Hermes — Internal Engineering Tasks
 
-> **Goal:** Hermes must acquire external data, preserve the source truth, transform it into stable Hermes representations, validate it, track its provenance, and make it reliably available to downstream systems.
+## 0. Project Direction
 
----
+**Objective:** Evolve Hermes from a collection of data-source connectors into a serious, reusable data platform/SDK that can:
 
-## 1. Connector Contract
+* Acquire data
+* Preserve raw data
+* Parse source-specific formats
+* Normalize heterogeneous data into canonical Hermes schemas
+* Validate data
+* Profile and describe datasets
+* Attach metadata
+* Track provenance and lineage
+* Resolve entities
+* Register and version datasets/schemas
+* Store and query data
+* Export data
+* Synchronize incremental updates
+* Provide derived feature pipelines
 
-Every connector should follow the same lifecycle.
-
-* [ ] Implement `_fetch()`
-
-  * [ ] Handle HTTP/API communication
-  * [ ] Handle pagination
-  * [ ] Handle retries
-  * [ ] Handle rate limits
-  * [ ] Return raw source data
-  * [ ] Do **not** modify source data
-
-* [ ] Implement `fetch()`
-
-  * [ ] Public user-facing method
-  * [ ] Handle caching
-  * [ ] Call `_fetch()`
-  * [ ] Parse raw response
-  * [ ] Normalize parsed records
-  * [ ] Validate normalized data
-  * [ ] Return Hermes-compatible data
-
-* [ ] Implement `fetch_raw()`
-
-  * [ ] Return source data without normalization
-  * [ ] Preserve original structure
-  * [ ] Useful for debugging and provenance
-
----
-
-# 2. Parsing
-
-> Parsing converts a source-specific response into usable records. It does **not** attempt to make the data universal.
-
-For every connector:
-
-* [ ] Identify the raw response structure
-* [ ] Extract individual records
-* [ ] Flatten nested structures where necessary
-* [ ] Preserve source-specific fields
-* [ ] Preserve source identifiers
-* [ ] Preserve source concepts/tags
-* [ ] Handle malformed records safely
-* [ ] Never silently discard unknown fields
-
-Example:
+### Core principle
 
 ```text
-SEC JSON
-    ↓
-SEC records
-```
-
-Not:
-
-```text
-SEC JSON
-    ↓
-Universal Hermes data
-```
-
----
-
-# 3. Normalization
-
-> Normalization converts source-specific records into Hermes canonical representations.
-
-* [ ] Define the appropriate Hermes domain model
-* [ ] Map source fields → canonical fields
-* [ ] Normalize column/field names
-* [ ] Normalize data types
-* [ ] Normalize dates/timestamps
-* [ ] Normalize missing values
-* [ ] Normalize units where possible
-* [ ] Normalize currencies where possible
-* [ ] Normalize country identifiers
-* [ ] Normalize entity identifiers
-* [ ] Normalize categorical values where mappings exist
-* [ ] Preserve original source values when useful
-* [ ] Preserve `source`
-* [ ] Preserve `source_id`
-* [ ] Preserve `source_concept`
-* [ ] Never guess semantic meaning when uncertain
-* [ ] Never silently destroy source information
-
-### Important
-
-**Generic normalization engine ≠ generic source mapping.**
-
-The engine is reusable.
-
-The mappings are source/domain-specific.
-
-```text
-Generic engine
-      +
-SEC mappings
+External Source
       ↓
-SEC → Hermes
-```
-
-```text
-Generic engine
-      +
-GDELT mappings
+   Connector
       ↓
-GDELT → Hermes
+  Raw Data
+      ↓
+    Parse
+      ↓
+ Normalize
+      ↓
+  Validate
+      ↓
+ Metadata + Provenance + Lineage
+      ↓
+ Hermes Dataset
+      ↓
+ Storage / Query / Export / Features
 ```
 
 ---
 
-# 4. Canonical Schemas
+# 1. Repository Refactor
 
-* [ ] Define stable Hermes domain models
-* [ ] Keep schemas independent of external provider naming
-* [ ] Avoid creating one universal schema for every dataset
-* [ ] Separate domains where semantics differ
+* [ ] Refactor current repository toward the new architecture.
+* [ ] Rename `hermes/sources/` → `hermes/connectors/`.
+* [ ] Reduce the responsibility of `hermes/core/`.
+* [ ] Move acquisition infrastructure out of `core/`.
+* [ ] Move country/entity functionality into `entities/`.
+* [ ] Move feature infrastructure into `features/`.
+* [ ] Remove `core/helper.py`.
+* [ ] Move functionality from `helper.py` into the appropriate subsystem.
+* [ ] Separate data infrastructure from feature engineering.
+* [ ] Create architecture documentation.
+* [ ] Preserve existing public API behavior where possible.
+* [ ] Run the existing test suite before and after each major refactor.
 
-Initial canonical domains:
+---
+
+# 2. Core Dataset System
+
+### Create
+
+```text
+hermes/core/
+├── dataset.py
+├── result.py
+├── metadata.py
+├── provenance.py
+├── lineage.py
+└── versioning.py
+```
+
+### Tasks
+
+* [ ] Create `Dataset` abstraction.
+* [ ] Define dataset identity.
+* [ ] Define dataset name.
+* [ ] Define dataset ID.
+* [ ] Define dataset schema reference.
+* [ ] Define dataset version.
+* [ ] Define dataset metadata reference.
+* [ ] Define provenance reference.
+* [ ] Define lineage reference.
+* [ ] Create standardized operation/result objects.
+* [ ] Create standardized error handling.
+* [ ] Ensure datasets are independent of specific storage engines.
+
+---
+
+# 3. Canonical Schema System
+
+### Create
+
+```text
+hermes/schemas/
+├── base.py
+├── registry.py
+├── entity.py
+├── document.py
+├── economic.py
+├── financial.py
+├── market.py
+├── geopolitical.py
+└── security.py
+```
+
+### Tasks
+
+* [ ] Define what a Hermes canonical schema is.
+* [ ] Define schema fields.
+* [ ] Define field types.
+* [ ] Define required fields.
+* [ ] Define optional fields.
+* [ ] Define primary keys.
+* [ ] Define foreign/entity references.
+* [ ] Define units.
+* [ ] Define temporal semantics.
+* [ ] Define allowed values where necessary.
+* [ ] Define schema versions.
+* [ ] Create base schema contract.
+* [ ] Create schema registry.
+* [ ] Implement schema registration.
+* [ ] Implement schema retrieval.
+* [ ] Implement schema comparison.
+* [ ] Implement schema compatibility checking.
+* [ ] Implement schema versioning.
+* [ ] Implement schema migration framework.
+
+### Initial canonical schemas
 
 * [ ] Entity
+* [ ] Economic observation
+* [ ] Financial observation
+* [ ] Market observation
+* [ ] Geopolitical event
+* [ ] Security event
 * [ ] Document
-* [ ] Financial Observation
-* [ ] Economic Observation
-* [ ] Market Observation
-* [ ] Geopolitical Event
-* [ ] Security Event
-* [ ] Sanctioned Entity
-
-For every canonical model:
-
-* [ ] Define required fields
-* [ ] Define optional fields
-* [ ] Define data types
-* [ ] Define units
-* [ ] Define identifiers
-* [ ] Define primary key
-* [ ] Define semantic meaning
-* [ ] Define allowed/null behavior
-* [ ] Define source/provenance fields
 
 ---
 
-# 5. Source → Hermes Mapping
+# 4. Parsing System
 
-Every complex connector should have explicit mappings.
-
-* [ ] Identify source concepts
-* [ ] Map source concepts → Hermes concepts
-* [ ] Document ambiguous mappings
-* [ ] Assign mapping confidence where appropriate
-* [ ] Preserve original source concept
-* [ ] Version mappings
-* [ ] Test mappings against real source data
-
-Example:
+### Create
 
 ```text
-SEC
+hermes/parsing/
+├── engine.py
+├── records.py
+└── errors.py
+```
+
+### Tasks
+
+* [ ] Define parser contract.
+* [ ] Support JSON.
+* [ ] Support CSV.
+* [ ] Support nested JSON.
+* [ ] Support lists of records.
+* [ ] Support tabular data.
+* [ ] Support XML where required.
+* [ ] Preserve source fields.
+* [ ] Preserve raw values.
+* [ ] Handle malformed records.
+* [ ] Define parser errors.
+* [ ] Define parser warnings.
+* [ ] Allow connector-specific parsers.
+* [ ] Keep source-specific parsing logic inside connectors.
+* [ ] Prevent the generic parser from containing SEC/GDELT/etc. business logic.
+
+---
+
+# 5. Normalization System
+
+### Create
+
+```text
+hermes/normalization/
+├── engine.py
+├── mapping.py
+├── rules.py
+└── errors.py
+```
+
+### Tasks
+
+* [ ] Define normalization contract.
+* [ ] Define source → canonical field mapping.
+* [ ] Define semantic concept mappings.
+* [ ] Define type conversion.
+* [ ] Define date normalization.
+* [ ] Define timestamp normalization.
+* [ ] Define country-code normalization.
+* [ ] Define company/entity identifier normalization.
+* [ ] Define unit normalization.
+* [ ] Define currency normalization.
+* [ ] Define missing-value normalization.
+* [ ] Define duplicate handling.
+* [ ] Define normalization warnings.
+* [ ] Define normalization errors.
+* [ ] Implement normalization engine.
+* [ ] Implement reusable normalization rules.
+* [ ] Allow connector-specific mappings.
+* [ ] Ensure normalization does not contain source acquisition logic.
+
+### Example responsibility
+
+```text
+SEC:
 us-gaap:Revenues
         ↓
-Hermes
+Hermes:
 revenue
 ```
 
-Never assume:
+```text
+World Bank:
+Country Name
+        ↓
+Hermes:
+entity_id
+```
 
 ```text
-"Revenue"
-=
-"Net Revenue"
-=
-"Sales"
-```
-
-unless the source semantics support it.
-
----
-
-# 6. Validation
-
-Every normalized dataset should be validated.
-
-### Schema
-
-* [ ] Required fields exist
-* [ ] Unexpected fields handled
-* [ ] Data types correct
-* [ ] Schema version compatible
-
-### Values
-
-* [ ] Null checks
-* [ ] Range checks
-* [ ] Type checks
-* [ ] Unit checks
-* [ ] Currency checks
-* [ ] Identifier checks
-
-### Integrity
-
-* [ ] Primary-key uniqueness
-* [ ] Duplicate detection
-* [ ] Referential integrity
-* [ ] Temporal consistency
-* [ ] Entity consistency
-
-### Temporal
-
-* [ ] Date parsing
-* [ ] Date ordering
-* [ ] Expected frequency
-* [ ] Missing periods
-* [ ] Future dates where invalid
-* [ ] Timezone consistency
-
-### Quality
-
-* [ ] Missingness percentage
-* [ ] Duplicate percentage
-* [ ] Invalid-record percentage
-* [ ] Coverage period
-* [ ] Entity coverage
-
-Validation must produce a **report**, not only `True/False`.
-
----
-
-# 7. Metadata
-
-Every dataset should have machine-readable metadata.
-
-* [ ] Dataset name
-* [ ] Dataset description
-* [ ] Source
-* [ ] Source URL
-* [ ] Retrieval timestamp
-* [ ] Coverage period
-* [ ] Frequency
-* [ ] Entity type
-* [ ] Units
-* [ ] Currency
-* [ ] Schema version
-* [ ] Connector version
-* [ ] Row count
-* [ ] Column count
-* [ ] Data quality information
-* [ ] Update frequency
-* [ ] Last successful update
-
-Public API:
-
-```python
-hr.get_metadata(data)
+GDELT:
+Actor1CountryCode
+        ↓
+Hermes:
+actor_1_entity_id
 ```
 
 ---
 
-# 8. Dataset Profiling
+# 6. Validation System
 
-Implement:
-
-```python
-hr.inspect(data)
-hr.profile(data)
-```
-
-### `inspect()`
-
-Quick overview:
-
-* [ ] Shape
-* [ ] Columns
-* [ ] Types
-* [ ] Missingness
-* [ ] Date range
-* [ ] Basic statistics
-
-### `profile()`
-
-Deep analysis:
-
-* [ ] Distributions
-* [ ] Quantiles
-* [ ] Cardinality
-* [ ] Missing-value patterns
-* [ ] Outliers
-* [ ] Temporal gaps
-* [ ] Duplicate patterns
-* [ ] Entity coverage
-
----
-
-# 9. Data Quality
-
-Implement:
-
-```python
-hr.check_quality(data)
-hr.check_completeness(data)
-hr.check_freshness(data)
-hr.check_integrity(data)
-hr.check_duplicates(data)
-```
-
-Every check should produce structured results.
-
-Example:
+### Create
 
 ```text
-Dataset: world_bank.gdp
-
-Quality: 96.4%
-
-Errors:
-    12 invalid country codes
-
-Warnings:
-    4.2% missing values
-    2 missing annual observations
-
-Freshness:
-    3 days behind expected update
+hermes/validation/
+├── engine.py
+├── checks.py
+├── contracts.py
+├── reports.py
+└── errors.py
 ```
+
+### Tasks
+
+* [ ] Create validation engine.
+* [ ] Schema validation.
+* [ ] Type validation.
+* [ ] Required-field validation.
+* [ ] Null validation.
+* [ ] Range validation.
+* [ ] Date validation.
+* [ ] Duplicate validation.
+* [ ] Primary-key validation.
+* [ ] Foreign-key validation.
+* [ ] Referential-integrity validation.
+* [ ] Unit validation.
+* [ ] Constraint validation.
+* [ ] Create `ValidationReport`.
+* [ ] Separate errors from warnings.
+* [ ] Implement `validate()`.
+* [ ] Implement `check_quality()`.
+* [ ] Implement `check_completeness()`.
+* [ ] Implement `check_freshness()`.
+* [ ] Implement `check_integrity()`.
 
 ---
 
-# 10. Provenance
+# 7. Metadata System
 
-Every dataset must answer:
+### Create
 
-> Where did this data come from?
-
-Track:
-
-* [ ] Source
-* [ ] Source URL/API
-* [ ] Request parameters
-* [ ] Retrieval timestamp
-* [ ] Raw response identifier/checksum
-* [ ] Connector version
-* [ ] Parser version
-* [ ] Normalization version
-* [ ] Schema version
-* [ ] Validation result
-* [ ] Dataset version
-
-Implement:
-
-```python
-hr.get_provenance(data)
-hr.get_lineage(data)
+```text
+hermes/metadata/
+├── extractor.py
+├── models.py
+└── registry.py
 ```
+
+### Tasks
+
+* [ ] Create metadata model.
+* [ ] Dataset-level metadata.
+* [ ] Column-level metadata.
+* [ ] Data type metadata.
+* [ ] Row count.
+* [ ] Column count.
+* [ ] Null statistics.
+* [ ] Unique statistics.
+* [ ] Date range.
+* [ ] Frequency detection.
+* [ ] Entity coverage.
+* [ ] Source information.
+* [ ] Retrieval timestamp.
+* [ ] Last observation timestamp.
+* [ ] Expected update frequency.
+* [ ] Quality information.
+* [ ] Implement `get_metadata()`.
+* [ ] Implement `inspect()`.
+* [ ] Implement `profile()`.
 
 ---
 
-# 11. Dataset Lineage
+# 8. Provenance System
 
-Hermes should be able to explain:
+### Tasks
+
+* [ ] Define provenance model.
+* [ ] Record source.
+* [ ] Record source URL/API endpoint.
+* [ ] Record retrieval timestamp.
+* [ ] Record connector.
+* [ ] Record connector version.
+* [ ] Record raw-data checksum.
+* [ ] Record parser version.
+* [ ] Record normalizer version.
+* [ ] Record schema version.
+* [ ] Record validation result.
+* [ ] Record transformation information.
+* [ ] Implement `get_provenance()`.
+* [ ] Make provenance immutable once recorded where appropriate.
+
+---
+
+# 9. Lineage System
+
+### Tasks
+
+* [ ] Define lineage model.
+* [ ] Track input dataset.
+* [ ] Track output dataset.
+* [ ] Track operations.
+* [ ] Track transformations.
+* [ ] Track timestamps.
+* [ ] Track versions.
+* [ ] Track parameters.
+* [ ] Build dataset lineage graph.
+* [ ] Implement `get_lineage()`.
+* [ ] Make lineage queryable.
+
+### Target
 
 ```text
 Source
   ↓
-Raw
+Raw Dataset
   ↓
-Parsed
+Parsed Dataset
   ↓
-Normalized
+Normalized Dataset
   ↓
-Validated
+Validated Dataset
   ↓
-Stored
+Stored Dataset
   ↓
-Derived Dataset
-```
-
-* [ ] Track transformations
-* [ ] Track transformation versions
-* [ ] Track source datasets
-* [ ] Track derived datasets
-* [ ] Track dependencies
-* [ ] Make lineage queryable
-
----
-
-# 12. Versioning
-
-Datasets must be reproducible.
-
-Implement:
-
-```python
-hr.version(dataset)
-hr.snapshot(dataset)
-hr.diff(dataset_a, dataset_b)
-```
-
-* [ ] Dataset version
-* [ ] Schema version
-* [ ] Connector version
-* [ ] Mapping version
-* [ ] Normalization version
-* [ ] Content checksum
-* [ ] Immutable snapshots
-* [ ] Dataset comparison
-
-`diff()` should identify:
-
-* [ ] Added records
-* [ ] Removed records
-* [ ] Changed records
-* [ ] Schema changes
-* [ ] Metadata changes
-
----
-
-# 13. Schema Registry
-
-Create a central schema registry.
-
-* [ ] Register schemas
-* [ ] Retrieve schemas
-* [ ] Version schemas
-* [ ] Compare schemas
-* [ ] Validate compatibility
-* [ ] Migrate between schema versions
-
-API:
-
-```python
-hr.register_schema(...)
-hr.get_schema(...)
-hr.compare_schema(...)
-hr.validate_schema(...)
-hr.migrate(...)
+Feature Dataset
 ```
 
 ---
 
-# 14. Entity Resolution
+# 10. Acquisition System
 
-Create canonical entities independent of source identifiers.
-
-Implement:
-
-```python
-hr.resolve_country(...)
-hr.resolve_company(...)
-hr.resolve_entity(...)
-hr.resolve_currency(...)
-```
-
-Support:
-
-* [ ] ISO codes
-* [ ] Source-specific IDs
-* [ ] Company identifiers
-* [ ] Country names
-* [ ] Aliases
-* [ ] External identifiers
-* [ ] Entity relationships
-
-Example:
+### Create
 
 ```text
-"United States"
-"USA"
-"US"
-"840"
-        ↓
-Hermes Entity
-        ↓
-country_code = USA
+hermes/acquisition/
+├── client.py
+├── cache.py
+├── pagination.py
+├── retry.py
+├── rate_limit.py
+└── sync.py
 ```
+
+### Tasks
+
+* [ ] Move current cache implementation.
+* [ ] Move retry logic.
+* [ ] Move pagination logic.
+* [ ] Create common HTTP client.
+* [ ] Create rate-limit handling.
+* [ ] Create request timeout handling.
+* [ ] Create resumable acquisition.
+* [ ] Create sync state.
+* [ ] Track last successful synchronization.
+* [ ] Track source cursors.
+* [ ] Track source timestamps.
+* [ ] Implement `fetch_raw()`.
+* [ ] Implement `sync()`.
+* [ ] Preserve existing `_fetch()` abstraction.
+* [ ] Keep `_fetch()` responsible for source acquisition mechanics.
 
 ---
 
-# 15. Source Synchronization
+# 11. Connector Architecture
 
-Implement:
+### Create
 
-```python
-hr.sync(...)
+```text
+hermes/connectors/
+├── base.py
+└── registry.py
 ```
 
-The goal:
+### Define connector responsibilities
 
-* [ ] Detect existing data
-* [ ] Detect new records
-* [ ] Detect changed records
-* [ ] Avoid unnecessary downloads
-* [ ] Support incremental updates
-* [ ] Support resumable ingestion
-* [ ] Track last successful synchronization
-* [ ] Handle source corrections/deletions
+```text
+_fetch()
+    ↓
+fetch_raw()
+    ↓
+parse()
+    ↓
+normalize()
+    ↓
+validate()
+```
 
-Especially important for:
+### Tasks
 
-* [ ] GDELT
-* [ ] ACLED
-* [ ] Market data
-* [ ] SEC
-* [ ] Other continuously updated sources
+* [ ] Define `BaseConnector`.
+* [ ] Define connector lifecycle.
+* [ ] Define connector metadata.
+* [ ] Define connector capabilities.
+* [ ] Define connector schema declaration.
+* [ ] Define connector configuration.
+* [ ] Create connector registry.
+* [ ] Add connector discovery.
+* [ ] Add connector enable/disable capability.
+* [ ] Standardize connector errors.
+* [ ] Standardize connector logging.
 
 ---
 
-# 16. Dataset Registry
+# 12. Connector Refactor
 
-Hermes should know what datasets it has.
+Refactor each connector into the standard architecture.
 
-Implement:
+### Binance
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+### Finnhub
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+### FRED
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+### GDELT
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+* [ ] `helpers.py`
+
+### IMF
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+### OpenSanctions
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+### SEC
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+* [ ] `tags.py`
+
+### World Bank
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+### YFinance
+
+* [ ] `connector.py`
+* [ ] `parser.py`
+* [ ] `normalizer.py`
+* [ ] `mappings.py`
+
+---
+
+# 13. Reference Connector
+
+Use **World Bank** as the first complete implementation.
+
+* [ ] Refactor World Bank connector.
+* [ ] Implement raw acquisition.
+* [ ] Implement parsing.
+* [ ] Implement canonical mapping.
+* [ ] Implement normalization.
+* [ ] Implement schema.
+* [ ] Implement validation.
+* [ ] Implement metadata.
+* [ ] Implement provenance.
+* [ ] Implement lineage.
+* [ ] Test complete pipeline.
+* [ ] Document it as the reference connector.
+* [ ] Use it as the template for subsequent connectors.
+
+---
+
+# 14. Entity System
+
+### Create
+
+```text
+hermes/entities/
+├── registry.py
+├── resolver.py
+├── models.py
+├── aliases.py
+├── countries.py
+└── companies.py
+```
+
+### Country
+
+* [ ] Canonical country IDs.
+* [ ] ISO-2 resolution.
+* [ ] ISO-3 resolution.
+* [ ] Country-name resolution.
+* [ ] Numeric-code resolution.
+* [ ] Country aliases.
+* [ ] Historical/source-specific country identifiers.
+* [ ] Implement `resolve_country()`.
+
+### Company
+
+* [ ] Canonical company IDs.
+* [ ] Company-name resolution.
+* [ ] Ticker resolution.
+* [ ] CIK resolution.
+* [ ] LEI resolution.
+* [ ] ISIN support.
+* [ ] Source-specific IDs.
+* [ ] Company aliases.
+* [ ] Implement `resolve_company()`.
+
+### General
+
+* [ ] Implement entity registry.
+* [ ] Implement entity aliases.
+* [ ] Implement entity resolution.
+* [ ] Implement `resolve_entity()`.
+* [ ] Connect entities to canonical schemas.
+
+---
+
+# 15. Dataset Catalog
+
+### Create
+
+```text
+hermes/datasets/
+├── registry.py
+├── catalog.py
+└── models.py
+```
+
+### Tasks
+
+* [ ] Define dataset registry.
+* [ ] Define dataset identifier.
+* [ ] Define dataset description.
+* [ ] Define dataset owner/source.
+* [ ] Define dataset schema.
+* [ ] Define dataset versions.
+* [ ] Define dataset coverage.
+* [ ] Define dataset frequency.
+* [ ] Define dataset quality.
+* [ ] Define dataset freshness.
+* [ ] Define dataset provenance.
+* [ ] Implement `datasets.list()`.
+* [ ] Implement `datasets.get()`.
+* [ ] Implement `datasets.search()`.
+
+---
+
+# 16. Storage
+
+### Create
+
+```text
+hermes/storage/
+├── base.py
+├── filesystem.py
+├── parquet.py
+└── duckdb.py
+```
+
+### Tasks
+
+* [ ] Define storage abstraction.
+* [ ] Implement filesystem backend.
+* [ ] Implement Parquet backend.
+* [ ] Integrate DuckDB.
+* [ ] Define dataset layout.
+* [ ] Define partitioning strategy.
+* [ ] Define compression strategy.
+* [ ] Define dataset manifests.
+* [ ] Store metadata.
+* [ ] Store provenance.
+* [ ] Store schema information.
+* [ ] Store version information.
+* [ ] Implement `save()`.
+* [ ] Implement `load()`.
+* [ ] Implement atomic writes.
+* [ ] Add corruption protection.
+* [ ] Add storage tests.
+
+---
+
+# 17. Query Engine
+
+### Create
+
+```text
+hermes/query/
+├── engine.py
+├── filters.py
+└── expressions.py
+```
+
+### Tasks
+
+* [ ] Define query abstraction.
+* [ ] Dataset filtering.
+* [ ] Column selection.
+* [ ] Entity filtering.
+* [ ] Date filtering.
+* [ ] Range filtering.
+* [ ] Sorting.
+* [ ] Aggregation.
+* [ ] Joins.
+* [ ] DuckDB execution.
+* [ ] Implement `query()`.
+* [ ] Add query tests.
+
+---
+
+# 18. Materialization
+
+### Tasks
+
+* [ ] Define materialization abstraction.
+* [ ] Materialize to Polars.
+* [ ] Materialize to Pandas.
+* [ ] Materialize to Arrow.
+* [ ] Materialize to DuckDB relation.
+* [ ] Implement `materialize()`.
+* [ ] Ensure materialization doesn't mutate canonical data.
+
+---
+
+# 19. Export
+
+### Create
+
+```text
+hermes/export/
+├── csv.py
+├── json.py
+├── parquet.py
+└── arrow.py
+```
+
+### Tasks
+
+* [ ] CSV export.
+* [ ] JSON export.
+* [ ] Parquet export.
+* [ ] Arrow export.
+* [ ] Preserve metadata where possible.
+* [ ] Preserve schema information.
+* [ ] Preserve provenance information where supported.
+
+---
+
+# 20. Dataset Versioning
+
+### Tasks
+
+* [ ] Define dataset version identity.
+* [ ] Implement content hashing.
+* [ ] Implement schema hashing.
+* [ ] Track transformation versions.
+* [ ] Create deterministic version IDs.
+* [ ] Implement immutable snapshots.
+* [ ] Implement `version()`.
+* [ ] Implement `snapshot()`.
+* [ ] Implement `diff()`.
+* [ ] Detect added rows.
+* [ ] Detect removed rows.
+* [ ] Detect changed rows.
+* [ ] Detect schema changes.
+* [ ] Add versioning tests.
+
+---
+
+# 21. Schema Migration
+
+### Tasks
+
+* [ ] Define migration model.
+* [ ] Define migration registry.
+* [ ] Define migration direction.
+* [ ] Define compatibility rules.
+* [ ] Detect breaking schema changes.
+* [ ] Implement forward migrations.
+* [ ] Implement `migrate()`.
+* [ ] Record migration provenance.
+* [ ] Test migration reproducibility.
+
+---
+
+# 22. Public API
+
+### Create
+
+```text
+hermes/api/
+├── acquire.py
+├── data.py
+├── datasets.py
+├── entities.py
+├── schemas.py
+└── storage.py
+```
+
+### Public API
 
 ```python
+hr.fetch()
+hr.fetch_raw()
+hr.sync()
+
+hr.inspect()
+hr.get_metadata()
+hr.profile()
+
+hr.parse()
+hr.normalize()
+hr.transform()
+
+hr.validate()
+hr.check_quality()
+hr.check_completeness()
+hr.check_freshness()
+hr.check_integrity()
+
+hr.resolve_entity()
+hr.resolve_country()
+hr.resolve_company()
+
 hr.datasets.list()
-hr.datasets.get(...)
-hr.datasets.search(...)
+hr.datasets.get()
+hr.datasets.search()
+
+hr.save()
+hr.load()
+hr.query()
+hr.materialize()
+
+hr.get_provenance()
+hr.get_lineage()
+
+hr.version()
+hr.snapshot()
+hr.diff()
+
+hr.get_schema()
+hr.register_schema()
+hr.compare_schema()
+hr.migrate()
 ```
 
-Each dataset should expose:
+### Tasks
 
-* [ ] Name
-* [ ] Description
-* [ ] Source
-* [ ] Schema
-* [ ] Version
-* [ ] Coverage
-* [ ] Frequency
-* [ ] Last update
-* [ ] Size
-* [ ] Quality
-* [ ] Availability
+* [ ] Keep public API thin.
+* [ ] Route API calls to internal engines.
+* [ ] Avoid business logic inside API wrappers.
+* [ ] Maintain consistent return types.
+* [ ] Maintain consistent error behavior.
+* [ ] Document public API.
+* [ ] Add public API tests.
 
 ---
 
-# 17. Storage
+# 23. Feature System
 
-Hermes should separate **data representation** from **storage**.
-
-Implement:
-
-```python
-hr.save(...)
-hr.load(...)
-hr.exists(...)
-hr.delete(...)
-```
-
-Storage should support:
-
-* [ ] Parquet
-* [ ] Arrow
-* [ ] DuckDB
-* [ ] PostgreSQL where appropriate
-* [ ] Partitioning
-* [ ] Compression
-* [ ] Dataset versioning
-
----
-
-# 18. Query
-
-Users shouldn't need to know how Hermes stores the data.
-
-Implement:
-
-```python
-hr.query(...)
-```
-
-Support:
-
-* [ ] Filtering
-* [ ] Date ranges
-* [ ] Entity filtering
-* [ ] Column selection
-* [ ] Aggregation
-* [ ] Joins
-* [ ] Version selection
-* [ ] Lazy execution where possible
-
----
-
-# 19. Materialization
-
-Allow users to request the representation they need.
-
-```python
-hr.materialize(
-    dataset="...",
-    format="polars"
-)
-```
-
-Support:
-
-* [ ] Polars
-* [ ] Pandas
-* [ ] Arrow
-* [ ] DuckDB
-* [ ] JSON
-* [ ] CSV
-* [ ] Parquet
-
----
-
-# 20. Data Contracts
-
-Every important dataset should have a contract.
-
-Contract should define:
-
-* [ ] Schema
-* [ ] Required fields
-* [ ] Primary key
-* [ ] Expected frequency
-* [ ] Expected update interval
-* [ ] Allowed null percentage
-* [ ] Valid ranges
-* [ ] Valid identifiers
-* [ ] Unit expectations
-* [ ] Freshness requirements
-
-Detect:
+### Preserve
 
 ```text
-SOURCE CHANGE
-        ↓
-DATA CONTRACT FAILURE
-        ↓
-STOP / WARN
+hermes/features/
+├── registry.py
+├── decorator.py
+├── financial/
+└── country_risk/
 ```
 
-Never silently ingest a breaking source change.
+### Tasks
+
+* [ ] Move feature registry.
+* [ ] Move feature decorator.
+* [ ] Refactor financial features.
+* [ ] Refactor country-risk features.
+* [ ] Make features consume canonical Hermes datasets.
+* [ ] Remove source-specific assumptions.
+* [ ] Add feature metadata.
+* [ ] Add feature versioning.
+* [ ] Add feature provenance.
+* [ ] Add feature tests.
+* [ ] Keep feature engineering separate from core data acquisition.
 
 ---
 
-# 21. Connector-Specific Requirements
+# 24. Static Data
 
-### Every connector
+Move current bundled datasets into:
 
-* [ ] `_fetch()`
-* [ ] `fetch()`
-* [ ] `fetch_raw()`
-* [ ] `parse()`
-* [ ] `normalize()`
-* [ ] `validate()`
-* [ ] Metadata
-* [ ] Provenance
-* [ ] Tests
-* [ ] Documentation
-
-### Complex connectors
-
-Also:
-
-* [ ] Source mappings
-* [ ] Canonical schema
-* [ ] Entity resolution
-* [ ] Incremental sync
-* [ ] Source-specific validation
-* [ ] Schema/version compatibility
-
----
-
-# 22. Testing
-
-Every connector must have:
-
-* [ ] Unit tests
-* [ ] Parsing tests
-* [ ] Normalization tests
-* [ ] Validation tests
-* [ ] Malformed-data tests
-* [ ] Empty-response tests
-* [ ] API-error tests
-* [ ] Pagination tests
-* [ ] Cache tests
-* [ ] Retry tests
-* [ ] Schema regression tests
-* [ ] Real-source fixture tests
-
-Never rely only on live APIs for tests.
-
----
-
-# 23. Core Public API Target
-
-The long-term public API should feel approximately like:
-
-```python
-# Acquire
-hr.fetch(...)
-hr.fetch_raw(...)
-hr.sync(...)
-
-# Understand
-hr.inspect(...)
-hr.get_metadata(...)
-hr.profile(...)
-
-# Transform
-hr.parse(...)
-hr.normalize(...)
-hr.transform(...)
-
-# Verify
-hr.validate(...)
-hr.check_quality(...)
-hr.check_completeness(...)
-hr.check_freshness(...)
-hr.check_integrity(...)
-
-# Entities
-hr.resolve_entity(...)
-hr.resolve_country(...)
-hr.resolve_company(...)
-
-# Datasets
-hr.datasets.list(...)
-hr.datasets.get(...)
-hr.datasets.search(...)
-
-# Storage
-hr.save(...)
-hr.load(...)
-hr.query(...)
-hr.materialize(...)
-
-# Provenance
-hr.get_provenance(...)
-hr.get_lineage(...)
-
-# Versioning
-hr.version(...)
-hr.snapshot(...)
-hr.diff(...)
-
-# Schemas
-hr.get_schema(...)
-hr.register_schema(...)
-hr.compare_schema(...)
-hr.migrate(...)
+```text
+data/
+└── datasets/
+    ├── crs.csv
+    ├── cvs.csv
+    ├── fsi.csv
+    ├── global_cpi_all.csv
+    ├── hdi1.csv
+    ├── hrs.csv
+    ├── nato.csv
+    └── sipri.csv
 ```
 
+### Tasks
+
+* [ ] Register each dataset.
+* [ ] Create metadata for each dataset.
+* [ ] Define schema for each dataset.
+* [ ] Validate each dataset.
+* [ ] Add provenance.
+* [ ] Add version identifiers.
+* [ ] Make datasets accessible through the dataset catalog.
+
 ---
 
-# Hermes Core Principle
+# 25. Testing
 
-Every feature added to Hermes should answer at least one of these:
+```text
+tests/
+├── unit/
+├── connectors/
+├── features/
+└── integration/
+```
 
-> **Can Hermes acquire data more reliably?**
+### Tasks
 
-> **Can Hermes understand data better?**
+* [ ] Acquisition tests.
+* [ ] Parsing tests.
+* [ ] Normalization tests.
+* [ ] Validation tests.
+* [ ] Metadata tests.
+* [ ] Entity tests.
+* [ ] Schema tests.
+* [ ] Storage tests.
+* [ ] Query tests.
+* [ ] Export tests.
+* [ ] Versioning tests.
+* [ ] Migration tests.
+* [ ] Connector tests.
+* [ ] Feature tests.
+* [ ] Integration tests.
+* [ ] End-to-end tests.
+* [ ] Regression tests.
+* [ ] Failure/recovery tests.
+* [ ] Schema compatibility tests.
 
-> **Can Hermes standardize data without destroying source information?**
+---
 
-> **Can Hermes prove where data came from?**
+# 26. Documentation
 
-> **Can Hermes detect bad/broken data?**
+### Architecture
 
-> **Can Hermes reproduce a dataset?**
+* [ ] Architecture overview.
+* [ ] Connector architecture.
+* [ ] Schema architecture.
+* [ ] Parsing architecture.
+* [ ] Normalization architecture.
+* [ ] Validation architecture.
+* [ ] Metadata architecture.
+* [ ] Provenance architecture.
+* [ ] Storage architecture.
+* [ ] Query architecture.
+* [ ] Entity architecture.
+* [ ] Versioning architecture.
 
-> **Can Hermes make heterogeneous sources interoperable?**
+### Connectors
 
-> **Can Hermes serve the data efficiently to downstream systems?**
+* [ ] Binance.
+* [ ] Finnhub.
+* [ ] FRED.
+* [ ] GDELT.
+* [ ] IMF.
+* [ ] OpenSanctions.
+* [ ] SEC.
+* [ ] World Bank.
+* [ ] YFinance.
 
+### Developer documentation
 
+* [ ] Connector development guide.
+* [ ] Schema development guide.
+* [ ] Normalizer development guide.
+* [ ] Parser development guide.
+* [ ] Validation development guide.
+* [ ] Testing guide.
+* [ ] Contribution guide.
 
-Hermes/
-├── .github/
-│   └── workflows/
-│       ├── publish.yml
-│       └── tests.yml
-│
-├── docs/
-│   ├── architecture/
-│   │   ├── overview.md
-│   │   ├── connectors.md
-│   │   ├── schemas.md
-│   │   ├── parsing.md
-│   │   ├── normalization.md
-│   │   ├── validation.md
-│   │   ├── metadata.md
-│   │   ├── provenance.md
-│   │   ├── storage.md
-│   │   ├── querying.md
-│   │   ├── versioning.md
-│   │   └── entities.md
-│   │
-│   ├── connectors/
-│   │   ├── binance.md
-│   │   ├── finnhub.md
-│   │   ├── fred.md
-│   │   ├── gdelt.md
-│   │   ├── imf.md
-│   │   ├── opensanctions.md
-│   │   ├── sec.md
-│   │   ├── world_bank.md
-│   │   └── yfinance.md
-│   │
-│   ├── analysis/
-│   │   ├── fundamentals.md
-│   │   └── technical.md
-│   │
-│   └── checklist.md
-│
-├── hermes/
-│   ├── __init__.py
-│   ├── constants.py
-│   │
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── acquire.py
-│   │   ├── data.py
-│   │   ├── datasets.py
-│   │   ├── entities.py
-│   │   ├── schemas.py
-│   │   └── storage.py
-│   │
-│   ├── acquisition/
-│   │   ├── __init__.py
-│   │   ├── client.py
-│   │   ├── cache.py
-│   │   ├── pagination.py
-│   │   ├── retry.py
-│   │   ├── rate_limit.py
-│   │   └── sync.py
-│   │
-│   ├── connectors/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── registry.py
-│   │   │
-│   │   ├── binance/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   └── mappings.py
-│   │   │
-│   │   ├── finnhub/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   └── mappings.py
-│   │   │
-│   │   ├── fred/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   └── mappings.py
-│   │   │
-│   │   ├── gdelt/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   ├── mappings.py
-│   │   │   └── helpers.py
-│   │   │
-│   │   ├── imf/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   └── mappings.py
-│   │   │
-│   │   ├── opensanctions/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   └── mappings.py
-│   │   │
-│   │   ├── sec/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   ├── mappings.py
-│   │   │   └── tags.py
-│   │   │
-│   │   ├── world_bank/
-│   │   │   ├── __init__.py
-│   │   │   ├── connector.py
-│   │   │   ├── parser.py
-│   │   │   ├── normalizer.py
-│   │   │   └── mappings.py
-│   │   │
-│   │   └── yfinance/
-│   │       ├── __init__.py
-│   │       ├── connector.py
-│   │       ├── parser.py
-│   │       ├── normalizer.py
-│   │       └── mappings.py
-│   │
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── dataset.py
-│   │   ├── result.py
-│   │   ├── metadata.py
-│   │   ├── provenance.py
-│   │   ├── lineage.py
-│   │   └── versioning.py
-│   │
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── registry.py
-│   │   ├── entity.py
-│   │   ├── document.py
-│   │   ├── economic.py
-│   │   ├── financial.py
-│   │   ├── market.py
-│   │   ├── geopolitical.py
-│   │   └── security.py
-│   │
-│   ├── parsing/
-│   │   ├── __init__.py
-│   │   ├── engine.py
-│   │   ├── records.py
-│   │   └── errors.py
-│   │
-│   ├── normalization/
-│   │   ├── __init__.py
-│   │   ├── engine.py
-│   │   ├── mapping.py
-│   │   ├── rules.py
-│   │   └── errors.py
-│   │
-│   ├── validation/
-│   │   ├── __init__.py
-│   │   ├── engine.py
-│   │   ├── checks.py
-│   │   ├── contracts.py
-│   │   ├── reports.py
-│   │   └── errors.py
-│   │
-│   ├── metadata/
-│   │   ├── __init__.py
-│   │   ├── extractor.py
-│   │   ├── models.py
-│   │   └── registry.py
-│   │
-│   ├── entities/
-│   │   ├── __init__.py
-│   │   ├── registry.py
-│   │   ├── resolver.py
-│   │   ├── models.py
-│   │   ├── aliases.py
-│   │   ├── countries.py
-│   │   └── companies.py
-│   │
-│   ├── datasets/
-│   │   ├── __init__.py
-│   │   ├── registry.py
-│   │   ├── catalog.py
-│   │   └── models.py
-│   │
-│   ├── storage/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── filesystem.py
-│   │   ├── parquet.py
-│   │   └── duckdb.py
-│   │
-│   ├── query/
-│   │   ├── __init__.py
-│   │   ├── engine.py
-│   │   ├── filters.py
-│   │   └── expressions.py
-│   │
-│   ├── export/
-│   │   ├── __init__.py
-│   │   ├── csv.py
-│   │   ├── json.py
-│   │   ├── parquet.py
-│   │   └── arrow.py
-│   │
-│   └── features/
-│       ├── __init__.py
-│       ├── registry.py
-│       ├── decorator.py
-│       │
-│       ├── financial/
-│       │   ├── __init__.py
-│       │   ├── crypto.py
-│       │   ├── fundamental.py
-│       │   ├── stocks.py
-│       │   ├── technical.py
-│       │   └── filing.py
-│       │
-│       └── country_risk/
-│           ├── __init__.py
-│           ├── economic.py
-│           ├── environmental.py
-│           ├── geopolitical.py
-│           ├── security.py
-│           ├── social.py
-│           └── pipeline.py
-│
-├── data/
-│   └── datasets/
-│       ├── crs.csv
-│       ├── cvs.csv
-│       ├── fsi.csv
-│       ├── global_cpi_all.csv
-│       ├── hdi1.csv
-│       ├── hrs.csv
-│       ├── nato.csv
-│       └── sipri.csv
-│
-├── scripts/
-│   ├── sync.py
-│   ├── validate.py
-│   └── profile.py
-│
-├── tests/
-│   ├── conftest.py
-│   │
-│   ├── unit/
-│   │   ├── acquisition/
-│   │   │   ├── test_cache.py
-│   │   │   ├── test_retry.py
-│   │   │   ├── test_pagination.py
-│   │   │   └── test_sync.py
-│   │   ├── parsing/
-│   │   ├── normalization/
-│   │   ├── validation/
-│   │   ├── metadata/
-│   │   ├── entities/
-│   │   ├── schemas/
-│   │   ├── storage/
-│   │   └── query/
-│   │
-│   ├── connectors/
-│   │   ├── test_binance.py
-│   │   ├── test_finnhub.py
-│   │   ├── test_fred.py
-│   │   ├── test_gdelt.py
-│   │   ├── test_imf.py
-│   │   ├── test_opensanctions.py
-│   │   ├── test_sec.py
-│   │   ├── test_world_bank.py
-│   │   └── test_yfinance.py
-│   │
-│   ├── features/
-│   │   ├── test_economic.py
-│   │   ├── test_environmental.py
-│   │   ├── test_financial.py
-│   │   ├── test_fundamental.py
-│   │   ├── test_geopolitical.py
-│   │   ├── test_security.py
-│   │   ├── test_social.py
-│   │   ├── test_technical.py
-│   │   └── test_pipeline.py
-│   │
-│   └── integration/
-│       ├── test_pipeline.py
-│       ├── test_storage.py
-│       └── test_end_to_end.py
-│
-├── .env.example
-├── .gitignore
-├── .python-version
-├── LICENSE.md
-├── README.md
-├── cmd.sh
-├── main.py
-├── pyproject.toml
-└── uv.lock
+---
+
+# 27. Production Hardening
+
+* [ ] Structured logging.
+* [ ] Standardized error taxonomy.
+* [ ] Retry policies.
+* [ ] Rate-limit handling.
+* [ ] Request timeouts.
+* [ ] Memory limits.
+* [ ] Streaming ingestion.
+* [ ] Large-file handling.
+* [ ] Checkpointing.
+* [ ] Resumable ingestion.
+* [ ] Atomic dataset writes.
+* [ ] Dataset corruption detection.
+* [ ] Deterministic pipelines.
+* [ ] Reproducibility checks.
+* [ ] Performance benchmarks.
+* [ ] Memory benchmarks.
+* [ ] Connector reliability tests.
+
+---
+
+# 28. Final Hermes v1 Acceptance Criteria
+
+### Acquisition
+
+* [ ] Reliable connector framework.
+* [ ] Raw data acquisition.
+* [ ] Cache.
+* [ ] Retry.
+* [ ] Pagination.
+* [ ] Rate limiting.
+* [ ] Incremental synchronization.
+
+### Understanding
+
+* [ ] Metadata extraction.
+* [ ] Dataset inspection.
+* [ ] Dataset profiling.
+
+### Transformation
+
+* [ ] Parsing.
+* [ ] Canonical normalization.
+* [ ] Explicit transformations.
+
+### Trust
+
+* [ ] Schema validation.
+* [ ] Data-quality validation.
+* [ ] Completeness checks.
+* [ ] Freshness checks.
+* [ ] Integrity checks.
+
+### Identity
+
+* [ ] Country resolution.
+* [ ] Company resolution.
+* [ ] General entity resolution.
+* [ ] Canonical entity registry.
+
+### Data management
+
+* [ ] Dataset catalog.
+* [ ] Dataset registry.
+* [ ] Storage.
+* [ ] Querying.
+* [ ] Materialization.
+* [ ] Export.
+
+### Reproducibility
+
+* [ ] Metadata.
+* [ ] Provenance.
+* [ ] Lineage.
+* [ ] Dataset versioning.
+* [ ] Snapshots.
+* [ ] Dataset diff.
+* [ ] Schema versioning.
+* [ ] Schema migration.
+
+### Developer experience
+
+* [ ] Stable `hr.*` API.
+* [ ] Stable connector contract.
+* [ ] Documented canonical schemas.
+* [ ] Reference connector.
+* [ ] Complete test suite.
+* [ ] Architecture documentation.
+* [ ] Connector development documentation.
+
+### Core success test
+
+```text
+CSV / JSON / API / XML
+        ↓
+      Hermes
+        ↓
+Parse → Normalize → Validate
+        ↓
+Metadata + Provenance + Lineage
+        ↓
+Canonical Dataset
+        ↓
+Store → Query → Version → Export
+```
+
+**The first milestone should not be "implement everything." The first real milestone is:**
+
+```text
+ONE SOURCE
+    ↓
+raw
+    ↓
+parse
+    ↓
+normalize
+    ↓
+canonical schema
+    ↓
+validate
+    ↓
+metadata
+    ↓
+provenance
+    ↓
+stored Dataset
+```
+
+Once that works cleanly end-to-end for one connector, the rest of Hermes becomes **repeating and generalizing the architecture**, rather than inventing the architecture separately for every source.
