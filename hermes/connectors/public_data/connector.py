@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-CURRENT_DIR = Path(__file__).parent
+CURRENT_DIR = Path(__file__).resolve().parent.parent
 
 HRS_PATH = CURRENT_DIR / "lib" / "datasets" / "hrs.csv"
 HDI_PATH = CURRENT_DIR / "lib" / "datasets" / "hdi1.csv"

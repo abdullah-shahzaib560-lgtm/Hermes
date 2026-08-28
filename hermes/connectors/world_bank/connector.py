@@ -6,14 +6,16 @@ from functools import partial
 import aiohttp
 import pandas as pd
 
-from hermes.core.cache import RawCache
+from hermes.acquisition.cache import RawCache
+from hermes.connectors.world_bank.mappings import WORLD_BANK_BASE_URL
+from hermes.connectors.world_bank.parser import records_to_dataframe
 
 logger = logging.getLogger(__name__)
 
 
 class World_bank:
     def __init__(self, cache: RawCache | None = None):
-        self.url = "https://api.worldbank.org/v2"
+        self.url = WORLD_BANK_BASE_URL
         self._cache = cache or RawCache()
 
     async def _fetch(
@@ -27,7 +29,6 @@ class World_bank:
         timeout: float = 30.0,
         retries: int = 3,
     ) -> pd.DataFrame:
-
         url = f"{self.url}/country/{country_code}/indicator/{indicator_code}"
         params = {
             "per_page": per_page,
@@ -58,27 +59,8 @@ class World_bank:
             return pd.DataFrame(columns=["date", "indicator_id", "indicator_name", "country", "value", "source"])
 
         _, records = r[0], r[1]
-        data = []
 
-        for record in records:
-            data.append(
-                {
-                    "date": record["date"],
-                    "indicator_id": record["indicator"]["id"],
-                    "indicator_name": record["indicator"]["value"],
-                    "country": record["countryiso3code"],
-                    "value": record["value"],
-                    "source": "World_Bank",
-                }
-            )
-
-        data = pd.DataFrame(data)
-
-        data.set_index("date", inplace=True)
-        data.sort_index(ascending=False, inplace=True)
-
-        data = data.reset_index()
-        return data
+        return records_to_dataframe(records)
 
     async def fetch(
         self,
@@ -92,7 +74,6 @@ class World_bank:
         retries: int = 3,
         force: bool = False,
     ) -> pd.DataFrame:
-
         cache_params = {
             "country": country_code,
             "indicator": indicator_code,

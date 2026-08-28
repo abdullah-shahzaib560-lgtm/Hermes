@@ -3,9 +3,9 @@ from typing import Literal
 
 import pandas as pd
 
-from hermes.core.feature_decorator import feature
-from hermes.core.helper import adjust_year_range
-from hermes.sources.public_data import PUBLIC_DATASET
+from hermes.connectors.public_data import PUBLIC_DATASET
+from hermes.features.country_risk_features.utils import adjust_year_range
+from hermes.features.decorator import feature
 
 logger = logging.getLogger(__name__)
 

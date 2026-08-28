@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from hermes.sources.opensanctions import OpenSanction, iso3_to_iso2
+from hermes.connectors.opensanctions import OpenSanction, iso3_to_iso2
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -47,7 +47,7 @@ class TestOpenSanction:
         mock_resp = _mock_aiohttp_response({"results": []})
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.opensanctions.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.opensanctions.connector.aiohttp.ClientSession", return_value=mock_session):
             await os.fetch("USA", dataset="default", limit=0)
             assert mock_session.get.call_count == 1
 
@@ -56,7 +56,7 @@ class TestOpenSanction:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.opensanctions.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.opensanctions.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await os.fetch("USA", dataset="default", limit=0)
             assert result == {}
 
@@ -65,7 +65,7 @@ class TestOpenSanction:
         mock_resp = _mock_aiohttp_response({}, status=500)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.opensanctions.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.opensanctions.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await os.fetch("USA", dataset="default", limit=0)
 

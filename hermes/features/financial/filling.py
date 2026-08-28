@@ -3,12 +3,13 @@ import logging
 import numpy as np
 import pandas as pd
 
-from hermes.sources.finnhub import FINNHUB
-from hermes.sources.lib.sec_tag import SEC_TAG_MAP
-from hermes.sources.sec_edgar import SECEDGAR
-from hermes.sources.yf import Yfinance
+from hermes.connectors.finnhub import FINNHUB
+from hermes.connectors.sec import SECEDGAR
+from hermes.connectors.sec.tags import SEC_TAG_MAP
+from hermes.connectors.yfinance import Yfinance
 
 logger = logging.getLogger(__name__)
+
 
 def _to_float(value: object) -> float:
     return float(value)  # type: ignore
@@ -104,6 +105,7 @@ def _extract_funds_per_period(facts: dict, periods: list[dict], symbol: str) -> 
         )
 
     return result_rows
+
 
 class CompanyFiling:
     def __init__(

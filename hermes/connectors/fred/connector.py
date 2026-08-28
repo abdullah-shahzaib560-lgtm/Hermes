@@ -6,46 +6,10 @@ from functools import partial
 import aiohttp
 import pandas as pd
 
-from hermes.core.cache import RawCache
+from hermes.acquisition.cache import RawCache
+from hermes.connectors.fred.parser import observations_to_dataframe
 
 logger = logging.getLogger(__name__)
-
-fred_series = [
-    # Growth
-    "GDPC1",  # Real GDP
-    "A191RL1Q225SBEA",  # GDP growth
-    "INDPRO",  # Industrial Production
-    # Inflation
-    "CPIAUCSL",  # CPI
-    "CPILFESL",  # Core CPI
-    "PCEPI",  # PCE
-    "PCEPILFE",  # Core PCE
-    # Employment
-    "UNRATE",  # Unemployment
-    "PAYEMS",  # Nonfarm Payrolls
-    "CIVPART",  # Labor Force Participation
-    # Interest rates
-    "FEDFUNDS",  # Fed Funds Rate
-    "DGS10",  # 10Y Treasury
-    "DGS2",  # 2Y Treasury
-    "DGS3MO",  # 3M Treasury
-    # Yield curve
-    "T10Y2Y",  # 10Y - 2Y
-    "T10Y3M",  # 10Y - 3M
-    # Money/credit
-    "M2SL",  # M2
-    "TOTBKCR",  # Bank Credit
-    # Housing
-    "HOUST",  # Housing Starts
-    "EXHOSLUSM495S",  # Existing Home Sales
-    # Markets
-    "SP500",  # S&P 500
-    "VIXCLS",  # VIX
-    # Dollar
-    "DTWEXBGS",  # USD Index
-]
-
-# https://api.stlouisfed.org/fred/series/observations?series_id=GNPCA&api_key={api}&file_type=json
 
 
 class FRED:
@@ -55,7 +19,6 @@ class FRED:
         self._api = api
 
     async def _fetch(self, series_id: str, timeout: float = 30.0, retries: int = 3) -> pd.DataFrame:
-
         params = {"series_id": series_id, "api_key": self._api, "file_type": "json"}
 
         r = None
@@ -77,16 +40,9 @@ class FRED:
                     logger.error(f"HTTP error: {e.status}")
                     raise
 
-        df = pd.DataFrame(r["observations"])
-        df.drop(columns=["realtime_start", "realtime_end"], inplace=True)
-        df["series_id"] = series_id
-        df["unit"] = r["units"]
-        df = df.set_index("date")
-        df = df.sort_index(ascending=False)
-        return df
+        return observations_to_dataframe(r, series_id)
 
     async def fetch(self, series_id: str, timeout: float = 30.0, retries: int = 3, force: bool = False) -> pd.DataFrame:
-
         cached_params = {"series_id": series_id}
 
         return await self._cache.get_or_fetch(

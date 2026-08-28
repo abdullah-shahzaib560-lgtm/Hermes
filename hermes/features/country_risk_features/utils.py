@@ -2,23 +2,8 @@ import logging
 
 import numpy as np
 import pandas as pd
-import pycountry
-from sec_cik_mapper import StockMapper
 
 logger = logging.getLogger(__name__)
-
-
-def iso3_to_iso2(iso3_code):
-    try:
-        return pycountry.countries.get(alpha_3=iso3_code.upper()).alpha_2
-    except AttributeError:
-        return "Not Found"
-
-
-def check_iso3(code):
-    country = pycountry.countries.get(alpha_3=code.upper())
-    if not country:
-        raise RuntimeError(f"The {code} is not iso3")
 
 
 def check_empty(mode, data, country="unknown"):
@@ -37,7 +22,6 @@ def check_empty(mode, data, country="unknown"):
 
 
 def empty_result(mode: str):
-
     return np.nan if mode == "F" else pd.Series(dtype=float)
 
 
@@ -60,9 +44,4 @@ def adjust_year_range(df, year_col, start_year, end_year, fill_method="null", fi
     return adjusted_df
 
 
-def get_cik(ticker: str) -> str:
-    mapper = StockMapper()
-    ticker_to_cik_dict = mapper.ticker_to_cik  # type: ignore[operator]
-
-    cik = ticker_to_cik_dict.get(ticker.upper())
-    return f"CIK{cik}" if cik else "Not Found"
+__all__ = ["check_empty", "empty_result", "adjust_year_range"]

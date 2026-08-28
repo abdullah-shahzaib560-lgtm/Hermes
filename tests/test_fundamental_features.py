@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hermes.features.analysis.fundamental import FAfeatures
+from hermes.features.financial.fundamental import FAfeatures
 
 
 class TestExtractFundsSec:

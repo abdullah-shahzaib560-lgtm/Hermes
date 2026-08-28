@@ -7,8 +7,10 @@ from functools import partial
 import aiohttp
 import pandas as pd
 
+from hermes.acquisition.cache import RawCache
+from hermes.connectors.binance.mappings import BINANCE_ENDPOINTS
+from hermes.connectors.binance.parser import klines_to_dataframe
 from hermes.constants import BINANCE_INTERVAL_MS
-from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
 
@@ -18,29 +20,7 @@ class Binance:
         self._spot_url = "https://api.binance.com"
         self._future_url = "https://fapi.binance.com"
         self._cache = cache or RawCache()
-
-    _ENDPOINTS = {
-        ("spot", "ohlcv"): ("api/v3/klines", ("interval", "limit")),
-        ("spot", "trades"): ("api/v3/trades", ("limit",)),
-        ("spot", "aggregated_trades"): ("api/v3/aggTrades", ("limit",)),
-        ("spot", "order_book"): ("api/v3/depth", ("limit",)),
-        ("spot", "best_bid_ask"): ("api/v3/ticker/bookTicker", ()),
-        ("spot", "24hr"): ("api/v3/ticker/24hr", ()),
-        ("spot", "exchangeInfo"): ("api/v3/exchangeInfo", ()),
-        ("future", "ohlcv"): ("fapi/v1/klines", ("interval", "limit")),
-        ("future", "trades"): ("fapi/v1/trades", ("limit",)),
-        ("future", "aggregated_trades"): ("fapi/v1/aggTrades", ("limit",)),
-        ("future", "order_book"): ("fapi/v1/depth", ("limit",)),
-        ("future", "best_bid_ask"): ("fapi/v1/ticker/bookTicker", ()),
-        ("future", "24hr"): ("fapi/v1/ticker/24hr", ()),
-        ("future", "fundingRate"): ("fapi/v1/fundingRate", ("limit",)),
-        ("future", "openInterest"): ("fapi/v1/openInterest", ()),
-        ("future", "premiumIndex"): ("fapi/v1/premiumIndex", ()),
-        ("future", "openInterestHist"): ("futures/data/openInterestHist", ("period", "limit")),
-        ("future", "longShortRatio"): ("futures/data/globalLongShortAccountRatio", ("period", "limit")),
-        ("future", "topLongShortAccountRatio"): ("futures/data/topLongShortAccountRatio", ("period", "limit")),
-        ("future", "topLongShortPositionRatio"): ("futures/data/topLongShortPositionRatio", ("period", "limit")),
-    }
+        self._ENDPOINTS = BINANCE_ENDPOINTS
 
     def _build_url(
         self,
@@ -211,42 +191,4 @@ class Binance:
             else:
                 logger.warning(f"History fetch error: {r}")
 
-        if not all_candles:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(
-            all_candles,
-            columns=[
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "close_time",
-                "quote_volume",
-                "trades_count",
-                "taker_buy_volume",
-                "taker_buy_quote_volume",
-                "ignore",
-            ],
-        )
-
-        for col in [
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "quote_volume",
-            "taker_buy_volume",
-            "taker_buy_quote_volume",
-        ]:
-            df[col] = df[col].astype(float)
-
-        df["trades_count"] = df["trades_count"].astype(int)
-        df = df.drop(columns=["ignore"])
-        df = df.drop_duplicates(subset=["open_time"], keep="first")
-        df = df.sort_values("open_time").reset_index(drop=True)
-
-        return df
+        return klines_to_dataframe(all_candles)

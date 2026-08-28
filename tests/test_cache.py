@@ -6,7 +6,7 @@ from datetime import timedelta
 import pandas as pd
 import pytest
 
-from hermes.core.cache import CacheMiss, RawCache
+from hermes.acquisition.cache import CacheMiss, RawCache
 
 
 class TestRawCache:

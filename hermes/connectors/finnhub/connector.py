@@ -2,63 +2,22 @@ import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 from functools import partial
-from typing import Literal
 
 import aiohttp
 import pandas as pd
 
+from hermes.acquisition.cache import RawCache
+from hermes.connectors.finnhub.mappings import BASE_URL, ENDPOINTS, FinnhubEndpoint
+from hermes.connectors.finnhub.parser import candles_to_dataframe
 from hermes.constants import FINNHUB_MAX_DAYS
-from hermes.core.cache import RawCache
 
 logger = logging.getLogger(__name__)
 
-FinnhubEndpoint = Literal[
-    "candles",
-    "quote",
-    "profile",
-    "metric",
-    "peers",
-    "earnings",
-    "insider",
-    "eps",
-    "ebitda",
-    "revenue",
-    "news",
-    "symbol",
-]
-FinnhubEndpoints = [
-    "candles",
-    "quote",
-    "profile",
-    "metric",
-    "peers",
-    "earnings",
-    "insider",
-    "eps",
-    "ebitda",
-    "revenue",
-    "news",
-    "symbol",
-]
-
 
 class FINNHUB:
-    BASE_URL = "https://finnhub.io/api/v1"
+    BASE_URL = BASE_URL
 
-    ENDPOINTS = {
-        "candles": "stock/candle",
-        "quote": "quote",
-        "profile": "stock/profile2",
-        "metric": "stock/metric",
-        "peers": "stock/peers",
-        "earnings": "stock/earnings",
-        "insider": "stock/insider-sentiment",
-        "eps": "stock/eps-estimate",
-        "ebitda": "stock/ebitda-estimate",
-        "revenue": "stock/revenue-estimate",
-        "news": "company-news",
-        "symbol": "stock/symbol",
-    }
+    ENDPOINTS = ENDPOINTS
 
     def __init__(
         self,
@@ -73,7 +32,6 @@ class FINNHUB:
         self,
         endpoint: FinnhubEndpoint,
     ) -> str:
-
         try:
             path = self.ENDPOINTS[endpoint]
         except KeyError:
@@ -91,7 +49,6 @@ class FINNHUB:
         _from: int | None = None,
         _to: int | None = None,
     ):
-
         params = {"token": self._api, "symbol": symbol}
 
         _url = self.build_url(endpoint=endpoint)
@@ -213,18 +170,4 @@ class FINNHUB:
                 all_candles.extend(candles)
             chunk_start = chunk_end + 1
 
-        if not all_candles:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(
-            all_candles,
-            columns=["open_time", "open", "high", "low", "close", "volume"],
-        )
-
-        for col in ["open", "high", "low", "close", "volume"]:
-            df[col] = df[col].astype(float)
-
-        df = df.drop_duplicates(subset=["open_time"], keep="first")
-        df = df.sort_values("open_time").reset_index(drop=True)
-
-        return df
+        return candles_to_dataframe(all_candles)

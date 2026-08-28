@@ -6,8 +6,8 @@ from functools import partial
 import aiohttp
 import pandas as pd
 
-from hermes.core.cache import RawCache
-from hermes.core.helper import get_cik
+from hermes.acquisition.cache import RawCache
+from hermes.entities.companies import get_cik
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,6 @@ class SECEDGAR:
         retries: int = 3,
         force: bool = False,
     ) -> pd.DataFrame | dict:
-
         cache_params = {
             "company": symbol,
         }
