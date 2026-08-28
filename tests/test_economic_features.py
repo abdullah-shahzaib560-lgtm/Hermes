@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from hermes.core.helper import adjust_year_range, check_empty, check_iso3, empty_result, iso3_to_iso2
+from hermes.entities.countries import check_iso3, iso3_to_iso2
 from hermes.features.country_risk_features.economic import economic_features
+from hermes.features.country_risk_features.utils import adjust_year_range, check_empty, empty_result
 
 
 class TestHelpers:

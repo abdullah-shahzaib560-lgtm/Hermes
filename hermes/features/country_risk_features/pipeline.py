@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from hermes.core.helper import check_iso3
+from hermes.entities.countries import check_iso3
 from hermes.features.country_risk_features.economic import economic_features
 from hermes.features.country_risk_features.environmental import enviromental_features
 from hermes.features.country_risk_features.geopolitical import geopolitical_features

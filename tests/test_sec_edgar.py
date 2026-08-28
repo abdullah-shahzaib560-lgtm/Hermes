@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from hermes.sources.sec_edgar import SECEDGAR
+from hermes.connectors.sec import SECEDGAR
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -50,7 +50,7 @@ class TestSECEDGAR:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.sec_edgar.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.sec.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await sec._fetch(symbol="AAPL")
             assert result is not None
             assert "facts" in result
@@ -60,7 +60,7 @@ class TestSECEDGAR:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.sec_edgar.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.sec.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await sec._fetch(symbol="BAD")
             assert result is None
 
@@ -69,7 +69,7 @@ class TestSECEDGAR:
         mock_resp = _mock_aiohttp_response({}, status=500)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.sec_edgar.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.sec.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await sec._fetch(symbol="AAPL")
 
@@ -80,7 +80,7 @@ class TestSECEDGAR:
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hermes.sources.sec_edgar.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.sec.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(TimeoutError):
                 await sec._fetch(symbol="AAPL", retries=1)
 
@@ -89,7 +89,7 @@ class TestSECEDGAR:
         mock_resp = _mock_aiohttp_response({"facts": {"us-gaap": {}}})
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.sec_edgar.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.sec.connector.aiohttp.ClientSession", return_value=mock_session):
             await sec._fetch(symbol="AAPL")
             call_kwargs = mock_session.get.call_args
             assert "headers" in call_kwargs.kwargs or "headers" in call_kwargs[1] if len(call_kwargs) > 1 else True
@@ -100,6 +100,6 @@ class TestSECEDGAR:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.sec_edgar.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.sec.connector.aiohttp.ClientSession", return_value=mock_session):
             r1 = await sec.fetch(symbol="AAPL")
             assert r1 == mock_response

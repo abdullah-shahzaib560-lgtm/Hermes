@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from hermes.core.cache import RawCache
+from hermes.acquisition.cache import RawCache
 
 
 @pytest.fixture

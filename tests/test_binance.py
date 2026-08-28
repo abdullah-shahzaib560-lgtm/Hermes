@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from hermes.sources.binance import Binance
+from hermes.connectors.binance import Binance
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -75,7 +75,7 @@ class TestBinanceFetch:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.binance.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.binance.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await b._fetch(mode="spot", endpoint="ohlcv", symbol="BTCUSDT", interval="1d", limit=30)
             assert result == mock_response
 
@@ -84,7 +84,7 @@ class TestBinanceFetch:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.binance.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.binance.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await b._fetch(mode="spot", endpoint="ohlcv", symbol="BAD", interval="1d", limit=30)
             assert result is None
 
@@ -97,7 +97,7 @@ class TestBinanceFetch:
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hermes.sources.binance.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.binance.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await b._fetch(mode="spot", endpoint="ohlcv", symbol="BTCUSDT", interval="1d", limit=30)
             assert result is not None
 
@@ -106,7 +106,7 @@ class TestBinanceFetch:
         mock_resp = _mock_aiohttp_response({}, status=500)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.binance.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.binance.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await b._fetch(mode="spot", endpoint="ohlcv", symbol="BTCUSDT", interval="1d", limit=30)
 
@@ -116,6 +116,6 @@ class TestBinanceFetch:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.binance.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.binance.connector.aiohttp.ClientSession", return_value=mock_session):
             r1 = await b.fetch(mode="spot", endpoint="ohlcv", symbol="BTCUSDT", interval="1d", limit=30)
             assert r1 == mock_response

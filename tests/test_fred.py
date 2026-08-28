@@ -6,7 +6,7 @@ import aiohttp
 import pandas as pd
 import pytest
 
-from hermes.sources.fred import FRED
+from hermes.connectors.fred import FRED
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -55,7 +55,7 @@ class TestFRED:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.fred.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.fred.connector.aiohttp.ClientSession", return_value=mock_session):
             df = await fred._fetch(series_id="GDPC1")
             assert not df.empty
             assert df["value"].iloc[0] == "27360.863"
@@ -67,7 +67,7 @@ class TestFRED:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.fred.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.fred.connector.aiohttp.ClientSession", return_value=mock_session):
             result = await fred._fetch(series_id="BAD_SERIES")
             assert result is None
 
@@ -76,7 +76,7 @@ class TestFRED:
         mock_resp = _mock_aiohttp_response({}, status=500)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.fred.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.fred.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await fred._fetch(series_id="GDPC1")
 
@@ -87,7 +87,7 @@ class TestFRED:
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hermes.sources.fred.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.fred.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(TimeoutError):
                 await fred._fetch(series_id="GDPC1", retries=1)
 
@@ -107,7 +107,7 @@ class TestFRED:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.fred.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.fred.connector.aiohttp.ClientSession", return_value=mock_session):
             df1 = await fred.fetch(series_id="GDPC1")
             df2 = await fred.fetch(series_id="GDPC1")
             assert mock_session.get.call_count == 1

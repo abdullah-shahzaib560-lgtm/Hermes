@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
-from hermes.sources.world_bank import World_bank
+from hermes.connectors.world_bank import World_bank
 
 
 def _mock_aiohttp_response(json_data, status=200):
@@ -50,7 +50,7 @@ class TestWorldBank:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.world_bank.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.world_bank.connector.aiohttp.ClientSession", return_value=mock_session):
             df = await wb._fetch("USA", "NY.GDP.MKTP.KD.ZG")
             assert not df.empty
             assert df["value"].iloc[0] == 2.5
@@ -63,7 +63,7 @@ class TestWorldBank:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.world_bank.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.world_bank.connector.aiohttp.ClientSession", return_value=mock_session):
             df = await wb._fetch("XYZ", "SOME.IND")
             assert df.empty
 
@@ -72,7 +72,7 @@ class TestWorldBank:
         mock_resp = _mock_aiohttp_response({}, status=404)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.world_bank.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.world_bank.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientResponseError):
                 await wb._fetch("USA", "BAD")
 
@@ -83,7 +83,7 @@ class TestWorldBank:
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hermes.sources.world_bank.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.world_bank.connector.aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(aiohttp.ClientError):
                 await wb._fetch("USA", "NY.GDP.MKTP.KD.ZG", retries=1)
 
@@ -103,7 +103,7 @@ class TestWorldBank:
         mock_resp = _mock_aiohttp_response(mock_response)
         mock_session = _mock_session(mock_resp)
 
-        with patch("hermes.sources.world_bank.aiohttp.ClientSession", return_value=mock_session):
+        with patch("hermes.connectors.world_bank.connector.aiohttp.ClientSession", return_value=mock_session):
             df1 = await wb.fetch("USA", "GDP.PROT")
             df2 = await wb.fetch("USA", "GDP.PROT")
             assert mock_session.get.call_count == 1

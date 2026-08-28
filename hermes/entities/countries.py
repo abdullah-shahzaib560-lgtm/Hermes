@@ -1,3 +1,5 @@
+import pycountry
+
 countries: list[str] = [
     "AFG",
     "ALA",
@@ -249,3 +251,19 @@ countries: list[str] = [
     "ZMB",
     "ZWE",
 ]
+
+
+def iso3_to_iso2(iso3_code: str) -> str:
+    try:
+        return pycountry.countries.get(alpha_3=iso3_code.upper()).alpha_2
+    except AttributeError:
+        return "Not Found"
+
+
+def check_iso3(code: str) -> None:
+    country = pycountry.countries.get(alpha_3=code.upper())
+    if not country:
+        raise RuntimeError(f"The {code} is not iso3")
+
+
+__all__ = ["countries", "iso3_to_iso2", "check_iso3"]
