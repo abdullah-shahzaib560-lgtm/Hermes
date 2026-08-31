@@ -36,7 +36,9 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "/home/Alpha/.cache/hermes-plt-next/types/**/*.ts",
-    "/home/Alpha/.cache/hermes-plt-next/dev/types/**/*.ts"
+    "/home/Alpha/.cache/hermes-plt-next/dev/types/**/*.ts",
+    "/mnt/data/projects/Hermes/docs-site/.next/types/**/*.ts",
+    "/mnt/data/projects/Hermes/docs-site/.next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
