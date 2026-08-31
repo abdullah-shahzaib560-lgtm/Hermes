@@ -1,333 +1,973 @@
 # Hermes
 
-Foundational intelligence data platform for acquiring, validating, normalizing, storing, and serving country risk and financial intelligence datasets.
+### The Data Engine for Python
 
-## What is Hermes?
+**Fetch. Parse. Normalize. Validate. Profile. Transform. Query. Export.**
 
-Hermes is a Python data platform that sits between external public data sources (World Bank, IMF, GDELT, OpenSanctions, FRED, Binance, Finnhub, SEC EDGAR, Yahoo Finance, ...) and your application. It provides a single, unified async API for:
+Hermes is an open source, Python native data engine designed to make working with external and existing datasets dramatically easier.
 
-- **Acquiring** raw indicators, events, and financial data from heterogeneous public APIs
-- **Normalizing** them into a consistent, country-keyed or ticker-keyed data model
-- **Computing** ~58 country risk features across five dimensions plus technical and fundamental analysis features
-- **Storing** raw responses in a TTL-based disk cache
-- **Serving** both latest-value snapshots (`"F"` mode) and monthly time series (`"ML"` mode) ready for dashboards or ML training
+Instead of writing a different pipeline for every API, CSV, JSON response, database, or public dataset, Hermes provides one consistent system for bringing data in, understanding it, cleaning it, validating it, transforming it, and making it ready for analysis and machine learning.
 
-## Why does it exist?
+```python
+import hermes as hr
 
-Country risk analysis requires stitching together dozens of unrelated public datasets: macroeconomic indicators from the World Bank and IMF, conflict and protest events from GDELT, sanctions lists from OpenSanctions, governance scores, fragile state indices, climate risk scores, and more. Each source has its own API, schema, country-code convention (ISO3 vs ISO2 vs FIPS), update cadence, and failure modes.
+data = hr.fetch("world_bank", dataset="gdp")
 
-Additionally, financial analysis requires data from market data providers (Binance, Yahoo Finance), fundamental data providers (Finnhub, SEC EDGAR), and economic data (FRED).
+data = data.parse()
+data = data.normalize()
+data = data.validate()
 
-Hermes exists to hide that complexity behind one facade, so analysts and engineers work with a single `Hermes` object instead of N SDKs.
+print(data.profile())
 
-## What problem does it solve?
-
-- **Fragmentation** — one API over nine source families instead of bespoke integration code per source
-- **Code mismatch** — GDELT reports FIPS codes, OpenSanctions wants ISO2, features key on ISO3; Hermes normalizes all of it
-- **Repetitive network work** — every fetch is cached (Parquet-backed, per-source TTLs) and retried with backoff
-- **Feature engineering duplication** — 58 battle-tested features (GDP growth, inflation volatility, conflict trends, Goldstein-scale averages, sanctions coverage, WGI governance, climate vulnerability, ...) computed consistently across countries and time
-- **Two incompatible consumption modes** — the same feature returns either a latest float for a risk dashboard or a monthly `pd.Series` for a training set, with no extra code
-- **Financial data fragmentation** — technical indicators, fundamentals, and macroeconomic data from different providers unified under one interface
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Hermes facade  (hermes/__init__.py)                        │
-│  connectors · feature groups · cache · listings            │
-└─────────────────────────────────────────────────────────────┘
-        │                        │
-        ▼                        ▼
-┌────────────────┐      ┌───────────────────────────────┐
-│ connectors/    │      │ features/                     │
-│ per-source     │      │ country_risk_features         │
-│ packages       │      │ pipeline + 5 feature groups   │
-│                │      │ (eco · geo · sec · soc · env) │
-│ world_bank     │◄────►│ @feature decorator → lineage  │
-│ imf            │      └───────────┬───────────────────┘
-│ gdelt          │      │ financial                     │
-│ opensanctions  │      │ technical · fundamental       │
-│ public_data    │      │ models · history              │
-│ fred           │      └───────────────────────────────┘
-│ binance        │
-│ finnhub        │
-│ sec            │
-│ yfinance       │
-└───────┬────────┘
-        ▼
-┌────────────────┐      ┌────────────────┐
-│ acquisition/   │      │ entities/      │
-│ cache (RawCache│      │ countries (iso3│
-│ parquet+meta   │      │  ↔ iso2, check)│
-│ TTLs, stats)   │      │ companies (cik)│
-└────────────────┘      └────────────────┘
-          ┌──────────────┴───────────────┐
-          ▼                              ▼
-┌────────────────┐             ┌────────────────┐
-│ export/        │             │ core/          │
-│ csv / json /   │             │ scheduler      │
-│ parquet        │             └────────────────┘
-└────────────────┘
+df = data.to_polars()
 ```
 
-- **Facade** — `Hermes` bundles connectors, the feature pipeline, analysis features, and cache controls into one object.
-- **Connectors** — one package per source family (`connectors/<source>/`: `connector.py`, `parser.py`, `normalizer.py`, `mappings.py`), each exposing an async `fetch(...)` backed by `RawCache`.
-- **Feature layer** — five group modules (`economic`, `geopolitical`, `security`, `social`, `environmental`). Every feature is registered via the `@feature(name, group, deps, compute)` decorator, which populates a lineage graph (`features/decorator.py`) used to resolve dependency tiers for a group.
-- **Analysis features** — `TAfeatures` (technical analysis from Binance data) and `FAfeatures` (fundamental analysis from Finnhub, SEC EDGAR, FRED, Yahoo Finance).
-- **Pipeline** — `get_country_risk_features()` computes all features of a group concurrently via `asyncio.gather`; `build_training_panel()` assembles multi-country monthly panels.
-- **Cache** — `RawCache` stores normalized raw responses as Parquet files with sidecar `.meta.json` (params, cached_at, row/column stats), per-source TTLs, expiry-based eviction, and hit/miss statistics.
+Hermes is built around a simple idea:
 
-## Installation
+> **Data should be as easy to work with as the models and applications built on top of it.**
 
-Requires Python >= 3.11. The project is managed with [uv](https://docs.astral.sh/uv/).
+---
 
-```bash
-git clone <repo-url> Hermes
-cd Hermes
-uv sync --dev        # include dev group for testing; plain `uv sync` otherwise
+# Why Hermes?
+
+Modern data work is full of repetitive engineering.
+
+Every new source means dealing with different APIs, authentication methods, formats, schemas, naming conventions, missing values, types, timestamps, units, identifiers, duplicates, and validation rules.
+
+The result is usually the same pattern repeated across hundreds of projects:
+
+```text
+Fetch
+Clean
+Rename
+Cast
+Validate
+Deduplicate
+Normalize
+Save
+Repeat
 ```
 
-## Quickstart
+Hermes turns that repeated work into reusable infrastructure.
 
-Create a `.env` file with your API keys:
+```python
+data = hr.fetch(source)
 
-```bash
-cp .env.example .env
-# add:
-# OPEN_SANCTIONS_API=your_opensanctions_key_here
-# NEWS_DATA_API=your_newsdata_key_here
-# FRED_API=your_fred_key_here
-# FINNHUB_API=your_finnhub_key_here
-# SEC_USERNAME=your_sec_edgar_username
-# SEC_EMAIL=your_sec_edgar_email
+data = data.parse()
+data = data.normalize()
+data = data.validate()
+
+data.profile()
+data.inspect()
+
+data.save("my_dataset")
+```
+
+The goal is not to replace Pandas, Polars, DuckDB, PyArrow, or other excellent tools.
+
+The goal is to make them easier to use together.
+
+---
+
+# What Hermes Is
+
+Hermes is a general purpose data lifecycle engine.
+
+It provides a common system for:
+
+* Acquiring data
+* Parsing raw data
+* Inferring schemas
+* Defining schemas
+* Normalizing data
+* Converting types
+* Converting units
+* Aligning timestamps
+* Cleaning datasets
+* Validating data
+* Profiling datasets
+* Detecting anomalies
+* Detecting duplicates
+* Transforming data
+* Resolving entities
+* Versioning datasets
+* Tracking provenance
+* Tracking lineage
+* Querying datasets
+* Storing datasets
+* Loading datasets
+* Exporting datasets
+
+The same core system can work with completely different domains.
+
+Finance.
+
+Defense.
+
+Healthcare.
+
+Trade.
+
+Energy.
+
+Climate.
+
+Geopolitics.
+
+Research.
+
+Enterprise data.
+
+Private datasets.
+
+The core does not need to understand every domain.
+
+Domain specific knowledge can be added on top.
+
+---
+
+# The Hermes Ecosystem
+
+Hermes Core provides the general data engine.
+
+Additional Hermes packages provide specialized capabilities.
+
+```text
+Hermes Core
+    |
+    + Hermes Finance
+    |
+    + Hermes Defense
+    |
+    + Hermes Healthcare
+    |
+    + Hermes Trade
+    |
+    + Hermes Energy
+    |
+    + Hermes Climate
+    |
+    + Hermes Geopolitics
+    |
+    + Hermes Corporate
+    |
+    + Hermes Entity
+    |
+    + Hermes Features
+    |
+    + Hermes Connectors
+```
+
+This allows Hermes to remain small and general while the ecosystem grows around it.
+
+A developer working with financial data should not need to install defense infrastructure.
+
+A developer working with healthcare data should not need the finance package.
+
+The core remains universal.
+
+The ecosystem becomes specialized.
+
+---
+
+# The Core API
+
+Hermes is designed around a small, understandable API.
+
+| Function        | Purpose                                        |
+| --------------- | ---------------------------------------------- |
+| `fetch()`       | Retrieve data from an external source          |
+| `ingest()`      | Bring an existing dataset into Hermes          |
+| `parse()`       | Convert raw data into structured records       |
+| `normalize()`   | Convert data into a consistent representation  |
+| `validate()`    | Verify that data satisfies defined rules       |
+| `profile()`     | Analyze the structure and quality of a dataset |
+| `inspect()`     | Explore data, schema, metadata and quality     |
+| `transform()`   | Apply transformations to data                  |
+| `resolve()`     | Connect records to canonical entities          |
+| `deduplicate()` | Detect and handle duplicate records            |
+| `query()`       | Query Hermes datasets                          |
+| `save()`        | Persist datasets                               |
+| `load()`        | Load datasets                                  |
+| `export()`      | Export data to other systems                   |
+| `snapshot()`    | Create an immutable dataset version            |
+| `diff()`        | Compare dataset versions                       |
+| `metadata()`    | Retrieve dataset information                   |
+| `lineage()`     | Show how data was produced                     |
+| `provenance()`  | Show where data came from                      |
+
+The API is intentionally composable.
+
+```python
+dataset = hr.fetch("source")
+
+dataset = dataset.parse()
+dataset = dataset.normalize()
+dataset = dataset.validate()
+
+dataset.profile()
+dataset.inspect()
+
+dataset.save("dataset")
+```
+
+---
+
+# Fetch Anything
+
+Hermes provides a common interface for acquiring external data.
+
+```python
+data = hr.fetch(
+    "world_bank",
+    dataset="gdp"
+)
+```
+
+The source can eventually be anything supported by a Hermes connector.
+
+APIs.
+
+Bulk downloads.
+
+CSV files.
+
+JSON.
+
+XML.
+
+Parquet.
+
+Databases.
+
+Data streams.
+
+Custom sources.
+
+The connector handles communication with the source.
+
+Hermes Core handles what happens after the data arrives.
+
+---
+
+# Ingest Existing Data
+
+Not every dataset comes from an API.
+
+Hermes can ingest datasets that already exist.
+
+```python
+data = hr.ingest("dataset.parquet")
 ```
 
 ```python
-import asyncio
-import os
+data = hr.ingest("dataset.csv")
+```
 
-from dotenv import load_dotenv
-from hermes import Hermes
+```python
+data = hr.ingest("dataset.json")
+```
 
-load_dotenv()
+The same Hermes lifecycle can then be applied.
 
-hr = Hermes(
-    opensanction_api=os.getenv("OPEN_SANCTIONS_API"),
-    new_data_api=os.getenv("NEWS_DATA_API"),
-    fred_api=os.getenv("FRED_API"),
-    sec_username=os.getenv("SEC_USERNAME"),
-    sec_email=os.getenv("SEC_EMAIL"),
-    finnhub_api=os.getenv("FINNHUB_API"),
+```python
+data.profile()
+data.validate()
+data.normalize()
+data.save("my_dataset")
+```
+
+---
+
+# Parse
+
+Raw data should not immediately become a final dataset.
+
+Hermes separates acquisition from interpretation.
+
+```python
+data = hr.fetch(source)
+
+structured = data.parse()
+```
+
+Parsing deals with the representation of the source.
+
+JSON becomes records.
+
+CSV becomes records.
+
+XML becomes records.
+
+Compressed archives become usable data.
+
+Source specific parsing logic remains inside the appropriate parser.
+
+---
+
+# Normalize
+
+Different sources rarely describe data in exactly the same way.
+
+One source might use:
+
+```text
+country
+```
+
+Another:
+
+```text
+country_name
+```
+
+Another:
+
+```text
+CountryName
+```
+
+Another:
+
+```text
+location
+```
+
+Hermes provides a normalization layer that can map these different representations into consistent schemas.
+
+```python
+data = data.normalize()
+```
+
+Normalization can handle:
+
+* Names
+* Types
+* Dates
+* Timezones
+* Units
+* Currencies
+* Country codes
+* Identifiers
+* Categories
+* Frequencies
+* Source specific representations
+
+The goal is simple:
+
+> **Different sources should become easier to use together.**
+
+---
+
+# Validate
+
+Hermes does not assume that data is correct just because it successfully downloaded.
+
+```python
+report = data.validate()
+```
+
+Validation can check:
+
+* Required fields
+* Data types
+* Missing values
+* Invalid values
+* Duplicate records
+* Identifier validity
+* Date consistency
+* Range constraints
+* Schema compatibility
+* Referential integrity
+* Domain specific rules
+
+Validation results remain inspectable.
+
+```python
+report.valid
+report.errors
+report.warnings
+```
+
+---
+
+# Profile
+
+Before working with a dataset, you should be able to understand it immediately.
+
+```python
+profile = data.profile()
+```
+
+Hermes can provide information such as:
+
+```text
+Rows
+Columns
+Types
+Missing values
+Unique values
+Duplicates
+Value ranges
+Distributions
+Date ranges
+Frequency
+Schema
+Quality checks
+```
+
+The objective is simple:
+
+> **Open a dataset and understand what you are dealing with.**
+
+---
+
+# Inspect
+
+Hermes provides a higher level inspection interface for developers.
+
+```python
+data.inspect()
+```
+
+Inspection can expose:
+
+* Dataset information
+* Schema
+* Sample records
+* Metadata
+* Validation results
+* Profile
+* Quality information
+* Source
+* Lineage
+* Version
+* Entity information
+
+A dataset should not be a black box.
+
+---
+
+# Transform
+
+Hermes should work with the tools developers already use.
+
+```python
+data = data.transform(my_function)
+```
+
+Complex transformations can be composed into pipelines.
+
+```python
+data = (
+    data
+    .transform(clean_dates)
+    .transform(calculate_features)
+    .transform(remove_invalid_records)
+)
+```
+
+Hermes does not try to become another dataframe library.
+
+Instead, it provides the pipeline layer around existing data tools.
+
+---
+
+# Entity Resolution
+
+Data from different sources often refers to the same real world entity in different ways.
+
+Hermes provides an interface for connecting those records.
+
+```python
+data = data.resolve()
+```
+
+For example:
+
+```text
+Apple Inc.
+Apple Computer Inc.
+Apple Computer, Inc.
+AAPL
+US0378331005
+```
+
+can potentially be connected to a canonical entity.
+
+The actual resolution logic can come from specialized Hermes packages.
+
+This allows the same infrastructure to support:
+
+* Companies
+* Countries
+* Securities
+* Organizations
+* Locations
+* Vessels
+* Other domain specific entities
+
+---
+
+# Dataset Versioning
+
+Data changes.
+
+Sources revise historical values.
+
+Schemas change.
+
+Pipelines improve.
+
+Hermes treats datasets as evolving objects.
+
+```python
+dataset.snapshot()
+```
+
+```python
+dataset.version()
+```
+
+```python
+dataset.diff("v1", "v2")
+```
+
+This makes it possible to understand what changed between dataset versions.
+
+Historical data should remain reproducible instead of silently changing underneath your application.
+
+---
+
+# Provenance
+
+Every dataset should answer:
+
+> Where did this data come from?
+
+Hermes keeps provenance information alongside the dataset.
+
+For example:
+
+```python
+dataset.provenance()
+```
+
+could return:
+
+```text
+WorldBank
+parser@1.3.0
+mapper@0.9.3
+normalizer@1.4.7
+validator@3.4.8
+dataset@gdp_v2
+```
+
+A much more complex system can eventually be built on top of this.
+
+The foundation remains simple.
+
+---
+
+# Lineage
+
+Hermes records how data moves through the system.
+
+For example:
+
+```text
+WorldBank
+    ↓
+Parser
+    ↓
+Mapper
+    ↓
+Normalizer
+    ↓
+Validator
+    ↓
+Entity Resolver
+    ↓
+Dataset
+```
+
+The important thing is that the final dataset is not disconnected from the process that produced it.
+
+Developers should be able to trace data back through the pipeline.
+
+---
+
+# Works With Your Data Stack
+
+Hermes is designed to work with the Python data ecosystem.
+
+Potential integrations include:
+
+| Tool                        | Hermes Integration        |
+| --------------------------- | ------------------------- |
+| Pandas                      | DataFrame conversion      |
+| Polars                      | DataFrame conversion      |
+| PyArrow                     | Arrow data interchange    |
+| DuckDB                      | Analytical querying       |
+| NumPy                       | Numerical processing      |
+| Parquet                     | Dataset storage           |
+| SQL databases               | Data ingestion and export |
+| Machine learning frameworks | ML ready datasets         |
+
+Hermes should make existing tools work together rather than force developers into a proprietary data model.
+
+---
+
+# Connectors
+
+Hermes connectors provide access to external sources.
+
+A connector should primarily answer:
+
+> How do I get this source's data?
+
+Hermes Core handles the rest.
+
+A connector can provide:
+
+* Authentication
+* Requests
+* Pagination
+* Rate limiting
+* Retries
+* Source specific parsing
+* Source metadata
+
+Connectors can be independently developed and distributed.
+
+This allows the ecosystem to grow without constantly changing Hermes Core.
+
+---
+
+# Domain Packages
+
+Hermes Core provides the infrastructure.
+
+Domain packages provide knowledge.
+
+For example:
+
+### Hermes Finance
+
+Financial datasets, securities, companies, economic indicators, market data, financial statements and financial features.
+
+### Hermes Defense
+
+Defense expenditure, conflicts, military organizations, equipment, arms transfers, security events and defense indicators.
+
+### Hermes Healthcare
+
+Healthcare statistics, diseases, organizations, hospitals, medicines and public health datasets.
+
+### Hermes Trade
+
+Trade flows, commodities, customs information, ports, countries and supply chain datasets.
+
+The same core engine can power all of them.
+
+---
+
+# Feature Engineering
+
+Hermes can also provide reusable feature engineering through specialized packages.
+
+For example:
+
+```python
+features = finance.features(data)
+```
+
+or:
+
+```python
+features = defense.features(data)
+```
+
+Features should have explicit definitions and dependencies.
+
+This makes them reusable across research, analytics and machine learning systems.
+
+---
+
+# Designed for Developers
+
+Hermes should feel natural in Python.
+
+```python
+import hermes as hr
+
+dataset = hr.fetch("source")
+
+dataset = (
+    dataset
+    .parse()
+    .normalize()
+    .validate()
 )
 
+dataset.profile()
 
-async def main():
-    # Every supported country code (ISO3) and every available feature
-    print(hr.list_countries)
-    print([f.__name__ for f in hr.list_features])
-
-    # Latest country risk snapshot (all groups, computed concurrently)
-    risk = await hr.country_features.get_country_risk_features("UKR")
-    print(risk["economic"]["gdp_growth_yoy"])
-    print(risk["geopolitical"]["conflict_event_count_30d"])
-
-    # ML training panel: monthly series for a set of countries
-    panel = await hr.country_features.build_training_panel(
-        fns=[hr.lf.eco.gdp_growth_yoy, hr.lf.eco.inflation_cpi_yoy],
-        countries=["USA", "UKR", "DEU"],
-    )
-    print(panel)
-
-    # Cache controls
-    print(hr.cache_stats())
-    hr.clear_cache(older_than="7d")
-
-
-asyncio.run(main())
+df = dataset.to_polars()
 ```
 
-## Example
+No giant framework is required to get started.
 
-Fetch raw data from any connector:
+No forced cloud account.
 
-```python
-# World Bank indicator time series
-df = await hr.world_bank.fetch(country_code="USA", indicator_code="NY.GDP.MKTP.KD.ZG")
+No mandatory hosted service.
 
-# GDELT events by country and theme (normalized to canonical schema)
-events = await hr.gdelt.query_events(countries=["UKR"], themes=["CONFLICT"])
+No requirement to use a proprietary storage system.
 
-# OpenSanctions dataset (e.g. US OFAC SDN list) — raw JSON
-sanc = await hr.opensanction.fetch(country="RUS", dataset="us_ofac_sdn")
+Hermes Core is open source.
 
-# IMF SDMX 3.0 dataflow
-imf_df = await hr.imf.fetch(country="USA", agency="IFS", dataflow_id="IFS", key="NGDP_R")
+---
 
-# FRED economic data
-fred_df = await hr.fred.fetch(series_id="GDPC1")
+# Local First
 
-# Binance market data (spot OHLCV)
-ohlcv = await hr.binance.fetch(symbol="BTCUSDT", market_type="spot", endpoint="ohlcv", interval="1d", limit=30)
+Hermes is designed to work locally.
 
-# Finnhub stock data
-quote = await hr.finnhub.fetch(symbol="AAPL", endpoint="quote")
+A developer should be able to:
 
-# SEC EDGAR company facts
-facts = await hr.sec_edger.fetch(symbol="AAPL")
-
-# Yahoo Finance earnings data
-earnings = await hr.yfin.fetch(symbol="AAPL", endpoint="earnings_history")
+```text
+pip install hermes
 ```
 
-Work with individual features in either mode:
+and start working with data immediately.
 
-```python
-# "F" — latest value as a float/string/bool
-gdp = await hr.lf.eco.gdp_growth_yoy(country_code="USA", mode="F")
+Local files can be used.
 
-# "ML" — monthly pd.Series (resampled, interpolated) for modeling
-gdp_series = await hr.lf.eco.gdp_growth_yoy(country_code="USA", mode="ML")
+Local storage can be used.
 
-# Technical analysis features
-ta_snapshot = await hr.ta_feature.snapshot("BTCUSDT")
+DuckDB can be used.
 
-# Fundamental analysis features
-fa_snapshot = await hr.fa_feature.snapshot("AAPL")
+Parquet can be used.
 
-# Export anything to csv / json / parquet
-from hermes.export import export
+Polars can be used.
 
-export(data=panel, filetype="parquet", name="training_panel")
-```
+A database can be added when the project needs one.
 
-## API
+Cloud infrastructure should be an extension of Hermes, not a requirement for using it.
 
-### Facade `Hermes`
+---
 
-| Member | Type | Description |
-|---|---|---|
-| `Hermes(opensanction_api, new_data_api, fred_api, sec_username, sec_email, finnhub_api, cache_dir=None, use_cache=True)` | ctor | API keys for various services |
-| `.world_bank` / `.imf` / `.gdelt` / `.opensanction` / `.fred` / `.binance` / `.finnhub` / `.sec_edger` / `.yfin` / `.datasets` | connectors | Async data fetchers |
-| `.country_features` | `pipeline` | `get_country_risk_features(country)` and `build_training_panel(fns, countries)` |
-| `.ta_feature` | `TAfeatures` | Technical analysis features from Binance market data |
-| `.fa_features` | `FAfeatures` | Fundamental analysis features from Finnhub, SEC EDGAR, FRED, Yahoo Finance |
-| `.lf` | `features` | Feature registry: `.eco`, `.geo`, `.sec`, `.soc`, `.env` groups |
-| `.list_countries` | `list[str]` | All supported ISO3 codes |
-| `.list_features` | `list[Callable]` | All feature functions |
-| `.clear_cache(older_than="7d")` | method | Evict cache entries (`h`/`d`/`w` units) |
-| `.cache_stats()` | `dict` | Files, per-source hit/miss counts and hit rates |
+# Built for Growth
 
-### Connectors
+Hermes starts small.
 
-All connectors expose `async fetch(...)` (plus `query_events(...)` for GDELT) and share `force` and retry/timeout parameters. Uses `aiohttp` for async HTTP.
+A single developer can use it for a single dataset.
 
-### Features
+A research team can use it for hundreds of datasets.
 
-Every feature is `async fn(country_code: str, mode: "F" | "ML")`:
+A company can build internal data pipelines around it.
 
-- `"F"` — latest value: `float`, `int`, `str`, or `bool` (e.g. `nato_member`)
-- `"ML"` — monthly `pd.Series` with a `DatetimeIndex`, interpolated to month-start frequency
-- Missing data returns `np.nan` (`"F"`) or an empty `pd.Series` (`"ML"`) instead of raising
+Larger deployments can eventually introduce:
 
-### Pipeline
+* Remote datasets
+* Distributed processing
+* Object storage
+* Dataset catalogs
+* Continuous ingestion
+* Hosted APIs
+* Large scale querying
+* Team access
+* Enterprise controls
 
-| Method | Returns |
-|---|---|
-| `await pipeline.get_country_risk_features(country)` | dict: `country`, five group dicts, `metadata` (`last_updated`, `features_version`) |
-| `await pipeline.build_training_panel(fns, countries)` | `pd.DataFrame` with `MultiIndex (country_iso3, date)`, one column per feature |
+The same core concepts remain intact.
 
-## Data model
+---
 
-- **Connector frames** — normalized `pd.DataFrame`s:
-  - World Bank: `date, indicator_id, indicator_name, country, value, source`
-  - IMF: `date, indicator_id, country, value, source` (+ any SDMX dimension attributes)
-  - GDELT: canonical event schema `event_id, date, country_iso3, event_type, severity, lat, lon, source` (FIPS → ISO3 mapped, CAMEO/GKG themes classified into `conflict`, `protest`, `diplomacy`, `sanction`, ...)
-  - OpenSanctions: raw JSON response as returned by the API
-  - FRED: `date, indicator_id, indicator_name, country, value, source`
-  - Binance: `date, open, high, low, close, volume, ...` (OHLCV and other market data)
-  - Finnhub: varies by endpoint (quote, candles, fundamentals)
-  - SEC EDGAR: company facts as structured financial data
-  - Yahoo Finance: earnings estimates, revenue estimates, earnings history
-- **Risk snapshot** — nested dict: `{country, economic, geopolitical, security, social, environmental, metadata}`
-- **Training panel** — monthly time-series `pd.DataFrame` with `MultiIndex (country_iso3, date)`
-- **Cache** — Parquet data files + sidecar `.meta.json` under `~/.hermes_cache/raw/<source>/<hash>.parquet`
+# What Hermes Is Not
 
-## Supported sources
+Hermes Core is not trying to be:
 
-| Source | What it provides | Auth | Cache TTL |
-|---|---|---|---|
-| [World Bank](https://data.worldbank.org/) indicators API | GDP, inflation, unemployment, governance, debt, ... | none | 7 days |
-| [IMF](https://www.imf.org/) SDMX 3.0 dataflows | IFS, WEO, GFS, ... | none | 7 days |
-| [GDELT](https://www.gdeltproject.org/) Doc API + daily exports | conflict/protest/diplomacy events, Goldstein scale, battle deaths | none | 6 hours |
-| [OpenSanctions](https://www.opensanctions.org/) | sanctions lists (`us_ofac_sdn`, `eu_fsf`, `uk_fcdos`, `un_sc`, ...) | API key | 30 days |
-| [FRED](https://fred.stlouisfed.org/) | US economic indicators (GDP, CPI, unemployment, interest rates, ...) | API key | 7 days |
-| [Binance](https://www.binance.com/) | cryptocurrency market data (OHLCV, trades, order book, ...) | none | varies |
-| [Finnhub](https://finnhub.io/) | stock market data (quotes, candles, fundamentals, insider trades, ...) | API key | varies |
-| [SEC EDGAR](https://www.sec.gov/edgar) | company financial facts (XBRL filings) | User-Agent required | 7 days |
-| [Yahoo Finance](https://finance.yahoo.com/) | earnings estimates, revenue estimates, earnings history | none | 7 days |
-| Bundled datasets (`connectors/lib/datasets/`) | HDX CPI, Human Development Index, Fragile State Index, Human Rights Score, NATO membership, climate vulnerability/readiness, crisis risk | none | static |
+* A replacement for Pandas
+* A replacement for Polars
+* A replacement for DuckDB
+* A data warehouse
+* A machine learning framework
+* A dashboarding platform
+* An intelligence application
+* A knowledge graph by itself
+* A marketplace for random datasets
 
-### Feature groups (~58 features)
+Hermes exists to sit between **data sources and the applications that depend on that data**.
 
-- **economic** (18) — GDP growth YoY/QoQ, CPI/PPI inflation, inflation volatility, unemployment, current account, FX reserves, external debt, fiscal deficit, government debt, REER misalignment, banking sector health, GDP per capita PPP
-- **geopolitical** (21) — conflict/protest/diplomatic event counts, conflict trend, Goldstein scale, battle deaths, sanctions (count, new, sector coverage), WGI governance, CPI, rule of law, regulatory quality, democracy index, regime type, press freedom
-- **security** (7) — military spending (level, growth), alliance strength, arms imports/exports, peacekeeping troops, NATO membership
-- **social** (6) — social stability, human rights, fragile state index, HDI, Gini, poverty headcount
-- **environmental** (6) — climate vulnerability/readiness, natural disaster risk, food price index, energy dependence, water stress
+---
 
-### Analysis features
+# Philosophy
 
-- **technical** — technical indicators computed from Binance market data (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, volatility metrics, mean reversion score, trend strength, momentum)
-- **fundamental** — company fundamentals from Finnhub, SEC EDGAR, FRED, and Yahoo Finance (revenue, earnings, margins, ratios, valuation metrics)
+### Data should be composable
 
-## Tests
+A dataset from one source should be usable alongside a dataset from another source.
 
-The suite is pytest-based with `unittest.mock`-patched HTTP calls (no live network) and async tests:
+### Data should be inspectable
 
-```bash
-uv run pytest                 # run all tests
-uv run pytest --cov=hermes    # run with coverage
-```
+Developers should know what they received before building on it.
 
-Coverage is collected from the `hermes` package (`tests/` omitted); `asyncio_mode = "auto"` means async tests need no explicit markers.
+### Data should be reproducible
 
-### Test files
+The same pipeline should be understandable and repeatable.
 
-| File | Covers |
-|---|---|
-| `test_cache.py` | `RawCache` put/get, TTL expiry, corruption, stats, clear |
-| `test_feature_decorator.py` | `@feature` decorator, `LineageGraph`, `TieredPlan` |
-| `test_economic_features.py` | All 18 economic features + country/shared utilities |
-| `test_imf.py` | IMF SDMX connector, ISO3→ISO2 mapping |
-| `test_opensanctions.py` | OpenSanctions connector |
-| `test_world_bank.py` | World Bank connector, cache integration |
-| `test_fred.py` | FRED connector, cache integration |
-| `test_binance.py` | Binance connector, URL building, cache integration |
-| `test_finnhub.py` | Finnhub connector, endpoint validation, cache integration |
-| `test_sec_edgar.py` | SEC EDGAR connector, User-Agent header, cache integration |
-| `test_yfinance.py` | Yahoo Finance connector, endpoint validation, cache integration |
-| `test_pipeline.py` | Country risk pipeline, `get_country_risk_features`, `build_training_panel` |
-| `test_technical_features.py` | `TAfeatures` static helpers, price features, snapshot with mocked Binance |
-| `test_fundamental_features.py` | `FAfeatures` SEC extraction, filing metadata |
-| `test_scheduler.py` | Cron parsing, job scheduling, execution, retries, lifecycle |
-| `test_hermes.py` | `Hermes` facade initialization, cache stats, listings |
+### Data should be traceable
 
-## CI
+Every important dataset should have a clear origin.
 
-GitHub Actions (`.github/workflows/publish.yml`) runs on push/PR to `main` and on releases:
+### Data should be interoperable
 
-- **quality** job — matrix over Python 3.11 / 3.12 / 3.13: `ruff check .` (lint) → `mypy hermes` (type check) → `pytest --cov` (tests with coverage)
-- **publish** job — on release: `uv build` and `uv publish` to PyPI (trusted publishing via `PYPI_TOKEN`)
+Hermes should work with the ecosystem instead of locking developers into Hermes.
 
-## License
+### Data infrastructure should be reusable
 
-Hermes Non-Commercial License — free for individuals and small-scale internal use; large-scale use (e.g. big organizations or big-data pipelines) and any paid/managed-cloud offering to third parties require a separate paid commercial license. See [LICENSE.md](LICENSE.md).
+The same ingestion, validation and transformation infrastructure should work across domains.
 
-## Roadmap
+---
 
-- **NewsData connector** — the `new_data_api` parameter is already wired into the facade; implement the news/event source it unlocks
-- **Validation layer** — schema checks and outlier detection on fetched frames before caching
-- **Serving layer** — REST/query interface over the feature registry so non-Python consumers can use Hermes
-- **Documentation site** — dedicated docs replacing the README for API reference and source coverage
-- **More sources** — SIPRI arms transfers, FAO food/water data, UN peacekeeping feeds to replace bundled static datasets
-- **Broader country coverage** — fill gaps where sources lack data for smaller economies; per-feature availability reporting
+# Roadmap
+
+## Phase 1
+
+Hermes Core foundation.
+
+* Fetch
+* Ingest
+* Parse
+* Normalize
+* Validate
+* Profile
+* Inspect
+* Transform
+* Export
+* Dataset abstraction
+* Connector system
+* Schema system
+
+## Phase 2
+
+Reliable data infrastructure.
+
+* Dataset storage
+* Dataset versions
+* Snapshots
+* Provenance
+* Lineage
+* Better validation
+* Better profiling
+* Caching
+* Query interface
+
+## Phase 3
+
+Ecosystem.
+
+* Hermes Finance
+* Hermes Defense
+* Hermes Healthcare
+* Hermes Trade
+* Hermes Energy
+* Hermes Climate
+* Hermes Geopolitics
+* Hermes Corporate
+* Hermes Entity
+* Hermes Features
+
+## Phase 4
+
+Scale.
+
+* Remote datasets
+* Object storage
+* Distributed processing
+* Continuous ingestion
+* Large dataset querying
+* Cloud execution
+
+## Phase 5
+
+Hermes Cloud.
+
+A managed infrastructure layer built around Hermes Core.
+
+* Hosted datasets
+* APIs
+* Dataset catalogs
+* Continuous pipelines
+* Versioned data
+* Team access
+* Usage controls
+* Enterprise infrastructure
+
+---
+
+# The Vision
+
+Hermes starts as a Python library.
+
+It can grow into a complete ecosystem for data.
+
+The long term goal is simple:
+
+> **Make high quality data infrastructure accessible through one consistent developer experience.**
+
+Instead of every developer building their own ingestion system.
+
+Instead of every company rebuilding the same normalization pipelines.
+
+Instead of every project implementing its own validation framework.
+
+Instead of datasets becoming disconnected collections of files.
+
+Hermes provides the common foundation.
+
+**One engine.**
+
+**One ecosystem.**
+
+**Any data.**
+
+---
+
+# Contributing
+
+Hermes is open source and built for developers.
+
+Contributions can include:
+
+* Connectors
+* Parsers
+* Normalizers
+* Validators
+* Profilers
+* Storage backends
+* Query integrations
+* Domain packages
+* Documentation
+* Testing
+* Performance improvements
+
+Build something useful.
+
+Share it.
+
+Improve it.
+
+Build on top of it.
+
+---
+
+# License
+
+[License information will be added here.]
+
+---
+
+# Hermes
+
+**The data engine for the Python ecosystem.**
+
+**Bring the data in. Make it usable. Know where it came from. Build on it.**
