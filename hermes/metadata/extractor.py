@@ -1,0 +1,13 @@
+class MetadataExtractor:
+
+    def extract(self, data: object) -> object:
+        ...
+
+    def extract_column(self, series: object) -> object:
+        ...
+
+    def detect_frequency(self, data: object) -> str | None:
+        ...
+
+    def detect_date_range(self, data: object) -> tuple[str, str] | None:
+        ...

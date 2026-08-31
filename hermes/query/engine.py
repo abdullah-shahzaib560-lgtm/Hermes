@@ -1,0 +1,22 @@
+class QueryEngine:
+
+    def __init__(self, storage: object | None = None) -> None:
+        self.storage = storage
+
+    def filter(self, data: object, conditions: list[object]) -> object:
+        ...
+
+    def select(self, data: object, columns: list[str]) -> object:
+        ...
+
+    def sort(self, data: object, columns: list[str], ascending: bool = True) -> object:
+        ...
+
+    def aggregate(self, data: object, operations: dict[str, str]) -> object:
+        ...
+
+    def join(self, left: object, right: object, on: str) -> object:
+        ...
+
+    def sql(self, query: str) -> object:
+        ...

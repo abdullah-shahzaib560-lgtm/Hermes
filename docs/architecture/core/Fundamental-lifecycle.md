@@ -1,7 +1,7 @@
 ## Fundamental lifecycle
 
 ### Define the Hermes data lifecycle
-> 
+> The data lifecycle of hermes should be 
 
 ### Define the internal representation shared by all ingestion paths
 > 

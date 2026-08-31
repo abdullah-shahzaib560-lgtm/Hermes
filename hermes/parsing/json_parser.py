@@ -1,0 +1,4 @@
+class JSONParser:
+
+    def parse(self, raw_data: object, **kwargs: object) -> object:
+        ...

@@ -1,0 +1,10 @@
+class NormalizationEngine:
+
+    def normalize(self, data: object, mappings: list[object] | None = None) -> object:
+        ...
+
+    def apply_rules(self, data: object, rules: list[object]) -> object:
+        ...
+
+    def cast_types(self, data: object, schema: object) -> object:
+        ...
