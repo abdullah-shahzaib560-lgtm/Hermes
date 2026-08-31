@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #0a0a07;
+  --color-cream: #f6f5ef;
+  --color-cream-soft: #f0efe4;
+  --color-ink-soft: #41403a;
+  --color-line: #d8d6c6;
+  --color-accent: #ff4126;
+  --color-accent-dark: #d9321a;
+  --color-cedar: #1f5f4b;
+
+  --font-heading: "JA JayaGiri Sans", "JA Jayagiri Sans", var(--font-jayagiri-fallback), ui-rounded, system-ui, sans-serif;
+  --font-body: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-soft: 0 20px 60px -30px rgba(10, 10, 7, 0.25);
+  --shadow-card: 0 1px 0 0 color-mix(in srgb, #d9d7c8 60%, transparent), 0 12px 32px -16px rgba(10, 10, 7, 0.18);
+}
+
+:root {
+  --background: #f6f5ef;
+  --foreground: #0a0a07;
+  --accent: #ff4126;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a07;
+    --foreground: #f6f5ef;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Hand-drawn heading hairline underline helpers */
+.hairline {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+  text-decoration-style: wavy;
+}
+
+/* Doodle skip/hash marks used as list bullets */
+.dot-bullet::marker {
+  content: "✱ ";
+  color: var(--accent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+  border: 3px solid var(--background);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Code block typography */
+pre {
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, monospace;
+}
