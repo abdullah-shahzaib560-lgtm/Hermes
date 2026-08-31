@@ -3,7 +3,11 @@ import { homedir, tmpdir } from "node:os";
 import { join, isAbsolute } from "node:path";
 import { mkdirSync, existsSync } from "node:fs";
 
-function resolveDistDir(): string {
+// On Vercel, do not override `distDir` at all. The platform expects the default
+// ".next" inside the project so it can find .next/routes-manifest.json and deploy it.
+function resolveDistDir(): string | undefined {
+  if (process.env.VERCEL) return undefined;
+
   const forced = process.env.HERMES_BUILD_DIR;
   if (forced && forced.trim()) return forced.trim();
 
@@ -19,13 +23,15 @@ function resolveDistDir(): string {
       /* try next candidate */
     }
   }
-  return ".next";
+  return undefined;
 }
 
 const distDir = resolveDistDir();
 
 const nextConfig: NextConfig = {
-  distDir: isAbsolute(distDir) ? distDir : join(process.cwd(), distDir),
+  ...(distDir !== undefined
+    ? { distDir: isAbsolute(distDir) ? distDir : join(process.cwd(), distDir) }
+    : {}),
   async redirects() {
     return [
       {
