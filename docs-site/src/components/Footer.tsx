@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Plant, WobbleCircle } from "./Doodle";
+import { Logo } from "./Logo";
 
 export function Footer() {
   const cols = [
@@ -36,23 +37,11 @@ export function Footer() {
       <div className="relative mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-cream">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-                  <path
-                    d="M12 4C14.5 7 15.5 9 15.5 12C15.5 15 14 18.5 12 20C10 18.5 8.5 15 8.5 12C8.5 9 9.5 7 12 4Z"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinejoin="round"
-                  />
-                  <path d="M4 12H20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </span>
-              <span className="font-heading text-xl font-bold">Hermes</span>
+            <div className="mb-4">
+              <Logo withWordmark={false} />
             </div>
-            <p className="max-w-xs font-body text-sm leading-relaxed text-ink-soft">
-              The Data Engine for Python. Acquire, validate, normalize and serve intelligence
-              datasets with provenance baked in.
+            <p className="max-w-xs font-body text-sm leading-relaxed text-ink">Acquire, validate,
+              normalize and serve intelligence datasets with provenance baked in.
             </p>
           </div>
 
