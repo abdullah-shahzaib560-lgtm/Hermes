@@ -11,10 +11,12 @@ built with Next.js (App Router), Tailwind CSS v4 and TypeScript.
 
 ## Design
 
-- Background: `#f6f5ef`
+- Background: `#f6f5ef` (cream) with near-black `#0a0a07` text — high contrast, no brown/gray body tones
+- Accent: `#ff4126` orange-red, matched to the `Hermes.png` logo mark
 - Doodle-style SVG illustrations (hand-drawn strokes, wobble circles, squiggles, sparkles)
 - Headings: `font-heading` (JA JayaGiri Sans stack)
 - Body: `font-body` (Nunito Sans)
+- Logo & favicon: `public/Hermes.png`
 
 > **Font note:** *JA JayaGiri Sans* is a commercial font and is not bundled. The heading stack
 > in `src/app/globals.css` lists `"JA JayaGiri Sans"` first (used when you own the license /
