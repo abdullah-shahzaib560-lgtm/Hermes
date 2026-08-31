@@ -52,8 +52,8 @@ export function DocsSidebar() {
                           onClick={() => setOpen(false)}
                           className={`flex items-center gap-2 rounded-xl px-3 py-2 font-body text-[15px] font-medium transition-colors ${
                             isActive
-                              ? "bg-ink text-cream shadow-soft"
-                              : "text-ink hover:bg-cream-soft"
+                              ? "bg-accent text-white shadow-soft"
+                              : "text-black hover:bg-cream-soft"
                           }`}
                         >
                           <span

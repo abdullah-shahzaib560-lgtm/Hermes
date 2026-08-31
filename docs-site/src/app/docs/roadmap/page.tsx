@@ -10,6 +10,7 @@ import {
   Table,
 } from "@/components/Doc";
 import { CodeBlock } from "@/components/CodeBlock";
+import { Plant, Sparkle } from "@/components/Doodle";
 
 export const metadata: Metadata = {
   title: "Roadmap",
@@ -19,12 +20,27 @@ export const metadata: Metadata = {
 
 export default function RoadmapPage() {
   return (
-    <article>
+    <article className="relative">
+      <div className="pointer-events-none absolute -right-8 top-24 opacity-40">
+        <Plant className="h-28 w-24" color="#ff4328" />
+      </div>
       <DocTitle kicker="Project">Roadmap</DocTitle>
       <Lead>
         Hermes ships a working foundation and builds the general-purpose core out progressively.
         The target architecture is specified in <code>docs/architecture/hermes-core.md</code>.
       </Lead>
+
+      <H2 id="summary">The journey at a glance</H2>
+      <Table
+        head={["Phase", "Focus", "ETA-ish"]}
+        rows={[
+          ["Phase 1 — Foundation", "fetch, parse, normalize, validate, Dataset, schema system", "Now → next"],
+          ["Phase 2 — Reliable infra", "storage, snapshots, provenance, lineage, query interface", "In progress"],
+          ["Phase 3 — Ecosystem", "Hermes Finance, Defense, Healthcare, Trade, Energy, Climate…", "Next"],
+          ["Phase 4 — Scale", "object storage, distributed processing, continuous ingestion", "Later"],
+          ["Phase 5 — Cloud", "hosted datasets, APIs, catalogs, versioned data, team access", "Future"],
+        ]}
+      />
 
       <H2 id="now">Today (v0.2.x)</H2>
       <Table
@@ -103,6 +119,7 @@ Phase 5 — Hermes Cloud
         vertical-slice build order (e.g. World Bank: acquire → parse → normalize → validate →
         metadata → provenance → Dataset).
       </Callout>
+      <Sparkle className="mt-8 h-10 w-10 opacity-50" color="#ff4328" strokeWidth={4} />
 
       <PrevNext prev={{ title: "API Reference", href: "/docs/api-reference" }} />
     </article>

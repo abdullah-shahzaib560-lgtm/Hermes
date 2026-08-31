@@ -10,6 +10,7 @@ import {
   Table,
 } from "@/components/Doc";
 import { CodeBlock } from "@/components/CodeBlock";
+import { Plant, Sparkle } from "@/components/Doodle";
 
 export const metadata: Metadata = {
   title: "Features",
@@ -19,13 +20,36 @@ export const metadata: Metadata = {
 
 export default function FeaturesPage() {
   return (
-    <article>
+    <article className="relative">
+      <div className="pointer-events-none absolute -right-8 top-24 opacity-40">
+        <Plant className="h-28 w-24" color="#ff4328" />
+      </div>
       <DocTitle kicker="Core Concepts">Features</DocTitle>
       <Lead>
         Hermes turns raw datasets into derived intelligence through a tiered, dependency-aware
         feature engine that records lineage. ~57 features ship across five country-risk groups
         plus technical, fundamental, crypto-history and filing feature sets.
       </Lead>
+
+      <H2 id="at-a-glance">Feature groups at a glance</H2>
+      <Table
+        head={["Group", "Count", "Source(s)", "Status"]}
+        rows={[
+          ["Economic", "18", "World Bank + IMF", "Working"],
+          ["Environmental", "6", "ND-GAIN + World Bank", "Partial (2 placeholders)"],
+          ["Security", "7", "SIPRI / NATO datasets", "Partial (4 placeholders)"],
+          ["Social", "6", "World Bank + HRS / FSI / HDI", "Partial (1 placeholder)"],
+          ["Geopolitical", "21", "GDELT / WGI", "Stubbed"],
+          ["Technical (crypto)", "~50 per snapshot", "Binance", "Working"],
+          ["Fundamental", "CompanyFundamental", "SEC + Finnhub + FRED + yfinance", "Working"],
+          ["Filing (crypto fam)", "—", "SEC facts", "Working"],
+        ]}
+      />
+      <P>
+        Country-risk features are the bread-and-butter: five groups covering the dimensions that
+        matter when assessing a sovereign. Financial features layer market and company intelligence
+        on top.
+      </P>
 
       <H2 id="engine">The feature engine</H2>
       <P>
@@ -303,6 +327,7 @@ snap = hermes.ta_feature.get_technical("BTCUSDT")`}
         <code>hermes/features/</code>, and the analysis deep-dives in the repo under{" "}
         <code>docs/analysis/fundamentals.md</code> and <code>docs/analysis/technical.md</code>.
       </Callout>
+      <Sparkle className="mt-8 h-10 w-10 opacity-50" color="#ff4328" strokeWidth={4} />
 
       <PrevNext
         prev={{ title: "Connectors", href: "/docs/connectors" }}

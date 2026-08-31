@@ -5,7 +5,7 @@ type DoodleProps = {
 };
 
 /* Hand-drawn wavy underline / squiggle strokes */
-export function Squiggle({ className, color = "#ff4126", strokeWidth = 3 }: DoodleProps) {
+export function Squiggle({ className, color = "#ff4328", strokeWidth = 3 }: DoodleProps) {
   return (
     <svg
       className={className}
@@ -46,7 +46,7 @@ export function WobbleCircle({ className, color = "#1f5f4b", strokeWidth = 3 }: 
 }
 
 /* Little hand-drawn arrow */
-export function Arrow({ className, color = "#ff4126", strokeWidth = 3 }: DoodleProps) {
+export function Arrow({ className, color = "#ff4328", strokeWidth = 3 }: DoodleProps) {
   return (
     <svg
       className={className}
@@ -91,7 +91,7 @@ export function Spiral({ className, color = "#0a0a07", strokeWidth = 3 }: Doodle
 }
 
 /* Hand-drawn sparkle / burst */
-export function Sparkle({ className, color = "#ff4126", strokeWidth = 3 }: DoodleProps) {
+export function Sparkle({ className, color = "#ff4328", strokeWidth = 3 }: DoodleProps) {
   return (
     <svg
       className={className}

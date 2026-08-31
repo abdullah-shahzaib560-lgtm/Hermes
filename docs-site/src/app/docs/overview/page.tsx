@@ -11,6 +11,7 @@ import {
   Table,
 } from "@/components/Doc";
 import { CodeBlock } from "@/components/CodeBlock";
+import { Plant } from "@/components/Doodle";
 
 export const metadata: Metadata = {
   title: "Overview",
@@ -20,7 +21,10 @@ export const metadata: Metadata = {
 
 export default function OverviewPage() {
   return (
-    <article>
+    <article className="relative">
+      <div className="pointer-events-none absolute -right-8 top-24 opacity-40">
+        <Plant className="h-28 w-24" color="#ff4328" />
+      </div>
       <DocTitle kicker="Getting Started">Overview</DocTitle>
       <Lead>
         Hermes (<code>hermes-plt</code>, v0.2.14) is a foundational intelligence data platform for
@@ -35,6 +39,23 @@ export default function OverviewPage() {
       </Callout>
 
       <H2 id="why">Why Hermes</H2>
+      <Lead>
+        Every time a data team adds a new source, they rebuild the same plumbing: authentication,
+        pagination, retries, schema mapping, unit conversion and validation. Hermes turns that
+        repeated work into a single, reusable infrastructure layer. Here is what it tackles —{" "}
+        <DocLink href="#pipeline">skip ahead to the pipeline</DocLink> if you want the data flow.
+      </Lead>
+      <Table
+        head={["Problem", "How Hermes solves it"]}
+        rows={[
+          ["Different APIs & auth schemes", "Every connector behind one async fetch() contract"],
+          ["Inconsistent formats", "A shared parse / normalize layer with one canonical schema"],
+          ["Messy identifiers & units", "Entity helpers and canonical codes (ISO-3, ticker→CIK)"],
+          ["Missing or duplicated records", "Validation rules + deduplicate()"],
+          ["Repetitive fetch boilerplate", "RawCache with per-source TTLs and hit/miss stats"],
+          ["Untracked data provenance", "Lineage and provenance recorded on every dataset"],
+        ]}
+      />
       <P>
         Modern data work repeats the same engineering for every new source: dealing with
         different APIs, authentication, formats, schemas, naming conventions, missing values,
@@ -95,6 +116,45 @@ Applications — ML, analytics, dashboards`}
           ["lineage(), provenance()", "Show how and where data was produced"],
         ]}
       />
+
+      <H2 id="pillars">Design pillars</H2>
+      <Lead>
+        Five principles shape every API decision in Hermes. They keep the platform small,
+        predictable and easy to reason about.
+      </Lead>
+      <Table
+        head={["Principle", "What it means in practice"]}
+        rows={[
+          ["Composable", "Datasets from different sources work together in one pipeline"],
+          ["Inspectable", "profile() / inspect() before you build on data"],
+          ["Reproducible", "The same pipeline repeats predictably, cache-aware"],
+          ["Traceable", "lineage() and provenance() on every dataset"],
+          ["Interoperable", "pandas, polars, arrow, duckdb, numpy and parquet out of the box"],
+        ]}
+      />
+
+      <H2 id="where-it-fits">Where Hermes fits</H2>
+      <P>
+        Hermes does <strong>not</strong> replace your DataFrame library or your database. It is the{" "}
+        <strong>glue layer</strong> between live sources and your analysis stack:
+      </P>
+      <CodeBlock
+        title="stack"
+        code={`Live APIs & public datasets
+        │  Hermes (acquire → validate → normalize)
+        ▼
+Canonical datasets (parquet-backed, cacheable)
+        │  query / transform / export
+        ▼
+pandas · polars · arrow · duckdb · numpy
+        │  features / ML / dashboards / apps
+        ▼
+Your applications`}
+      />
+      <P>
+        Because everything upstream shares one shape, the tools you already know keep working —
+        Hermes just makes the messy part reliable.
+      </P>
 
       <H2 id="implemented">What is implemented today (v0.2.14)</H2>
       <P>

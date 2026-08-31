@@ -10,6 +10,7 @@ import {
   Table,
 } from "@/components/Doc";
 import { CodeBlock } from "@/components/CodeBlock";
+import { Sparkle, WobbleCircle } from "@/components/Doodle";
 
 export const metadata: Metadata = {
   title: "Quickstart",
@@ -80,12 +81,21 @@ hermes.clear_cache(older_than="7d")`;
 
 export default function QuickstartPage() {
   return (
-    <article>
+    <article className="relative">
+      <div className="pointer-events-none absolute -left-6 top-16 opacity-40">
+        <WobbleCircle className="h-20 w-20" color="#ff4328" />
+      </div>
       <DocTitle kicker="Getting Started">Quickstart</DocTitle>
       <Lead>
         Install Hermes, instantiate the facade, fetch data from a connector and compute features —
         no API keys required for the World Bank source.
       </Lead>
+
+      <Callout title="What you'll walk away with" tone="accent">
+        An installed <code>hermes-plt</code> environment, a working <code>Hermes()</code> facade,
+        one fetched dataset, two computed country-risk features, and a peek inside the cache.
+        Roughly 10 minutes start to finish.
+      </Callout>
 
       <H2 id="1">1. Install</H2>
       <P>
@@ -98,6 +108,15 @@ export default function QuickstartPage() {
         <code>pydantic</code>, <code>sdmx</code>, <code>sec-cik-mapper</code> and{" "}
         <code>yfinance</code> — installed automatically.
       </P>
+      <P>Sanity-check the install by importing the facade and listing what ships with it:</P>
+      <CodeBlock
+        title="terminal"
+        code={`$ python -c "import hermes; print(hermes.__version__)"
+0.2.14
+
+$ python -c "from hermes import Hermes; print(Hermes.__name__)"
+Hermes`}
+      />
 
       <H2 id="2">2. Instantiate the facade</H2>
       <P>
@@ -169,12 +188,28 @@ SEC_EMAIL=`}
         ]}
       />
 
+      <H2 id="troubleshooting">Troubleshooting</H2>
+      <P>Stuck? Here are the most common snags and their fixes:</P>
+      <Table
+        head={["Symptom", "Cause & fix"]}
+        rows={[
+          ["KeyError at construction", "Both opensanction_api and new_data_api empty — pass any placeholder"],
+          ["World Bank fetch returns empty", "Check country_code / indicator_code spelling; try force=True"],
+          ["Rate limited / timeouts", "Retries are built in; raise retries or throttle with per-source TTL"],
+          ["Slow first fetch", "Expected — cache is cold; later calls hit the parquet cache"],
+          ["cached: 0 hits", "You haven't re-run after the first fetch; force=False reuses cache"],
+        ]}
+      />
+
       <H2 id="next">Next steps</H2>
       <P>
-        Browse the <DocLink href="/docs/connectors">connectors</DocLink>, learn the{" "}
-        <DocLink href="/docs/features">feature engine</DocLink>, or dive into the{" "}
-        <DocLink href="/docs/api-reference">API reference</DocLink>.
+        You now have a live pipeline. A few natural next moves: explore the other{" "}
+        <DocLink href="/docs/connectors">connectors</DocLink>, see how the{" "}
+        <DocLink href="/docs/features">feature engine</DocLink> turns this data into derived
+        intelligence, or dive into the <DocLink href="/docs/api-reference">API reference</DocLink>{" "}
+        for the full surface.
       </P>
+      <Sparkle className="mt-8 h-10 w-10 opacity-50" color="#ff4328" strokeWidth={4} />
 
       <PrevNext
         prev={{ title: "Overview", href: "/docs/overview" }}
