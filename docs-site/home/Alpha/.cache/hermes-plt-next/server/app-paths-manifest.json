@@ -1,0 +1,12 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/docs/api-reference/page": "app/docs/api-reference/page.js",
+  "/docs/connectors/page": "app/docs/connectors/page.js",
+  "/docs/features/page": "app/docs/features/page.js",
+  "/docs/overview/page": "app/docs/overview/page.js",
+  "/docs/quickstart/page": "app/docs/quickstart/page.js",
+  "/docs/roadmap/page": "app/docs/roadmap/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
+}

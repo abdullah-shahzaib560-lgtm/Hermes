@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   },
   description:
     "Hermes is a foundational intelligence data platform for acquiring, validating, normalizing, storing, and serving intelligence datasets.",
+  icons: {
+    icon: "/Hermes.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

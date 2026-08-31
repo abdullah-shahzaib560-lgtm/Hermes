@@ -9,10 +9,12 @@ import {
   PrevNext,
   Table,
 } from "@/components/Doc";
+import { CodeBlock } from "@/components/CodeBlock";
 
 export const metadata: Metadata = {
   title: "Roadmap",
-  description: "Where the Hermes platform is headed, phase by phase.",
+  description:
+    "Hermes roadmap and architecture phases: connectors & features today; the core lifecycle subsystems built out over time.",
 };
 
 export default function RoadmapPage() {
@@ -20,56 +22,86 @@ export default function RoadmapPage() {
     <article>
       <DocTitle kicker="Project">Roadmap</DocTitle>
       <Lead>
-        Hermes is built in phases. Today the connectors and feature engine are the working core;
-        the rest of the platform is being built out.
+        Hermes ships a working foundation and builds the general-purpose core out progressively.
+        The target architecture is specified in <code>docs/architecture/hermes-core.md</code>.
       </Lead>
 
-      <H2 id="now">Where we are now (v0.2.x)</H2>
+      <H2 id="now">Today (v0.2.x)</H2>
+      <Table
+        head={["Area", "Status"]}
+        rows={[
+          ["Connectors (10)", "Working & tested"],
+          ["Feature engine (@feature, LineageGraph, TieredPlan)", "Working"],
+          ["Country-risk features (5 groups)", "Working; geopolitical stubbed, others partial"],
+          ["Financial features (technical / fundamental / crypto / filing)", "Working"],
+          ["RawCache (parquet, TTLs, hit/miss)", "Working"],
+          ["Asyncio scheduler (@schedule, cron/interval)", "Working"],
+          ["Entities (countries, companies)", "Working"],
+          [
+            "Core lifecycle modules (parse/normalize/validate/schema/metadata/query/storage/api)",
+            "Scaffolded — being built out",
+          ],
+        ]}
+      />
+
+      <H2 id="core-spec">The core life-cycle specification</H2>
+      <P>
+        <code>hermes-core.md</code> describes the general-purpose data-lifecycle engine Hermes is
+        building toward. Lifecycle subsystems:
+      </P>
       <List
         items={[
-          "10 source connectors with a unified async fetch() contract.",
-          "Country-risk feature engine across five pillars (economic, environmental, geopolitical, security, social).",
-          "Financial features: technical, fundamental, crypto and filing signals.",
-          "Parquet-backed RawCache with per-source TTLs.",
-          "Lineage graph and tiered, dependency-aware feature resolution.",
+          "Acquisition — fetch, ingest, source, connect, read, stream",
+          "Parsing — parse, detect_format, read_raw, decode (CSV/JSON/JSONL/XML/Parquet/Arrow/compressed)",
+          "Data Contract / Schema — schema, infer_schema, validate_schema, migrate_schema",
+          "Normalization — normalize, map, cast, standardize, convert_units, align_time",
+          "Quality — validate, check, profile, deduplicate, detect_anomalies (ML-extensible)",
+          "Transformation — transform, pipe, select, filter, join, aggregate (Polars/Arrow/DuckDB)",
+          "Identity / Resolution — resolve, identify, match, link, entity (extension point)",
+          "Storage — save, load, delete (FS/Parquet/Arrow/DuckDB/PostgreSQL)",
+          "Query — query, sql with filter/project/join/aggregate/order/limit",
+          "Versioning — version, snapshot, diff (immutable snapshots)",
+          "Provenance & Lineage — lineage, provenance, trace",
         ]}
       />
-
-      <H2 id="phases">The build-out</H2>
-      <Table
-        head={["Area", "Status", "Plan"]}
-        rows={[
-          ["Connectors", "Working", "Actively expanded & tested."],
-          ["Features", "Working", "Depth of signals growing; geopolitical stub pending."],
-          ["Core (Dataset, scheduler)", "Skeletal", "Hardening the data model and scheduling."],
-          [
-            "Metadata / provenance / lineage / versioning",
-            "Stubs",
-            "Full tracking across the lifecycle.",
-          ],
-          [
-            "Parsing, normalization, validation, schemas",
-            "Placeholder dirs",
-            "Dedicated subsystems for each stage.",
-          ],
-          [
-            "Storage, query, export, API",
-            "Placeholder dirs",
-            "Serve platforms: query layer + public API.",
-          ],
-        ]}
-      />
-
-      <H2 id="roadmap-note">A note on direction</H2>
       <P>
-        The detailed internal build checklist lives in{" "}
-        <code>docs/architecture/hermes-core.md</code> in the repository. The goal is a complete
-        data lifecycle platform — bring data in, trust it, and serve it — with zero vendor lock-in.
+        Cross-cutting design rules: a <strong>registry</strong> for every component, a defined{" "}
+        <strong>error hierarchy</strong>, an <strong>extension architecture</strong>, and the{" "}
+        <strong>dependency rule</strong> — Core never depends on a domain package. The public API
+        target is <code>hr.fetch/ingest/parse/normalize/validate/profile/inspect/transform/query/
+        save/load/export</code>.
+      </P>
+
+      <H2 id="phases">The phases</H2>
+      <CodeBlock title="phases" code={`Phase 1 — Foundation
+  fetch, ingest, parse, normalize, validate, profile, inspect,
+  transform, export, Dataset, connector system, schema system
+
+Phase 2 — Reliable infrastructure
+  storage, versions, snapshots, provenance, lineage,
+  better validation & profiling, caching, query interface
+
+Phase 3 — Ecosystem
+  Hermes Finance, Defense, Healthcare, Trade, Energy, Climate,
+  Geopolitics, Corporate, Entity, Features
+
+Phase 4 — Scale
+  remote datasets, object storage, distributed processing,
+  continuous ingestion, large-dataset querying, cloud execution
+
+Phase 5 — Hermes Cloud
+  hosted datasets, APIs, dataset catalogs, continuous pipelines,
+  versioned data, team access, usage controls, enterprise infra`} />
+      <P>
+        The guiding philosophy: make high-quality data infrastructure accessible through one
+        consistent developer experience. One engine, one ecosystem, any data.
       </P>
 
       <Callout title="Get involved" tone="cedar">
-        Hermes is open source. The repository carries GitHub labels (type / area / difficulty) to
-        help new contributors find a good first issue.
+        Hermes is open source. The repository ships GitHub labels (type / area / difficulty) and
+        a contributing guide (<code>docs/engineering_team_guide.md</code>) that defines the
+        vertical-slice build order (e.g. World Bank: acquire → parse → normalize → validate →
+        metadata → provenance → Dataset).
       </Callout>
 
       <PrevNext prev={{ title: "API Reference", href: "/docs/api-reference" }} />
