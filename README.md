@@ -735,7 +735,7 @@ Hermes is designed to work locally.
 A developer should be able to:
 
 ```text
-pip install hermes
+pip install hermes-plt
 ```
 
 and start working with data immediately.
@@ -794,8 +794,7 @@ Hermes Core is not trying to be:
 * A dashboarding platform
 * An intelligence application
 * A knowledge graph by itself
-* A marketplace for random datasets
-
+  
 Hermes exists to sit between **data sources and the applications that depend on that data**.
 
 ---

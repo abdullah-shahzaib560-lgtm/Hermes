@@ -1,12 +1,6 @@
-__pycache__
-.env
-.venv
-scripts/
-res/
-test/
-*.ipynb
-data/
-.coverage
+data
+.venv/
+__pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
