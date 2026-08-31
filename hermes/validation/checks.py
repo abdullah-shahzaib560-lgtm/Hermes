@@ -1,0 +1,22 @@
+def null_check(data: object, column: str) -> object:
+    ...
+
+
+def type_check(data: object, column: str, expected_type: str) -> object:
+    ...
+
+
+def range_check(data: object, column: str, min_val: object = None, max_val: object = None) -> object:
+    ...
+
+
+def duplicate_check(data: object, columns: list[str]) -> object:
+    ...
+
+
+def required_field_check(data: object, columns: list[str]) -> object:
+    ...
+
+
+def date_validity_check(data: object, column: str) -> object:
+    ...

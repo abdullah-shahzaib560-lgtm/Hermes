@@ -1,19 +1,23 @@
-import aiohttp
+from typing import Any
 
-from typing import Dict
 
 class Client:
 
-    def __init__(self, 
-        connector: str, 
-        timeout: float = 30.0
-    ):
-        self.connector = connector
+    def __init__(
+        self,
+        timeout: float = 30.0,
+        retries: int = 3,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.timeout = timeout
-            
+        self.retries = retries
+        self.headers = headers or {}
 
-async def create_client(
-    self,
+    async def get(self, url: str, **kwargs: Any) -> dict:
+        ...
 
-) -> Client:
-    ...
+    async def post(self, url: str, **kwargs: Any) -> dict:
+        ...
+
+    async def close(self) -> None:
+        ...

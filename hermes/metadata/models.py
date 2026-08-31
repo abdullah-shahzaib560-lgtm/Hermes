@@ -1,7 +1,5 @@
-from datetime import datetime
-from typing import Any
-
 from pydantic import BaseModel
+from typing import Any
 
 
 class ColumnMetadata(BaseModel):
@@ -15,14 +13,7 @@ class ColumnMetadata(BaseModel):
     max_value: Any = None
 
 
-class QualityInfo(BaseModel):
-
-    completeness: float = 0.0
-    duplicate_count: int = 0
-    anomaly_count: int = 0
-
-
-class MetaData(BaseModel):
+class DatasetMetadata(BaseModel):
 
     row_count: int = 0
     column_count: int = 0
@@ -30,5 +21,3 @@ class MetaData(BaseModel):
     date_range: tuple[str, str] | None = None
     frequency: str | None = None
     source: str | None = None
-    retrieved_at: datetime | None = None
-    quality: QualityInfo | None = None

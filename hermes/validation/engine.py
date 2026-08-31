@@ -1,0 +1,16 @@
+class ValidationEngine:
+
+    def validate(self, data: object, contract: object | None = None) -> object:
+        ...
+
+    def check_quality(self, data: object) -> object:
+        ...
+
+    def check_completeness(self, data: object) -> object:
+        ...
+
+    def check_freshness(self, data: object) -> object:
+        ...
+
+    def check_integrity(self, data: object) -> object:
+        ...

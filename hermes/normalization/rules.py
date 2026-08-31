@@ -1,0 +1,23 @@
+class NormalizationRule:
+
+    def apply(self, data: object) -> object:
+        ...
+
+
+class DateNormalizationRule(NormalizationRule):
+    ...
+
+class NumericNormalizationRule(NormalizationRule):
+    ...
+
+class CountryCodeRule(NormalizationRule):
+    ...
+
+class StringCleanupRule(NormalizationRule):
+    ...
+
+class NullNormalizationRule(NormalizationRule):
+    ...
+
+class TimezoneNormalizationRule(NormalizationRule):
+    ...

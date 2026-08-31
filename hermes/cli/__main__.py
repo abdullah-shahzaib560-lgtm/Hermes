@@ -1,0 +1,26 @@
+def main() -> None:
+    ...
+
+
+def cmd_fetch(args: object) -> None:
+    ...
+
+
+def cmd_install(args: object) -> None:
+    ...
+
+
+def cmd_list(args: object) -> None:
+    ...
+
+
+def cmd_configure(args: object) -> None:
+    ...
+
+
+def cmd_info(args: object) -> None:
+    ...
+
+
+def cmd_version(args: object) -> None:
+    ...
