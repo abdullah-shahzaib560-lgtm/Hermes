@@ -735,7 +735,7 @@ Hermes is designed to work locally.
 A developer should be able to:
 
 ```text
-pip install hermes
+pip install hermes-plt
 ```
 
 and start working with data immediately.
