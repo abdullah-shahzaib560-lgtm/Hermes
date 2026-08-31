@@ -9,6 +9,7 @@ import {
   Table,
 } from "@/components/Doc";
 import { CodeBlock } from "@/components/CodeBlock";
+import { Sparkle } from "@/components/Doodle";
 
 export const metadata: Metadata = {
   title: "Connectors",
@@ -18,12 +19,34 @@ export const metadata: Metadata = {
 
 export default function ConnectorsPage() {
   return (
-    <article>
+    <article className="relative">
       <DocTitle kicker="Core Concepts">Connectors</DocTitle>
       <Lead>
         Ten source connectors ship with Hermes, each exposing an async <code>fetch()</code> that
         returns canonical records and sits behind the shared <code>RawCache</code>.
       </Lead>
+
+      <H2 id="at-a-glance">All connectors at a glance</H2>
+      <Table
+        head={["Source", "Class", "Cache TTL", "Status"]}
+        rows={[
+          ["World Bank", "hermes.connectors.World_bank", "7 days", "Working"],
+          ["IMF (SDMX)", "hermes.connectors.IMF", "7 days", "Working"],
+          ["FRED", "hermes.connectors.FRED", "30 days", "Working"],
+          ["Binance", "hermes.connectors.Binance", "1 day", "Working"],
+          ["Finnhub", "hermes.connectors.FINNHUB", "7 days", "Working"],
+          ["Yfinance", "hermes.connectors.Yfinance", "1 day", "Working"],
+          ["SEC EDGAR", "hermes.connectors.SECEDGAR", "7 days", "Working"],
+          ["OpenSanctions", "hermes.connectors.OpenSanction", "30 days", "Working"],
+          ["Bundled datasets", "hermes.connectors.PUBLIC_DATASET", "—", "Working"],
+          ["GDELT", "hermes.connectors.GDELT", "—", "Stub"],
+        ]}
+      />
+      <P>
+        Source coverage spans global macro, financial markets, corporate filings, sanctions and
+        governance intelligence. TTLs are deliberately conservative for stable public sources and
+        tighter for fast-moving market data.
+      </P>
 
       <H2 id="contract">The connector contract</H2>
       <P>
@@ -264,6 +287,13 @@ df = hermes.binance.fetch_history(
         All HTTP connectors default to <code>retries=3</code> and <code>timeout=30.0</code>,
         retrying with exponential backoff. Pass <code>force=True</code> to bypass the cache.
       </Callout>
+      <P>
+        Backoff sleeps <code>2**attempt</code> seconds so transient failures settle quickly without
+        hammering the source. Because retry, caching and validation are handled by Hermes
+        infrastructure rather than each connector, adding a new source never means re-implementing
+        that plumbing.
+      </P>
+      <Sparkle className="mt-8 h-10 w-10 opacity-50" color="#ff4328" strokeWidth={4} />
 
       <PrevNext
         prev={{ title: "Quickstart", href: "/docs/quickstart" }}

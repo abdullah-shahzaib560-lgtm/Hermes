@@ -9,6 +9,7 @@ import {
   Table,
 } from "@/components/Doc";
 import { CodeBlock } from "@/components/CodeBlock";
+import { WobbleCircle, Sparkle } from "@/components/Doodle";
 
 export const metadata: Metadata = {
   title: "API Reference",
@@ -18,12 +19,29 @@ export const metadata: Metadata = {
 
 export default function ApiReferencePage() {
   return (
-    <article>
+    <article className="relative">
+      <div className="pointer-events-none absolute -left-6 top-40 opacity-40">
+        <WobbleCircle className="h-20 w-20" color="#ff4328" />
+      </div>
       <DocTitle kicker="Reference">API Reference</DocTitle>
       <Lead>
         The public surface of Hermes, centered on the <code>Hermes</code> facade, the{" "}
         <code>RawCache</code>, the scheduler, entities and constants.
       </Lead>
+
+      <H2 id="index">Reference index</H2>
+      <Table
+        head={["Section", "What you'll find"]}
+        rows={[
+          ["Hermes facade", "constructor, attributes, clear_cache, cache_stats"],
+          ["RawCache", "get / put / get_or_fetch / clear / stats"],
+          ["Scheduler", "schedule, start, stop, run_now, list_jobs & cron spec"],
+          ["Entities", "countries, iso3_to_iso2, check_iso3, get_cik"],
+          ["Constants", "SYMBOLS, TICKERS, CANONICAL_FREQS & more"],
+          ["Dataset", "the pydantic BaseModel and its fields"],
+          ["Feature registry", "LineageGraph and TieredPlan"],
+        ]}
+      />
 
       <H2 id="facade">Hermes facade</H2>
       <CodeBlock
@@ -191,6 +209,7 @@ class TieredPlan:
         with asyncio auto-mode; ruff + mypy in CI). Several core lifecycle modules remain
         placeholders while the platform matures.
       </Callout>
+      <Sparkle className="mt-8 h-10 w-10 opacity-50" color="#ff4328" strokeWidth={4} />
 
       <PrevNext
         prev={{ title: "Features", href: "/docs/features" }}
