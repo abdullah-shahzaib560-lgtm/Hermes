@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function FeaturesPage() {
   return (
     <article className="relative">
-      <div className="pointer-events-none absolute -right-8 top-24 opacity-40">
+      <div className="pointer-events-none absolute -right-8 top-24 hidden opacity-40 sm:block">
         <Plant className="h-28 w-24" color="#ff4328" />
       </div>
       <DocTitle kicker="Core Concepts">Features</DocTitle>

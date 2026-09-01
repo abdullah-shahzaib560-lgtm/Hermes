@@ -48,36 +48,36 @@ export default function Home() {
         <section className="relative overflow-hidden">
           {/* doodle background */}
           <div className="pointer-events-none absolute inset-0">
-            <Plant className="absolute left-8 top-40 h-28 w-24 opacity-50" color="#ff4328" />
-            <Sparkle className="absolute right-16 top-32 h-16 w-16 opacity-70" color="#ff4328" />
-            <Spiral className="absolute right-1/3 top-16 h-14 w-14 opacity-40" color="#ff4328" />
-            <WobbleCircle className="absolute bottom-10 left-1/2 h-24 w-24 opacity-50" color="#ff4328" />
-            <Sparkle className="absolute bottom-24 right-24 h-12 w-12 opacity-50" color="#ff4328" />
+            <Plant className="absolute left-8 top-40 hidden h-28 w-24 opacity-50 sm:block" color="#ff4328" />
+            <Sparkle className="absolute right-4 top-20 h-10 w-10 opacity-70 sm:right-16 sm:top-32 sm:h-16 sm:w-16" color="#ff4328" />
+            <Spiral className="absolute right-1/3 top-16 hidden h-14 w-14 opacity-40 sm:block" color="#ff4328" />
+            <WobbleCircle className="absolute bottom-10 left-1/2 h-16 w-16 opacity-50 sm:h-24 sm:w-24" color="#ff4328" />
+            <Sparkle className="absolute bottom-24 right-6 h-8 w-8 opacity-50 sm:right-24 sm:h-12 sm:w-12" color="#ff4328" />
           </div>
 
-          <div className="relative mx-auto max-w-6xl px-6 pt-24 pb-20 text-center md:pt-36 md:pb-28">
-            <div className="relative mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-white/60 px-4 py-1.5 font-body text-sm font-medium text-ink-soft backdrop-blur">
-              <Sparkle className="h-4 w-4" color="#ff4328" strokeWidth={4} />
+          <div className="relative mx-auto max-w-6xl px-4 pt-16 pb-12 text-center sm:px-6 sm:pt-24 sm:pb-20 md:pt-36 md:pb-28">
+            <div className="relative mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-white/60 px-3 py-1.5 font-body text-xs font-medium text-ink-soft backdrop-blur sm:mb-8 sm:px-4 sm:text-sm">
+              <Sparkle className="h-3.5 w-3.5 sm:h-4 sm:w-4" color="#ff4328" strokeWidth={4} />
               The Data Engine for Python
-              <Sparkle className="h-4 w-4" color="#ff4328" strokeWidth={4} />
+              <Sparkle className="h-3.5 w-3.5 sm:h-4 sm:w-4" color="#ff4328" strokeWidth={4} />
             </div>
 
-            <h1 className="relative mx-auto max-w-4xl font-heading text-5xl font-extrabold leading-[1.05] tracking-tight text-ink sm:text-6xl md:text-7xl">
+            <h1 className="relative mx-auto max-w-4xl font-heading text-4xl font-extrabold leading-[1.05] tracking-tight text-ink sm:text-5xl md:text-6xl lg:text-7xl">
               Intelligence data,
               <br />
               <span className="relative inline-block">
                 end to end.
-                <Squiggle className="absolute -bottom-3 left-0 w-full" color="#ff4328" strokeWidth={5} />
+                <Squiggle className="absolute -bottom-2 left-0 w-full sm:-bottom-3" color="#ff4328" strokeWidth={5} />
               </span>
             </h1>
 
-            <p className="relative mx-auto mt-10 max-w-2xl font-body text-lg leading-relaxed text-ink-soft md:text-xl">
+            <p className="relative mx-auto mt-6 max-w-2xl font-body text-base leading-relaxed text-ink-soft sm:mt-10 sm:text-lg md:text-xl">
               Hermes is a foundational intelligence data platform. Acquire, validate, normalize,
               store and serve datasets — with provenance baked into every row.
             </p>
 
             {/* Install + docs */}
-            <div className="relative mx-auto mt-12 max-w-xl">
+            <div className="relative mx-auto mt-8 max-w-xl sm:mt-12">
               <CodeBlock
                 code="pip install hermes-plt"
                 title="terminal"
@@ -85,34 +85,34 @@ export default function Home() {
               <Arrow className="pointer-events-none absolute -top-8 -right-12 hidden h-16 w-24 md:block" color="#ff4328" />
             </div>
 
-            <div className="relative mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="relative mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4">
               <Link
                 href="/docs/overview"
-                className="group relative inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-body text-base font-semibold text-white shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent-dark"
+                className="group relative inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 font-body text-sm font-semibold text-white shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent-dark sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
               >
                 Documentation
                 <span className="transition-transform group-hover:translate-x-1">→</span>
               </Link>
               <Link
                 href="/docs/quickstart"
-                className="inline-flex items-center gap-2 rounded-full border-2 border-black/15 px-7 py-3.5 font-body text-base font-semibold text-black transition-colors hover:border-black"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-black/15 px-6 py-3 font-body text-sm font-semibold text-black transition-colors hover:border-black sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
               >
                 Read the quickstart
               </Link>
             </div>
 
-            <p className="relative mt-8 inline-block font-mono text-xs text-ink-soft">
+            <p className="relative mt-6 inline-block font-mono text-xs text-ink-soft sm:mt-8">
               Python 3.11+ · pandas, polars, arrow & duckdb friendly
             </p>
           </div>
 
           {/* stats bar */}
-          <div className="relative mx-auto max-w-5xl px-6 pb-16">
+          <div className="relative mx-auto max-w-5xl px-4 pb-12 sm:px-6 sm:pb-16">
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-line bg-line shadow-card sm:grid-cols-4">
               {stats.map((s) => (
-                <div key={s.label} className="bg-cream/90 px-6 py-6 text-center">
-                  <div className="font-heading text-3xl font-extrabold text-ink md:text-4xl">{s.value}</div>
-                  <div className="mt-1 font-body text-sm text-ink-soft">{s.label}</div>
+                <div key={s.label} className="bg-cream/90 px-4 py-4 text-center sm:px-6 sm:py-6">
+                  <div className="font-heading text-2xl font-extrabold text-ink sm:text-3xl md:text-4xl">{s.value}</div>
+                  <div className="mt-1 font-body text-xs text-ink-soft sm:text-sm">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -120,10 +120,10 @@ export default function Home() {
         </section>
 
         {/* ------- VALUE PROPS ------- */}
-        <section className="relative border-t border-line/60 bg-cream-soft/60 py-20">
-          <div className="mx-auto max-w-6xl px-6">
-            <div className="mb-12 flex flex-col items-center text-center">
-              <h2 className="font-heading text-3xl font-extrabold tracking-tight md:text-4xl">
+        <section className="relative border-t border-line/60 bg-cream-soft/60 py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mb-10 flex flex-col items-center text-center md:mb-12">
+              <h2 className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl md:text-4xl">
                 One pipeline. <span className="hairline text-accent">Every source.</span>
               </h2>
               <p className="mt-4 max-w-2xl font-body text-ink-soft">
@@ -131,22 +131,22 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
               {valueProps.map((v, i) => (
                 <div
                   key={v.title}
-                  className="group relative rounded-3xl border border-line bg-cream p-7 shadow-card transition-all hover:-translate-y-1"
+                  className="group relative rounded-3xl border border-line bg-cream p-6 shadow-card transition-all hover:-translate-y-1 sm:p-7"
                 >
                   <div className="mb-6 flex items-center justify-between">
                     <span
-                      className="flex h-11 w-11 items-center justify-center rounded-2xl text-xl font-bold"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl text-lg font-bold sm:h-11 sm:w-11 sm:text-xl"
                       style={{ backgroundColor: `color-mix(in srgb, ${v.color} 14%, transparent)`, color: v.color }}
                     >
                       {v.icon}
                     </span>
                     <span className="font-heading text-sm font-bold text-ink/25">0{i + 1}</span>
                   </div>
-                  <h3 className="font-heading text-xl font-bold">{v.title}</h3>
+                  <h3 className="font-heading text-lg font-bold sm:text-xl">{v.title}</h3>
                   <p className="mt-2 font-body text-sm leading-relaxed text-ink-soft">{v.body}</p>
                   <Squiggle className="mt-5 w-20 opacity-60" color={v.color} strokeWidth={4} />
                 </div>
@@ -156,17 +156,17 @@ export default function Home() {
         </section>
 
         {/* ------- FEATURES ------- */}
-        <section className="relative overflow-hidden py-20">
+        <section className="relative overflow-hidden py-14 md:py-20">
           <div className="pointer-events-none absolute right-0 top-10 opacity-40">
-            <Plant className="h-36 w-28" color="#ff4328" />
+            <Plant className="h-32 w-24 sm:h-36 sm:w-28" color="#ff4328" />
           </div>
-          <div className="mx-auto max-w-6xl px-6">
-            <div className="grid items-center gap-12 lg:grid-cols-2">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
               <div>
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-line bg-white/60 px-3 py-1 font-body text-xs font-bold uppercase tracking-wider text-accent">
                   Built for trust
                 </div>
-                <h2 className="font-heading text-3xl font-extrabold tracking-tight md:text-4xl">
+                <h2 className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl md:text-4xl">
                   Provenance you can <span className="hairline text-accent">point at.</span>
                 </h2>
                 <p className="mt-4 max-w-lg font-body leading-relaxed text-black">
@@ -196,8 +196,8 @@ export default function Home() {
               </div>
 
               <div className="relative">
-                <WobbleCircle className="absolute -left-8 -top-8 h-24 w-24 opacity-60" color="#ff4328" />
-                <div className="relative overflow-hidden rounded-3xl border border-line bg-white p-8 shadow-soft">
+                <WobbleCircle className="absolute -left-6 -top-6 hidden h-20 w-20 opacity-60 sm:block sm:h-24 sm:w-24" color="#ff4328" />
+                <div className="relative overflow-hidden rounded-3xl border border-line bg-white p-5 shadow-soft sm:p-8">
                   <div className="mb-6 flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full bg-accent" />
                     <span className="h-3 w-3 rounded-full bg-line" />
@@ -223,7 +223,7 @@ features = hermes.economic_features.compute(
 stats = hermes.cache.stats()
 print(f"cached: {stats['hits']} hits")`}
                   />
-                  <Sparkle className="absolute -bottom-4 -right-4 h-14 w-14 opacity-60" color="#ff4328" />
+                  <Sparkle className="absolute -bottom-3 -right-3 h-12 w-12 opacity-60 sm:-bottom-4 sm:-right-4 sm:h-14 sm:w-14" color="#ff4328" />
                 </div>
               </div>
             </div>
@@ -231,33 +231,33 @@ print(f"cached: {stats['hits']} hits")`}
         </section>
 
         {/* ------- CTA ------- */}
-        <section className="relative border-t border-line/60 py-20">
-          <div className="mx-auto max-w-4xl px-6 text-center">
-            <div className="relative overflow-hidden rounded-[2.5rem] border border-line bg-white p-10 text-black shadow-soft md:p-16">
-              <Sparkle className="absolute -top-6 left-10 h-12 w-12 opacity-80" color="#ff4328" />
-              <Sparkle className="absolute -bottom-4 right-14 h-10 w-10 opacity-60" color="#ff4328" />
-              <h2 className="font-heading text-3xl font-extrabold tracking-tight md:text-5xl">
+        <section className="relative border-t border-line/60 py-14 md:py-20">
+          <div className="mx-auto max-w-4xl px-4 text-center sm:px-6">
+            <div className="relative overflow-hidden rounded-[2rem] border border-line bg-white p-8 text-black shadow-soft sm:rounded-[2.5rem] sm:p-10 md:p-16">
+              <Sparkle className="absolute -top-6 left-10 h-10 w-10 opacity-80 sm:h-12 sm:w-12" color="#ff4328" />
+              <Sparkle className="absolute -bottom-4 right-14 h-8 w-8 opacity-60 sm:h-10 sm:w-10" color="#ff4328" />
+              <h2 className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl md:text-5xl">
                 Ship trustable data <span className="text-accent">today.</span>
               </h2>
-              <p className="mx-auto mt-4 max-w-xl font-body text-black/70">
+              <p className="mx-auto mt-4 max-w-xl font-body text-sm text-black/70 sm:text-base">
                 Get the full pipeline running in under a minute. No accounts, no API keys required
                 to start.
               </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4">
                 <Link
                   href="/docs/quickstart"
-                  className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-body font-semibold text-white shadow transition-transform hover:-translate-y-0.5 hover:bg-accent-dark"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-7 py-3.5 font-body font-semibold text-white shadow transition-transform hover:-translate-y-0.5 hover:bg-accent-dark sm:w-auto"
                 >
                   Start the quickstart →
                 </Link>
                 <Link
                   href="/docs/overview"
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-black/15 px-7 py-3.5 font-body font-semibold text-black transition-colors hover:border-black"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-black/15 px-7 py-3.5 font-body font-semibold text-black transition-colors hover:border-black sm:w-auto"
                 >
                   Read the docs
                 </Link>
               </div>
-              <div className="mt-6 flex items-center justify-center gap-4">
+              <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4">
                 <a
                   href="https://discord.gg/KrxwaR3Uu"
                   target="_blank"

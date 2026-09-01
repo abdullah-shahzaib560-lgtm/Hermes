@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function ApiReferencePage() {
   return (
     <article className="relative">
-      <div className="pointer-events-none absolute -left-6 top-40 opacity-40">
+      <div className="pointer-events-none absolute -left-6 top-40 hidden opacity-40 sm:block">
         <WobbleCircle className="h-20 w-20" color="#ff4328" />
       </div>
       <DocTitle kicker="Reference">API Reference</DocTitle>

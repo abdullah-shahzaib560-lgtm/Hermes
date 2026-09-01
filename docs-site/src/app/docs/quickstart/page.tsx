@@ -82,7 +82,7 @@ hermes.clear_cache(older_than="7d")`;
 export default function QuickstartPage() {
   return (
     <article className="relative">
-      <div className="pointer-events-none absolute -left-6 top-16 opacity-40">
+      <div className="pointer-events-none absolute -left-6 top-16 hidden opacity-40 sm:block">
         <WobbleCircle className="h-20 w-20" color="#ff4328" />
       </div>
       <DocTitle kicker="Getting Started">Quickstart</DocTitle>

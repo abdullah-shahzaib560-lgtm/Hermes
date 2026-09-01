@@ -1,51 +1,154 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Squiggle } from "./Doodle";
 import { Logo } from "./Logo";
 
 export function Navbar() {
+  const [open, setOpen] = useState(false);
+
   const links = [
     { label: "Docs", href: "/docs/overview" },
     { label: "Quickstart", href: "/docs/quickstart" },
+    { label: "Connectors", href: "/docs/connectors" },
+    { label: "Features", href: "/docs/features" },
     { label: "API", href: "/docs/api-reference" },
+    { label: "Roadmap", href: "/docs/roadmap" },
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line/70 bg-cream/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Logo />
-        <nav className="hidden items-center gap-8 md:flex">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="relative font-body text-[15px] font-semibold text-ink-soft transition-colors hover:text-ink"
+    <>
+      <header className="sticky top-0 z-50 border-b border-line/70 bg-cream/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-3 sm:px-6 sm:py-4">
+          <Logo />
+          <nav className="hidden items-center gap-6 xl:flex lg:gap-8">
+            {links.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="relative font-body text-[15px] font-semibold text-ink-soft transition-colors hover:text-ink"
+              >
+                {l.label}
+                <span className="absolute -bottom-1 left-0 h-[3px] w-0 rounded-full bg-accent transition-all duration-300 hover:w-full" />
+              </Link>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://discord.gg/KrxwaR3Uu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden items-center gap-2 rounded-full border-2 border-black/15 px-4 py-2.5 font-body text-sm font-semibold text-black transition-colors hover:border-accent hover:text-accent sm:inline-flex"
             >
-              {l.label}
-              <span className="absolute -bottom-1 left-0 h-[3px] w-0 rounded-full bg-accent transition-all duration-300 hover:w-full" />
+              <DiscordIcon className="h-4 w-4" />
+              Join Discord
+            </a>
+            <Link
+              href="/docs/quickstart"
+              className="group relative hidden items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-body text-sm font-semibold text-white shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent-dark sm:inline-flex"
+            >
+              <span className="whitespace-nowrap">Get Started</span>
+              <span className="transition-transform group-hover:translate-x-1">→</span>
+              <Squiggle className="pointer-events-none absolute -bottom-2 left-4 w-16" color="#ff4328" strokeWidth={3} />
             </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-2">
-          <a
-            href="https://discord.gg/KrxwaR3Uu"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden items-center gap-2 rounded-full border-2 border-black/15 px-4 py-2.5 font-body text-sm font-semibold text-black transition-colors hover:border-accent hover:text-accent sm:inline-flex"
-          >
-            <DiscordIcon className="h-4 w-4" />
-            Join Discord
-          </a>
-          <Link
-            href="/docs/quickstart"
-            className="group relative inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-body text-sm font-semibold text-white shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent-dark"
-          >
-            Get Started
-            <span className="transition-transform group-hover:translate-x-1">→</span>
-            <Squiggle className="pointer-events-none absolute -bottom-2 left-4 w-16" color="#ff4328" strokeWidth={3} />
-          </Link>
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white/60 transition-colors hover:border-accent hover:text-accent lg:hidden"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
+      </header>
+
+      {/* Mobile drawer / sidebar */}
+      <div
+        className={`fixed inset-0 z-[60] lg:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+        aria-hidden={!open}
+      >
+        {/* Backdrop */}
+        <div
+          onClick={() => setOpen(false)}
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        {/* Panel */}
+        <aside
+          className={`absolute right-0 top-0 flex h-full w-[85%] max-w-xs flex-col overflow-y-auto bg-cream shadow-soft transition-transform duration-300 ease-out ${
+            open ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between border-b border-line/70 px-5 py-4">
+            <Logo />
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close menu"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line text-black transition-colors hover:border-accent hover:text-accent"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="flex flex-1 flex-col px-3 py-4">
+            <div className="mb-2 px-2 font-heading text-xs font-bold uppercase tracking-[0.2em] text-black/50">
+              Docs
+            </div>
+            <nav className="flex flex-col gap-1">
+              {links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 font-body text-[15px] font-semibold text-black transition-colors hover:bg-cream-soft active:bg-cream-soft"
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="mt-auto space-y-3 border-t border-line/70 pt-5">
+              <a
+                href="https://discord.gg/KrxwaR3Uu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-full border-2 border-black/15 px-5 py-3 font-body text-sm font-semibold text-black transition-colors hover:border-accent hover:text-accent"
+              >
+                <DiscordIcon className="h-4 w-4" />
+                Join Discord
+              </a>
+              <Link
+                href="/docs/quickstart"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 font-body text-sm font-semibold text-white shadow-soft transition-colors hover:bg-accent-dark"
+              >
+                Get Started →
+              </Link>
+            </div>
+          </div>
+        </aside>
       </div>
-    </header>
+    </>
+  );
+}
+
+function MenuIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
   );
 }
 

@@ -3,31 +3,31 @@ import { Sparkle, Squiggle, WobbleCircle, Arrow } from "./Doodle";
 
 export function DocTitle({ children, kicker }: { children: React.ReactNode; kicker?: string }) {
   return (
-    <div className="relative mb-10 rounded-3xl border border-line bg-white p-6 shadow-card md:p-8">
-      <WobbleCircle className="pointer-events-none absolute -right-3 -top-4 h-16 w-16 opacity-40" color="#ff4328" />
+    <div className="relative mb-8 rounded-3xl border border-line bg-white p-5 shadow-card sm:mb-10 sm:p-6 md:p-8">
+      <WobbleCircle className="pointer-events-none absolute -right-3 -top-4 h-12 w-12 opacity-40 sm:h-16 sm:w-16" color="#ff4328" />
       {kicker && (
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-cream-soft/60 px-3 py-1 font-body text-xs font-bold uppercase tracking-wider text-accent">
           <Sparkle className="h-3.5 w-3.5" color="#ff4328" strokeWidth={4} />
           {kicker}
         </div>
       )}
-      <h1 className="font-heading text-4xl font-extrabold tracking-tight text-black md:text-5xl">
+      <h1 className="font-heading text-3xl font-extrabold tracking-tight text-black sm:text-4xl md:text-5xl">
         {children}
       </h1>
-      <Squiggle className="pointer-events-none absolute -bottom-2 left-8 w-24 opacity-70" color="#ff4328" strokeWidth={4} />
+      <Squiggle className="pointer-events-none absolute -bottom-2 left-8 w-20 opacity-70 sm:w-24" color="#ff4328" strokeWidth={4} />
     </div>
   );
 }
 
 export function H2({ children, id }: { children: React.ReactNode; id?: string }) {
   return (
-    <div className="mt-14 mb-4 flex items-center gap-2">
+    <div className="mt-10 mb-4 flex items-center gap-2 sm:mt-14">
       <h2
         id={id}
-        className="flex items-center gap-3 font-heading text-2xl font-extrabold tracking-tight text-black"
+        className="flex items-center gap-2 font-heading text-xl font-extrabold tracking-tight text-black sm:gap-3 sm:text-2xl"
       >
         {children}
-        <Sparkle className="h-5 w-5 opacity-70" color="#ff4328" strokeWidth={4} />
+        <Sparkle className="hidden h-5 w-5 opacity-70 sm:inline" color="#ff4328" strokeWidth={4} />
       </h2>
     </div>
   );
@@ -39,7 +39,7 @@ export function P({ children }: { children: React.ReactNode }) {
 
 export function Lead({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-6 text-lg font-body leading-relaxed text-black">{children}</p>
+    <p className="mb-6 text-base font-body leading-relaxed text-black sm:text-lg">{children}</p>
   );
 }
 
@@ -71,12 +71,12 @@ export function Callout({
   };
   const t = map[tone];
   return (
-    <div className="my-7 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: `${t.bg}` }}>
+    <div className="my-6 overflow-hidden rounded-2xl border border-line bg-white shadow-card sm:my-7">
+      <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4" style={{ backgroundColor: `${t.bg}` }}>
         <Sparkle className="h-4 w-4 text-white" color="#fff" strokeWidth={4} />
         <span className="font-heading text-sm font-bold text-white">{title}</span>
       </div>
-      <div className="px-5 py-4 font-body text-[15px] leading-relaxed text-black">{children}</div>
+      <div className="px-4 py-3 font-body text-[15px] leading-relaxed text-black sm:px-5 sm:py-4">{children}</div>
     </div>
   );
 }
@@ -96,11 +96,11 @@ export function DocLink({ href, children, external }: { href: string; children: 
 
 export function PrevNext({ prev, next }: { prev?: { title: string; href: string }; next?: { title: string; href: string } }) {
   return (
-    <div className="mt-14 grid gap-4 border-t border-line/70 pt-8 sm:grid-cols-2">
+    <div className="mt-10 grid gap-3 border-t border-line/70 pt-6 sm:mt-14 sm:grid-cols-2 sm:gap-4 sm:pt-8">
       {prev ? (
         <Link
           href={prev.href}
-          className="group relative rounded-2xl border border-line bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-card"
+          className="group relative rounded-2xl border border-line bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-card sm:p-5"
         >
           <div className="font-body text-xs uppercase tracking-wider text-black/50">← Previous</div>
           <div className="mt-1 font-heading font-bold text-black group-hover:text-accent">{prev.title}</div>
@@ -112,7 +112,7 @@ export function PrevNext({ prev, next }: { prev?: { title: string; href: string 
       {next ? (
         <Link
           href={next.href}
-          className="group relative rounded-2xl border border-line bg-white p-5 text-right transition-all hover:-translate-y-0.5 hover:shadow-card"
+          className="group relative rounded-2xl border border-line bg-white p-4 text-right transition-all hover:-translate-y-0.5 hover:shadow-card sm:p-5"
         >
           <div className="font-body text-xs uppercase tracking-wider text-black/50">Next →</div>
           <div className="mt-1 font-heading font-bold text-black group-hover:text-accent">{next.title}</div>
@@ -127,12 +127,12 @@ export function PrevNext({ prev, next }: { prev?: { title: string; href: string 
 
 export function Table({ head, rows }: { head: string[]; rows: (string | React.ReactNode)[][] }) {
   return (
-    <div className="my-6 overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-      <table className="w-full text-left font-body text-[15px]">
+    <div className="my-5 overflow-x-auto rounded-2xl border border-line bg-white shadow-card sm:my-6">
+      <table className="w-full min-w-[400px] text-left font-body text-[13.5px] sm:text-[15px]">
         <thead>
           <tr className="border-b border-line bg-cream-soft/70">
             {head.map((h) => (
-              <th key={h} className="px-4 py-3 font-heading text-sm font-bold text-black">
+              <th key={h} className="px-3 py-2.5 font-heading text-xs font-bold text-black sm:px-4 sm:py-3 sm:text-sm">
                 {h}
               </th>
             ))}
@@ -142,7 +142,7 @@ export function Table({ head, rows }: { head: string[]; rows: (string | React.Re
           {rows.map((row, i) => (
             <tr key={i} className="border-b border-line/50 last:border-0">
               {row.map((cell, j) => (
-                <td key={j} className="px-4 py-3 align-top text-black">
+                <td key={j} className="px-3 py-2.5 align-top text-black sm:px-4 sm:py-3">
                   {cell}
                 </td>
               ))}
