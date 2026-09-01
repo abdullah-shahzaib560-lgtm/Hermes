@@ -42,9 +42,9 @@ export function Footer() {
         <WobbleCircle className="h-28 w-28" color="#ff4328" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 py-14">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
-          <div>
+      <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+        <div className="grid grid-cols-2 gap-8 sm:gap-10 lg:grid-cols-[1.5fr_1fr_1fr_1fr] lg:gap-10">
+          <div className="col-span-2 lg:col-span-1">
             <div className="mb-4">
               <Logo withWordmark={false} />
             </div>

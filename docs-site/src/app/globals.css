@@ -36,6 +36,7 @@ body {
   color: #000000;
   font-family: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0.01em;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -80,4 +81,10 @@ h1, h2, h3, h4, h5, h6 {
 /* Code block typography */
 pre {
   font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, monospace;
+}
+
+/* Prevent long unbroken strings (URLs, code) from overflowing on small screens */
+p, li, td, code, a {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
