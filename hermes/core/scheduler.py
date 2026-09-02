@@ -164,7 +164,8 @@ class _Job:
         if self.interval is not None:
             return now + self.interval
 
-        assert self.cron is not None
+        if self.cron is None:
+            raise ValueError("self.cron must be set before this operation")
 
         return _next_cron_dt(
             self.spec,
