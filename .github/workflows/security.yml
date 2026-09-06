@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -33,11 +33,11 @@ jobs:
           bandit -r hermes/ \
             -f json \
             -o bandit-report.json \
-            -ll   # only report Medium and higher severity
+            -ll
 
       - name: Upload Bandit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bandit-report
           path: bandit-report.json
@@ -48,10 +48,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -62,14 +62,12 @@ jobs:
 
       - name: Run pip-audit
         run: |
-          # Generate JSON report (always)
           pip-audit --format json --output pip-audit-report.json || true
-          # Fail the job if vulnerabilities are found
           pip-audit
 
       - name: Upload pip-audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pip-audit-report
           path: pip-audit-report.json
